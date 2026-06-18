@@ -6662,7 +6662,7 @@ do
     end
 
     local mainGui = playerGui:FindFirstChild("EclipseUI")
-    
+
     local function GetMainFrame()
         return frame
     end
@@ -6763,34 +6763,44 @@ do
         Instance.new("UICorner", keyBtn).CornerRadius = UDim.new(0,6)
 
         local listening = false
+        local listenConn = nil
+
         keyBtn.MouseButton1Click:Connect(function()
             if listening then return end
             listening = true
             keyBtn.Text = "..."
-            local conn
-            conn = UserInputService.InputBegan:Connect(function(input, gpe)
+
+            if listenConn then listenConn:Disconnect() end
+
+            listenConn = UserInputService.InputBegan:Connect(function(input, gpe)
                 if gpe then return end
                 if input.UserInputType == Enum.UserInputType.Keyboard then
                     local keyName = input.KeyCode.Name
-                    getgenv().MenuKeybind = keyName
-                    keyBtn.Text = keyName
-                    SaveConfig()
-                    listening = false
-                    conn:Disconnect()
+                    if keyName ~= "Unknown" then
+                        getgenv().MenuKeybind = keyName
+                        keyBtn.Text = keyName
+                        SaveConfig()
+                        listening = false
+                        listenConn:Disconnect()
+                        listenConn = nil
+                    end
                 end
             end)
         end)
 
-        UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe then return end
-            if input.UserInputType == Enum.UserInputType.Keyboard then
-                if input.KeyCode.Name == (getgenv().MenuKeybind or "K") then
-                    if mainGui then
-                        mainGui.Enabled = not mainGui.Enabled
+        if not getgenv().KeybindConnection then
+            getgenv().KeybindConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+                if gpe or listening then return end
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    if input.KeyCode.Name == (getgenv().MenuKeybind or "K") then
+                        local gui = playerGui:FindFirstChild("EclipseUI")
+                        if gui then
+                            gui.Enabled = not gui.Enabled
+                        end
                     end
                 end
-            end
-        end)
+            end)
+        end
     end
 
     do
