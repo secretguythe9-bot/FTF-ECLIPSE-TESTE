@@ -6661,8 +6661,6 @@ do
         if v:IsA("Frame") then v:Destroy() end
     end
 
-    local mainGui = playerGui:FindFirstChild("EclipseUI")
-
     local function GetMainFrame()
         return frame
     end
@@ -6788,19 +6786,22 @@ do
             end)
         end)
 
-        if not getgenv().KeybindConnection then
-            getgenv().KeybindConnection = UserInputService.InputBegan:Connect(function(input, gpe)
-                if gpe or listening then return end
-                if input.UserInputType == Enum.UserInputType.Keyboard then
-                    if input.KeyCode.Name == (getgenv().MenuKeybind or "K") then
-                        local gui = playerGui:FindFirstChild("EclipseUI")
-                        if gui then
-                            gui.Enabled = not gui.Enabled
-                        end
+        -- ARRUMEI AQUI: PEGA O GUI TODA VEZ + DESCONECTA CONEXÃO ANTIGA
+        if getgenv().KeybindConnection then
+            getgenv().KeybindConnection:Disconnect()
+        end
+
+        getgenv().KeybindConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe or listening then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                if input.KeyCode.Name == (getgenv().MenuKeybind or "K") then
+                    local gui = playerGui:FindFirstChild("EclipseUI")
+                    if gui then
+                        gui.Enabled = not gui.Enabled
                     end
                 end
-            end)
-        end
+            end
+        end)
     end
 
     do
