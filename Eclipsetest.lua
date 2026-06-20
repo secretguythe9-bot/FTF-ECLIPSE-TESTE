@@ -78,7 +78,7 @@ local function loadAnnounce()
             return HttpService:JSONDecode(readfile(ANNOUNCE_FILE))
         end)
         if success and typeof(loaded) == "table" then
-            -- announceData = loaded -- DESATIVADO PRA APARECER SEMPRE
+            announceData = loaded
         end
     end
 end
@@ -92,7 +92,7 @@ end
 
 loadAnnounce()
 
-if true then -- FORÇA APARECER SEMPRE
+if not announceData.seen then
     local announceFrame = Instance.new("Frame", gui)
     announceFrame.Size = UDim2.new(0, 0, 0, 0)
     announceFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -329,8 +329,8 @@ if true then -- FORÇA APARECER SEMPRE
         }):Play()
         task.wait(0.3)
         announceFrame:Destroy()
-        -- announceData.seen = true -- DESATIVADO
-        -- saveAnnounce() -- DESATIVADO PRA APARECER SEMPRE
+        announceData.seen = true
+        saveAnnounce()
     end)
 end
 
