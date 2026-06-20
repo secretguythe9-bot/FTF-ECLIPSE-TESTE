@@ -39,30 +39,30 @@ local announceData = {seen = false}
 
 local announceTexts = {
     EN = {
-        title = "Welcome to Eclipse!",
-        subtitle = "A New Beginning",
-        desc1 = "After thinking a lot about the future of Eclipse, I decided to start a completely new project. Most of this Hub was built by me, with a little help from a friend for some code sharing and testing.",
-        desc2 = "Creating everything from scratch has been a huge challenge. Many systems break during development and need to be rebuilt several times, but I'm doing my best to create a better and more stable experience for everyone.",
-        subtitle2 = "What happened to the old Eclipse?",
-        desc3 = "The old Eclipse was based on a style and structure that no longer matched what I wanted for the project. After a long time working with that model, I decided to leave it behind and build my own unique Hub.",
-        desc4 = "This new version gives me more freedom to add features, improve performance, and keep the project growing. I hope you enjoy this new chapter as much as I enjoyed creating it.",
-        subtitle3 = "About missing scripts and bugs",
-        desc5 = "Some features from previous versions may not be available yet, and you might find occasional bugs while the Hub continues to evolve.",
-        desc6 = "I will keep working hard to bring back important systems and improve existing ones. If you notice a missing script or any problem, please let me know through the Discord server.",
+        title = "Eclipse Updated!",
+        subtitle = "Changelog",
+        desc1 = "Hey everyone, I wasn't feeling very well and ended up without motivation to work on the project for a while. Because of that, I left most of the development in gustavo_bawnana's hands, who handles adjustments and adds new scripts to Eclipse.",
+        desc2 = "A lot of people may wonder why I wasn't working on it as much. The truth is I had already made several improvements and added many features before, so I decided to leave this part with my friend, since he understands the internal scripts better.\n\nWe also faced some script errors and spent quite some time analyzing and planning new ideas, which ended up delaying the update.",
+        subtitle2 = "What's new in this update?",
+        desc3 = "• Fixed bug in Highlights Settings\n• Added new ESPs\n• New Pick Color system\n• ESP colors now save for next execution\n• Fixed WalkSpeed and High Jump\n• Fixed slider not working correctly\n• Crosshair moved to Textures category\n• Fixed bugs related to Crosshair",
+        desc4 = "",
+        subtitle3 = "Will there be new scripts?",
+        desc5 = "I'm still not sure. I currently don't have many complete scripts available, so that limits the possibilities a bit. Even so, I'll keep doing my best to bring new updates, improvements, and especially bug fixes.",
+        desc6 = "Thank you to everyone who continues using and supporting Eclipse!",
         btn_discord = "DISCORD",
-        btn_exit = "EXIT"
+        btn_exit = "CLOSE"
     },
     PT = {
-        title = "Bem-vindo ao Eclipse!",
-        subtitle = "Um Novo Começo",
-        desc1 = "Depois de pensar muito sobre o futuro do Eclipse, decidi começar um projeto completamente novo. A maior parte deste Hub foi construída por mim, com uma pequena ajuda de um amigo para compartilhamento de código e testes.",
-        desc2 = "Criar tudo do zero tem sido um desafio enorme. Muitos sistemas quebram durante o desenvolvimento e precisam ser reconstruídos várias vezes, mas estou fazendo o meu melhor para criar uma experiência melhor e mais estável para todos.",
-        subtitle2 = "O que aconteceu com o Eclipse antigo?",
-        desc3 = "O Eclipse antigo era baseado em um estilo e estrutura que não combinavam mais com o que eu queria para o projeto. Depois de muito tempo trabalhando com esse modelo, decidi deixá-lo para trás e construir meu próprio Hub único.",
-        desc4 = "Esta nova versão me dá mais liberdade para adicionar recursos, melhorar o desempenho e manter o projeto crescendo. Espero que você aproveite este novo capítulo tanto quanto eu gostei de criá-lo.",
-        subtitle3 = "Sobre scripts ausentes e bugs",
-        desc5 = "Alguns recursos de versões anteriores podem não estar disponíveis ainda, e você pode encontrar bugs ocasionais enquanto o Hub continua evoluindo.",
-        desc6 = "Vou continuar trabalhando duro para trazer de volta sistemas importantes e melhorar os existentes. Se você notar um script ausente ou qualquer problema, por favor me avise através do servidor do Discord.",
+        title = "Eclipse Atualizado!",
+        subtitle = "O que há de novo",
+        desc1 = "Bom, pessoal, eu não estava me sentindo muito bem e acabei ficando sem ânimo para trabalhar no projeto por um tempo. Por causa disso, deixei boa parte do desenvolvimento nas mãos do gustavo_bawnana, que é quem faz os ajustes e adiciona novos scripts ao Eclipse.",
+        desc2 = "Muita gente pode se perguntar por que eu não estava trabalhando tanto nele. A verdade é que eu já tinha feito várias melhorias e adicionado diversos recursos anteriormente, então decidi deixar essa parte com meu amigo, já que ele é quem mais entende dos scripts internos do projeto.\n\nTambém enfrentamos alguns problemas com erros de script e passamos bastante tempo analisando e planejando novas ideias, o que acabou atrasando a atualização.",
+        subtitle2 = "O que veio nesta atualização?",
+        desc3 = "• Correção do bug em Highlights Settings\n• Adição de novos ESPs\n• Novo sistema de Pick Color\n• As cores do ESP agora ficam salvas para a próxima execução\n• Correção do WalkSpeed e High Jump\n• Correção do slider, que não estava funcionando corretamente\n• Crosshair movido para a categoria Textures\n• Correção de bugs relacionados ao Crosshair",
+        desc4 = "",
+        subtitle3 = "Vai ter novos scripts?",
+        desc5 = "Ainda não tenho certeza. Atualmente não possuo muitos scripts completos disponíveis, então isso acaba limitando um pouco as possibilidades. Mesmo assim, vou continuar fazendo o possível para trazer novas atualizações, melhorias e, principalmente, correções de bugs.",
+        desc6 = "Obrigado a todos que continuam usando e apoiando o Eclipse!",
         btn_discord = "DISCORD",
         btn_exit = "SAIR"
     }
@@ -78,7 +78,7 @@ local function loadAnnounce()
             return HttpService:JSONDecode(readfile(ANNOUNCE_FILE))
         end)
         if success and typeof(loaded) == "table" then
-            announceData = loaded
+            -- announceData = loaded -- DESATIVADO PRA APARECER SEMPRE
         end
     end
 end
@@ -92,7 +92,7 @@ end
 
 loadAnnounce()
 
-if not announceData.seen then
+if true then -- FORÇA APARECER SEMPRE
     local announceFrame = Instance.new("Frame", gui)
     announceFrame.Size = UDim2.new(0, 0, 0, 0)
     announceFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -111,7 +111,7 @@ if not announceData.seen then
     announceLangBtn.Size = UDim2.new(0, 32, 0, 28)
     announceLangBtn.Position = UDim2.new(1, -42, 0, 10)
     announceLangBtn.Text = currentLang
-    announceLangBtn.BackgroundColor3 = Color3.fromRGB(35, 35)
+    announceLangBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
     announceLangBtn.BackgroundTransparency = 0.3
     announceLangBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
     announceLangBtn.TextSize = 15
@@ -202,7 +202,7 @@ if not announceData.seen then
     desc3.Text = announceTexts[currentLang].desc3
     desc3.Font = Enum.Font.Gotham
     desc3.TextSize = 13
-    desc3.TextColor3 = Color3.fromRGB(220, 220)
+    desc3.TextColor3 = Color3.fromRGB(220, 220, 220)
     desc3.TextXAlignment = Enum.TextXAlignment.Center
     desc3.TextYAlignment = Enum.TextYAlignment.Top
     desc3.TextWrapped = true
@@ -216,12 +216,13 @@ if not announceData.seen then
     desc4.Text = announceTexts[currentLang].desc4
     desc4.Font = Enum.Font.Gotham
     desc4.TextSize = 13
-    desc4.TextColor3 = Color3.fromRGB(220, 220)
+    desc4.TextColor3 = Color3.fromRGB(220, 220, 220)
     desc4.TextXAlignment = Enum.TextXAlignment.Center
     desc4.TextYAlignment = Enum.TextYAlignment.Top
     desc4.TextWrapped = true
     desc4.ZIndex = 101
     desc4.LayoutOrder = 6
+    desc4.Visible = announceTexts[currentLang].desc4 ~= ""
 
     local subtitle3 = Instance.new("TextLabel", scrollFrame)
     subtitle3.Size = UDim2.new(1, -10, 0, 20)
@@ -304,6 +305,7 @@ if not announceData.seen then
         subtitle2.Text = announceTexts[currentLang].subtitle2
         desc3.Text = announceTexts[currentLang].desc3
         desc4.Text = announceTexts[currentLang].desc4
+        desc4.Visible = announceTexts[currentLang].desc4 ~= ""
         subtitle3.Text = announceTexts[currentLang].subtitle3
         desc5.Text = announceTexts[currentLang].desc5
         desc6.Text = announceTexts[currentLang].desc6
@@ -327,8 +329,8 @@ if not announceData.seen then
         }):Play()
         task.wait(0.3)
         announceFrame:Destroy()
-        announceData.seen = true
-        saveAnnounce()
+        -- announceData.seen = true -- DESATIVADO
+        -- saveAnnounce() -- DESATIVADO PRA APARECER SEMPRE
     end)
 end
 
@@ -553,9 +555,9 @@ local function CreateGroupbox(parent, title)
 	Instance.new("UICorner", groupbox).CornerRadius = UDim.new(0, 8)
 	
 	local groupboxStroke = Instance.new("UIStroke", groupbox)
-	groupboxStroke.Color = Color3.fromRGB(45, 45, 45) -- CINZA ESCURO
+	groupboxStroke.Color = Color3.fromRGB(45, 45, 45)
 	groupboxStroke.Thickness = 1
-	groupboxStroke.Transparency = 0.2 -- MENOS TRANSPARENTE
+	groupboxStroke.Transparency = 0.2
 	
 	local header = Instance.new("Frame", groupbox)
 	header.Size = UDim2.new(1, 0, 0, 35)
