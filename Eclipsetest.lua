@@ -8305,32 +8305,18 @@ do
         return frame or playerGui:WaitForChild("EclipseUI", 5):FindFirstChild("Main", true)
     end
 
-    local isPC = UserInputService.KeyboardEnabled -- detecta se é PC
+    local isPC = UserInputService.KeyboardEnabled
 
     if not isfolder("FTF_Eclipse") then makefolder("FTF_Eclipse") end
 
     local backgrounds = {
-        {"Style 1", "94148533276635"},
-        {"Style 2", "97984932480755"},
-        {"Style 3", "86192845180549"},
-        {"Style 4", "85784609294289"},
-        {"Style 5", "140636010520663"},
-        {"Style 6", "124240486073107"},
-        {"Style 7", "85635291549219"},
-        {"Style 8", "117512819334968"},
-        {"Style 9", "111750153717391"},
-        {"Style 10", "98791036867631"},
-        {"Style 11", "131737959610359"},
-        {"Style 12", "81997082602790"},
-        {"Style 13", "117151748213203"},
-        {"Style 14", "112483283923855"},
-        {"Style 15", "109490272700736"},
-        {"Style 16", "125661929366351"},
-        {"Style 17", "74184537251110"},
-        {"Style 18", "124786302962772"},
-        {"Style 19", "125474858681812"},
-        {"Style 20", "99142368271124"},
-        {"Style 21", "94865353552525"},
+        {"Style 1", "94148533276635"},{"Style 2", "97984932480755"},{"Style 3", "86192845180549"},
+        {"Style 4", "85784609294289"},{"Style 5", "140636010520663"},{"Style 6", "124240486073107"},
+        {"Style 7", "85635291549219"},{"Style 8", "117512819334968"},{"Style 9", "111750153717391"},
+        {"Style 10", "98791036867631"},{"Style 11", "131737959610359"},{"Style 12", "81997082602790"},
+        {"Style 13", "117151748213203"},{"Style 14", "112483283923855"},{"Style 15", "109490272700736"},
+        {"Style 16", "125661929366351"},{"Style 17", "74184537251110"},{"Style 18", "124786302962772"},
+        {"Style 19", "125474858681812"},{"Style 20", "99142368271124"},{"Style 21", "94865353552525"},
         {"Style 22", "120484401704545"},
     }
 
@@ -8379,7 +8365,6 @@ do
 
     local function UpdateBackground(id, force)
         if getgenv().BackgroundLocked and not force then return end
-
         local mainFrame = GetMainFrame()
         if not mainFrame then return end
         local oldBg = mainFrame:FindFirstChild("CustomBg")
@@ -8400,7 +8385,7 @@ do
         local gui = playerGui:FindFirstChild("EclipseUI")
         if gui then
             gui.Enabled = not gui.Enabled
-            if isPC and openButton then openButton.Visible = false end
+            -- TIREI O openButton.Visible daqui. Agora só abre e fecha com K
         end
     end
 
@@ -8431,7 +8416,7 @@ do
     do
         local holder = Instance.new("Frame", contentSettings)
         holder.Size = UDim2.new(1,0,0,35)
-        holder.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        holder.BackgroundColor3 = Color3.fromRGB(18,18,22)
         holder.BackgroundTransparency = 0.3
         Instance.new("UICorner", holder).CornerRadius = UDim.new(0,6)
 
@@ -8448,7 +8433,7 @@ do
         local keyBtn = Instance.new("TextButton", holder)
         keyBtn.Size = UDim2.new(0,55,0,24)
         keyBtn.Position = UDim2.new(1,-65,0.5,-12)
-        keyBtn.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        keyBtn.BackgroundColor3 = Color3.fromRGB(30,30,35)
         keyBtn.BackgroundTransparency = 0.2
         keyBtn.Text = getgenv().MenuKeybind or "K"
         keyBtn.Font = CurrentFont
@@ -8487,7 +8472,7 @@ do
     local function CreateDropdown(parent, labelText, list, default, callback)
         local holder = Instance.new("Frame", parent)
         holder.Size = UDim2.new(1,0,0,35)
-        holder.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        holder.BackgroundColor3 = Color3.fromRGB(18,18,22)
         holder.BackgroundTransparency = 0.3
         holder.ClipsDescendants = false
         holder.AutomaticSize = Enum.AutomaticSize.Y
@@ -8525,7 +8510,7 @@ do
         local dropdownFrame = Instance.new("Frame", holder)
         dropdownFrame.Size = UDim2.new(1,-8,0,0)
         dropdownFrame.Position = UDim2.new(0,4,0,0)
-        dropdownFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        dropdownFrame.BackgroundColor3 = Color3.fromRGB(10,10,12)
         dropdownFrame.BackgroundTransparency = 0.05
         dropdownFrame.ClipsDescendants = true
         Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0,6)
@@ -8598,7 +8583,7 @@ do
     do
         local holder = Instance.new("Frame", contentSettings)
         holder.Size = UDim2.new(1,0,0,35)
-        holder.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        holder.BackgroundColor3 = Color3.fromRGB(18,18,22)
         holder.BackgroundTransparency = 0.3
         Instance.new("UICorner", holder).CornerRadius = UDim.new(0,6)
 
@@ -8615,7 +8600,7 @@ do
         local inputBox = Instance.new("TextBox", holder)
         inputBox.Size = UDim2.new(0,80,0,24)
         inputBox.Position = UDim2.new(1,-90,0.5,-12)
-        inputBox.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        inputBox.BackgroundColor3 = Color3.fromRGB(30,30,35)
         inputBox.BackgroundTransparency = 0.2
         inputBox.PlaceholderText = "ID..."
         inputBox.Font = CurrentFont
@@ -8661,9 +8646,6 @@ do
         end
     end)
 
-    if isPC and openButton then
-        openButton.Visible = false
-    end
 end
 
 local currentLanguage = "EN"
