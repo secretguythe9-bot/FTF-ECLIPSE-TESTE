@@ -8381,11 +8381,23 @@ do
         end
     end
 
+    -- FUNÇÃO CORRIGIDA COM BLUR
     local function ToggleMenu()
         local gui = playerGui:FindFirstChild("EclipseUI")
         if gui then
+            local main = gui:FindFirstChild("Main", true)
+            local blur = game:GetService("Lighting"):FindFirstChild("EclipseBlur")
+
             gui.Enabled = not gui.Enabled
-            -- TIREI O openButton.Visible daqui. Agora só abre e fecha com K
+
+            -- controla o blur junto
+            if blur then
+                if gui.Enabled then
+                    TweenService:Create(blur, TweenInfo.new(0.2), {Size = 20}):Play()
+                else
+                    TweenService:Create(blur, TweenInfo.new(0.2), {Size = 0}):Play()
+                end
+            end
         end
     end
 
@@ -8645,7 +8657,6 @@ do
             UpdateBackground(backgrounds[1][2], false)
         end
     end)
-
 end
 
 local currentLanguage = "EN"
