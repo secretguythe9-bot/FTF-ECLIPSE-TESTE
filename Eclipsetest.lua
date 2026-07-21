@@ -8294,6 +8294,7 @@ do
     local UserInputService = game:GetService("UserInputService")
     local TweenService = game:GetService("TweenService")
     local HttpService = game:GetService("HttpService")
+    local Lighting = game:GetService("Lighting")
     local Player = game:GetService("Players").LocalPlayer
     local playerGui = Player:WaitForChild("PlayerGui")
 
@@ -8381,21 +8382,31 @@ do
         end
     end
 
-    -- FUNÇÃO CORRIGIDA COM BLUR
+    -- FUNÇÃO CORRIGIDA: AGORA DESTRÓI O BLUR AO FECHAR
     local function ToggleMenu()
         local gui = playerGui:FindFirstChild("EclipseUI")
         if gui then
-            local main = gui:FindFirstChild("Main", true)
-            local blur = game:GetService("Lighting"):FindFirstChild("EclipseBlur")
+            local blur = Lighting:FindFirstChild("EclipseBlur")
 
             gui.Enabled = not gui.Enabled
 
-            -- controla o blur junto
-            if blur then
-                if gui.Enabled then
-                    TweenService:Create(blur, TweenInfo.new(0.2), {Size = 20}):Play()
-                else
-                    TweenService:Create(blur, TweenInfo.new(0.2), {Size = 0}):Play()
+            if gui.Enabled then
+                -- ABRIR MENU
+                if not blur then
+                    blur = Instance.new("BlurEffect")
+                    blur.Name = "EclipseBlur"
+                    blur.Size = 0
+                    blur.Parent = Lighting
+                end
+                blur.Enabled = true
+                TweenService:Create(blur, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = 20}):Play()
+            else
+                -- FECHAR MENU
+                if blur then
+                    TweenService:Create(blur, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = 0}):Play()
+                    task.delay(0.2, function()
+                        if blur then blur:Destroy() end -- DESTROI PRA NAO FICAR PRESO
+                    end)
                 end
             end
         end
