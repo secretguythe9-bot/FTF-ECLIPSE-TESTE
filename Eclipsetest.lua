@@ -8291,7 +8291,6 @@ end
 
 do
     local settingsPageH = pages["Setting"]
-    local UserInputService = game:GetService("UserInputService")
     local TweenService = game:GetService("TweenService")
     local HttpService = game:GetService("HttpService")
     local Lighting = game:GetService("Lighting")
@@ -8305,8 +8304,6 @@ do
     local function GetMainFrame()
         return frame or playerGui:WaitForChild("EclipseUI", 5):FindFirstChild("Main", true)
     end
-
-    local isPC = UserInputService.KeyboardEnabled
 
     if not isfolder("FTF_Eclipse") then makefolder("FTF_Eclipse") end
 
@@ -8325,7 +8322,6 @@ do
 
     local function SaveConfig()
         local data = {
-            MenuKeybind = getgenv().MenuKeybind or "K",
             BackgroundID = getgenv().CustomBackgroundID or "",
             UIBackground = getgenv().UIBackground or "Style 1",
             Font = getgenv().UIFont or "Gotham",
@@ -8337,14 +8333,12 @@ do
     local function LoadConfig()
         if isfile("FTF_Eclipse/config.json") then
             local data = HttpService:JSONDecode(readfile("FTF_Eclipse/config.json"))
-            getgenv().MenuKeybind = data.MenuKeybind or "K"
             getgenv().CustomBackgroundID = data.BackgroundID or ""
             getgenv().UIBackground = data.UIBackground or "Style 1"
             getgenv().UIFont = data.Font or "Gotham"
             getgenv().BackgroundLocked = data.BackgroundLocked or false
             return data
         else
-            getgenv().MenuKeybind = "K"
             getgenv().UIBackground = "Style 1"
             getgenv().UIFont = "Gotham"
             getgenv().CustomBackgroundID = ""
@@ -8382,16 +8376,13 @@ do
         end
     end
 
-    -- FUNÇÃO CORRIGIDA: AGORA DESTRÓI O BLUR AO FECHAR
     local function ToggleMenu()
         local gui = playerGui:FindFirstChild("EclipseUI")
         if gui then
             local blur = Lighting:FindFirstChild("EclipseBlur")
-
             gui.Enabled = not gui.Enabled
 
             if gui.Enabled then
-                -- ABRIR MENU
                 if not blur then
                     blur = Instance.new("BlurEffect")
                     blur.Name = "EclipseBlur"
@@ -8401,11 +8392,10 @@ do
                 blur.Enabled = true
                 TweenService:Create(blur, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = 20}):Play()
             else
-                -- FECHAR MENU
                 if blur then
                     TweenService:Create(blur, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = 0}):Play()
                     task.delay(0.2, function()
-                        if blur then blur:Destroy() end -- DESTROI PRA NAO FICAR PRESO
+                        if blur then blur:Destroy() end
                     end)
                 end
             end
@@ -8435,67 +8425,10 @@ do
     Instance.new("UIStroke", boxSettings).Color = Color3.fromRGB(70,70,70)
     Instance.new("UIListLayout", contentSettings).Padding = UDim.new(0, 10)
 
-    -- KEYBIND SETTINGS
-    do
-        local holder = Instance.new("Frame", contentSettings)
-        holder.Size = UDim2.new(1,0,0,35)
-        holder.BackgroundColor3 = Color3.fromRGB(18,18,22)
-        holder.BackgroundTransparency = 0.3
-        Instance.new("UICorner", holder).CornerRadius = UDim.new(0,6)
-
-        local label = Instance.new("TextLabel", holder)
-        label.Size = UDim2.new(1,-75,1,0)
-        label.Position = UDim2.new(0,15,0,0)
-        label.BackgroundTransparency = 1
-        label.Text = "Menu Keybind:"
-        label.Font = CurrentFont
-        label.TextSize = 14
-        label.TextColor3 = Color3.fromRGB(235,235,235)
-        label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local keyBtn = Instance.new("TextButton", holder)
-        keyBtn.Size = UDim2.new(0,55,0,24)
-        keyBtn.Position = UDim2.new(1,-65,0.5,-12)
-        keyBtn.BackgroundColor3 = Color3.fromRGB(30,30,35)
-        keyBtn.BackgroundTransparency = 0.2
-        keyBtn.Text = getgenv().MenuKeybind or "K"
-        keyBtn.Font = CurrentFont
-        keyBtn.TextSize = 13
-        keyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        keyBtn.BorderSizePixel = 0
-        Instance.new("UICorner", keyBtn).CornerRadius = UDim.new(0,5)
-
-        local listening = false
-        keyBtn.MouseButton1Click:Connect(function()
-            if listening then return end
-            listening = true
-            keyBtn.Text = "..."
-            local conn
-            conn = UserInputService.InputBegan:Connect(function(input, gpe)
-                if gpe then return end
-                if input.UserInputType == Enum.UserInputType.Keyboard then
-                    getgenv().MenuKeybind = input.KeyCode.Name
-                    keyBtn.Text = input.KeyCode.Name
-                    SaveConfig()
-                    listening = false
-                    conn:Disconnect()
-                end
-            end)
-        end)
-
-        if getgenv().KeybindConnection then getgenv().KeybindConnection:Disconnect() end
-        getgenv().KeybindConnection = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe then return end
-            if input.KeyCode.Name == (getgenv().MenuKeybind or "K") then
-                ToggleMenu()
-            end
-        end)
-    end
-
     local function CreateDropdown(parent, labelText, list, default, callback)
         local holder = Instance.new("Frame", parent)
         holder.Size = UDim2.new(1,0,0,35)
-        holder.BackgroundColor3 = Color3.fromRGB(18,18,22)
+        holder.BackgroundColor3 = Color3.fromRGB(0,0,0)
         holder.BackgroundTransparency = 0.3
         holder.ClipsDescendants = false
         holder.AutomaticSize = Enum.AutomaticSize.Y
@@ -8533,7 +8466,7 @@ do
         local dropdownFrame = Instance.new("Frame", holder)
         dropdownFrame.Size = UDim2.new(1,-8,0,0)
         dropdownFrame.Position = UDim2.new(0,4,0,0)
-        dropdownFrame.BackgroundColor3 = Color3.fromRGB(10,10,12)
+        dropdownFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         dropdownFrame.BackgroundTransparency = 0.05
         dropdownFrame.ClipsDescendants = true
         Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0,6)
@@ -8606,7 +8539,7 @@ do
     do
         local holder = Instance.new("Frame", contentSettings)
         holder.Size = UDim2.new(1,0,0,35)
-        holder.BackgroundColor3 = Color3.fromRGB(18,18,22)
+        holder.BackgroundColor3 = Color3.fromRGB(0,0,0)
         holder.BackgroundTransparency = 0.3
         Instance.new("UICorner", holder).CornerRadius = UDim.new(0,6)
 
@@ -8623,7 +8556,7 @@ do
         local inputBox = Instance.new("TextBox", holder)
         inputBox.Size = UDim2.new(0,80,0,24)
         inputBox.Position = UDim2.new(1,-90,0.5,-12)
-        inputBox.BackgroundColor3 = Color3.fromRGB(30,30,35)
+        inputBox.BackgroundColor3 = Color3.fromRGB(0,0,0)
         inputBox.BackgroundTransparency = 0.2
         inputBox.PlaceholderText = "ID..."
         inputBox.Font = CurrentFont
@@ -9157,6 +9090,22 @@ do
 end
 
 do
+    UserInputService = game:GetService("UserInputService")
+    local isPC = UserInputService.KeyboardEnabled
+
+    if isPC and openButton then
+        openButton.Visible = false
+    end
+
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp or not isPC then return end
+        if input.KeyCode == Enum.KeyCode.K then
+            frame.Visible = not frame.Visible
+            if blur then blur.Size = frame.Visible and 20 or 0 end
+            if isPC and openButton then openButton.Visible = false end
+        end
+    end)
+
     miniBtn.MouseButton1Click:Connect(function()
         frame.Visible = false
         if not isPC and openButton then openButton.Visible = true end
@@ -9164,9 +9113,11 @@ do
     end)
 
     openButton.MouseButton1Click:Connect(function()
-        frame.Visible = true
-        openButton.Visible = false
-        if blur then blur.Size = 20 end
+        if not isPC then
+            frame.Visible = true
+            openButton.Visible = false
+            if blur then blur.Size = 20 end
+        end
     end)
 end
 
