@@ -4376,13 +4376,28 @@ do
         local originalParts = {}
         local connections = {}
 
+        local function disconnectAll()
+            for _, conn in ipairs(connections) do
+                pcall(function() conn:Disconnect() end)
+            end
+            table.clear(connections)
+        end
+
         local function saveOriginal()
             local lighting = game:GetService("Lighting")
+
+            local tech = nil
+            if gethiddenproperty then
+                local ok, val = pcall(gethiddenproperty, lighting, "Technology")
+                if ok then tech = val end
+            end
+
             originalSettings = {
                 GlobalShadows = lighting.GlobalShadows,
                 FogEnd = lighting.FogEnd,
-                Technology = gethiddenproperty and pcall(gethiddenproperty, lighting, "Technology") and gethiddenproperty(lighting, "Technology") or nil
+                Technology = tech
             }
+
             local terrain = workspace:FindFirstChildOfClass("Terrain")
             if terrain then
                 originalSettings.WaterWaveSize = terrain.WaterWaveSize
@@ -4390,14 +4405,14 @@ do
                 originalSettings.WaterReflectance = terrain.WaterReflectance
                 originalSettings.WaterTransparency = terrain.WaterTransparency
             end
+
             table.clear(originalParts)
             for _, v in ipairs(workspace:GetDescendants()) do
                 if v:IsA("BasePart") and not originalParts[v] then
                     originalParts[v] = {
                         Material = v.Material,
                         Reflectance = v.Reflectance,
-                        CastShadow = v.CastShadow,
-                        Color = v.Color
+                        CastShadow = v.CastShadow
                     }
                 elseif (v:IsA("Decal") or v:IsA("Texture")) and not originalParts[v] then
                     originalParts[v] = {Transparency = v.Transparency}
@@ -4409,12 +4424,43 @@ do
             end
         end
 
+        local function applyToInstance(v)
+            if v:IsA("BasePart") then
+                if not originalParts[v] then
+                    originalParts[v] = {
+                        Material = v.Material,
+                        Reflectance = v.Reflectance,
+                        CastShadow = v.CastShadow
+                    }
+                end
+                v.Material = Enum.Material.SmoothPlastic
+                v.Reflectance = 0
+                v.CastShadow = false
+            elseif v:IsA("Decal") or v:IsA("Texture") then
+                if not originalParts[v] then originalParts[v] = {Transparency = v.Transparency} end
+                v.Transparency = 1
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                if not originalParts[v] then originalParts[v] = {Lifetime = v.Lifetime} end
+                v.Lifetime = NumberRange.new(0)
+            elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                if not originalParts[v] then originalParts[v] = {Enabled = v.Enabled} end
+                v.Enabled = false
+            end
+        end
+
         local function applyFPSBoost()
+            disconnectAll()
+
             if not next(originalSettings) then saveOriginal() end
+
             local lighting = game:GetService("Lighting")
             lighting.GlobalShadows = false
             lighting.FogEnd = 9e9
-            if sethiddenproperty then pcall(sethiddenproperty, lighting, "Technology", 2) end
+
+            if sethiddenproperty then
+                pcall(sethiddenproperty, lighting, "Technology", Enum.Technology.Legacy)
+            end
+
             local terrain = workspace:FindFirstChildOfClass("Terrain")
             if terrain then
                 terrain.WaterWaveSize = 0
@@ -4422,67 +4468,41 @@ do
                 terrain.WaterReflectance = 0
                 terrain.WaterTransparency = 1
             end
+
             for _, v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    if not originalParts[v] then
-                        originalParts[v] = {Material = v.Material, Reflectance = v.Reflectance, CastShadow = v.CastShadow, Color = v.Color}
-                    end
-                    v.Material = Enum.Material.SmoothPlastic
-                    v.Reflectance = 0
-                    v.CastShadow = false
-                elseif v:IsA("Decal") or v:IsA("Texture") then
-                    if not originalParts[v] then originalParts[v] = {Transparency = v.Transparency} end
-                    v.Transparency = 1
-                elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                    if not originalParts[v] then originalParts[v] = {Lifetime = v.Lifetime} end
-                    v.Lifetime = NumberRange.new(0)
-                elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                    if not originalParts[v] then originalParts[v] = {Enabled = v.Enabled} end
-                    v.Enabled = false
-                end
+                applyToInstance(v)
             end
+
             table.insert(connections, workspace.DescendantAdded:Connect(function(v)
                 if not fpsEnabled then return end
                 task.defer(function()
-                    if v:IsA("BasePart") then
-                        if not originalParts[v] then
-                            originalParts[v] = {Material = v.Material, Reflectance = v.Reflectance, CastShadow = v.CastShadow, Color = v.Color}
-                        end
-                        v.Material = Enum.Material.SmoothPlastic
-                        v.Reflectance = 0
-                        v.CastShadow = false
-                    elseif v:IsA("Decal") or v:IsA("Texture") then
-                        if not originalParts[v] then originalParts[v] = {Transparency = v.Transparency} end
-                        v.Transparency = 1
-                    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-                        if not originalParts[v] then originalParts[v] = {Lifetime = v.Lifetime} end
-                        v.Lifetime = NumberRange.new(0)
-                    elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                        if not originalParts[v] then originalParts[v] = {Enabled = v.Enabled} end
-                        v.Enabled = false
+                    if v.Parent then
+                        pcall(applyToInstance, v)
                     end
                 end)
             end))
         end
 
         local function restoreFPS()
-            for _, conn in ipairs(connections) do conn:Disconnect() end
-            table.clear(connections)
+            disconnectAll()
+
             local lighting = game:GetService("Lighting")
             if originalSettings.GlobalShadows ~= nil then
                 lighting.GlobalShadows = originalSettings.GlobalShadows
                 lighting.FogEnd = originalSettings.FogEnd
-                if originalSettings.Technology and sethiddenproperty then
+                if originalSettings.Technology ~= nil and sethiddenproperty then
                     pcall(sethiddenproperty, lighting, "Technology", originalSettings.Technology)
                 end
             end
+
             local terrain = workspace:FindFirstChildOfClass("Terrain")
-            if terrain and originalSettings.WaterWaveSize then
+            if terrain and originalSettings.WaterWaveSize ~= nil then
                 terrain.WaterWaveSize = originalSettings.WaterWaveSize
                 terrain.WaterWaveSpeed = originalSettings.WaterWaveSpeed
                 terrain.WaterReflectance = originalSettings.WaterReflectance
                 terrain.WaterTransparency = originalSettings.WaterTransparency
             end
+
             for obj, data in pairs(originalParts) do
                 if obj and obj.Parent then
                     pcall(function()
@@ -4490,7 +4510,6 @@ do
                             obj.Material = data.Material
                             obj.Reflectance = data.Reflectance
                             obj.CastShadow = data.CastShadow
-                            obj.Color = data.Color
                         elseif obj:IsA("Decal") or obj:IsA("Texture") then
                             obj.Transparency = data.Transparency
                         elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
@@ -9271,7 +9290,7 @@ local Translation = {
 		PlayerInfo = "PLAYER INFO",
 		ServerInfo = "SERVER INFO",
 		Thanks = "Thank you for using Eclipse.",
-		Owner = "Owner: @kayqueneverxita.",
+		Owner = "Owner: @kayquet",
 		CoOwner = "Co-owner: @gustavo_bawnana & @x67j",
 		TestersList = "Testers: Luan, Vitor & Mz",
 		FPS = "FPS",
@@ -9295,7 +9314,7 @@ local Translation = {
 		PlayerInfo = "INFO DO PLAYER",
 		ServerInfo = "INFO DO SERVIDOR",
 		Thanks = "Obrigado por usar Eclipse.",
-		Owner = "Dono: @kayqueneverxita.",
+		Owner = "Dono: @kayquet",
 		CoOwner = "Sub-Dono: @gustavo_bawnana & @x67j",
 		TestersList = "Testadores: Luan, Vitor & Mz",
 		FPS = "FPS",
