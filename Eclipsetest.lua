@@ -181,7 +181,7 @@ title.Size = UDim2.new(0, 200, 1, 0)
 title.Position = UDim2.new(0, 46, 0, 0)
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "Eclipse V2.8"
+title.Text = "Eclipse V2.9"
 title.TextSize = 16
 title.Font = Enum.Font.GothamBold
 title.TextColor3 = Color3.fromRGB(140, 140, 140)
@@ -402,7 +402,88 @@ end
 
 task.spawn(function()
     task.wait(2)
-    Notify("FTF Eclipse V2.8", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
+    Notify("FTF Eclipse V2.9", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
+end)
+
+local CROSSHAIR_SIZE = 26
+
+local CrosshairLayer = Instance.new("Frame")
+CrosshairLayer.Name = "CrosshairLayer"
+CrosshairLayer.Size = UDim2.fromScale(1, 1)
+CrosshairLayer.Position = UDim2.fromScale(0, 0)
+CrosshairLayer.BackgroundTransparency = 1
+CrosshairLayer.ClipsDescendants = true
+CrosshairLayer.Active = false
+CrosshairLayer.ZIndex = 100
+CrosshairLayer.Parent = frame
+
+local Crosshair = Instance.new("ImageLabel")
+Crosshair.Name = "Crosshair_ID001"
+Crosshair.Size = UDim2.fromOffset(
+    CROSSHAIR_SIZE,
+    CROSSHAIR_SIZE
+)
+Crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+Crosshair.BackgroundTransparency = 1
+Crosshair.Image = "rbxassetid://13210153721"
+Crosshair.ScaleType = Enum.ScaleType.Fit
+Crosshair.Visible = false
+Crosshair.Active = false
+Crosshair.ZIndex = 101
+Crosshair.Parent = CrosshairLayer
+
+local activeTouch = nil
+local mouseHeld = false
+
+local function UpdateCrosshair(position)
+    local origin = frame.AbsolutePosition
+    local size = frame.AbsoluteSize
+
+    local x = position.X - origin.X
+    local y = position.Y - origin.Y
+
+    if x >= 0 and x <= size.X
+    and y >= 0 and y <= size.Y then
+
+        Crosshair.Position = UDim2.fromOffset(x, y)
+        Crosshair.Visible = true
+    else
+        Crosshair.Visible = false
+    end
+end
+
+UIS.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        activeTouch = input
+        UpdateCrosshair(input.Position)
+
+    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mouseHeld = true
+        UpdateCrosshair(input.Position)
+    end
+end)
+
+UIS.TouchMoved:Connect(function(input)
+    if input == activeTouch then
+        UpdateCrosshair(input.Position)
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if mouseHeld
+    and input.UserInputType == Enum.UserInputType.MouseMovement then
+        UpdateCrosshair(input.Position)
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input == activeTouch then
+        activeTouch = nil
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mouseHeld = false
+    end
 end)
 
 local bottomBar = Instance.new("Frame", frame)
@@ -432,7 +513,7 @@ local versionText = Instance.new("TextLabel", bottomBar)
 versionText.Size = UDim2.new(0.5, -10, 1, 0)
 versionText.Position = UDim2.new(0.5, 0, 0, 0)
 versionText.BackgroundTransparency = 1
-versionText.Text = "FTF Eclipse V2.8 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
+versionText.Text = "FTF Eclipse V2.9 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
 versionText.Font = Enum.Font.GothamBold
 versionText.TextSize = 10
 versionText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -623,16 +704,28 @@ for i, tab in ipairs(tabs) do
 	end)
 end
 
+local ShineTweenInfo = TweenInfo.new(
+    2.5,
+    Enum.EasingStyle.Linear,
+    Enum.EasingDirection.InOut
+)
+
 task.spawn(function()
-	while true do
-		for name, data in pairs(tabShines) do
-			data.gradient.Offset = Vector2.new(-1.5, 0)
-			TweenService:Create(data.gradient, TweenInfo.new(3, Enum.EasingStyle.Linear), {
-				Offset = Vector2.new(1.5, 0)
-			}):Play()
-		end
-		task.wait(3)
-	end
+    while task.wait(2.5) do
+        for _, data in pairs(tabShines) do
+            if data.gradient and data.gradient.Parent then
+                data.gradient.Offset = Vector2.new(-1.5, 0)
+
+                TweenService:Create(
+                    data.gradient,
+                    ShineTweenInfo,
+                    {
+                        Offset = Vector2.new(1.5, 0)
+                    }
+                ):Play()
+            end
+        end
+    end
 end)
 
 do
@@ -648,45 +741,159 @@ do
     end
 
     local HighlightMode = "Fill"
+    local SAVE_FILE = "EclipseColors.json"
+
+    local function ColorToTable(c)
+        return {r = math.floor(c.R * 255 + 0.5), g = math.floor(c.G * 255 + 0.5), b = math.floor(c.B * 255 + 0.5)}
+    end
+    local function TableToColor(t, fallback)
+        if type(t) == "table" and t.r and t.g and t.b then
+            return Color3.fromRGB(t.r, t.g, t.b)
+        end
+        return fallback
+    end
+
+    local SavedColors = {}
+    pcall(function()
+        if isfile and isfile(SAVE_FILE) then
+            SavedColors = HttpService:JSONDecode(readfile(SAVE_FILE))
+        elseif getgenv and getgenv().EclipseSavedColors then
+            SavedColors = getgenv().EclipseSavedColors
+        end
+    end)
+    if type(SavedColors) ~= "table" then SavedColors = {} end
+    if type(SavedColors.Transp) ~= "table" then SavedColors.Transp = {} end
+
+    local function GetSaved(name, fallback) return TableToColor(SavedColors[name], fallback) end
+
+    local DEFAULTS = {
+        SurvivorFill = Color3.fromRGB(0, 255, 0),
+        SurvivorOutline = Color3.fromRGB(127, 255, 127),
+        BeastFill = Color3.fromRGB(255, 0, 0),
+        BeastOutline = Color3.fromRGB(255, 127, 127),
+        ComputerFill = Color3.fromRGB(13, 105, 172),
+        ComputerOutline = Color3.fromRGB(20, 165, 255),
+        FreezepodFill = Color3.fromRGB(120, 200, 255),
+        FreezepodOutline = Color3.fromRGB(160, 255, 255),
+        DoorFill = Color3.fromRGB(0, 255, 0),
+        DoorFillClose = Color3.fromRGB(255, 0, 0),
+        DoorOutline = Color3.fromRGB(0, 0, 0),
+        CharmsSurvivor = Color3.fromRGB(0, 255, 0),
+        CharmsBeast = Color3.fromRGB(255, 0, 0),
+    }
+    local DEFAULT_TRANSP = {
+        BeastFill = 0.5, SurvivorFill = 0.5, ComputerFill = 0.5, FreezepodFill = 0.5, DoorFill = 0.5,
+        BeastOutline = 0, SurvivorOutline = 0, ComputerOutline = 0, FreezepodOutline = 0, DoorOutline = 0,
+        CharmsSurvivor = 0.3, CharmsBeast = 0.3,
+    }
+    local function GetSavedTransp(name)
+        local v = SavedColors.Transp[name]
+        if type(v) == "number" then return math.clamp(v, 0, 1) end
+        return DEFAULT_TRANSP[name] or 0.5
+    end
+    local HighlightTransp = {}
+    for k, v in pairs(DEFAULT_TRANSP) do HighlightTransp[k] = GetSavedTransp(k) end
+
+    local ESPColors = {
+        CharmsSurvivor = GetSaved("CharmsSurvivor", DEFAULTS.CharmsSurvivor),
+        CharmsBeast = GetSaved("CharmsBeast", DEFAULTS.CharmsBeast),
+        SquareSurvivor = Color3.fromRGB(0, 255, 0),
+        SquareBeast = Color3.fromRGB(255, 0, 0),
+        LineSurvivor = Color3.fromRGB(0, 255, 0),
+        LineBeast = Color3.fromRGB(255, 0, 0),
+    }
 
     local estilos = {
-    Player = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(0, 255, 0), OutlineColor = Color3.fromRGB(127, 255, 127)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(0, 255, 0), OutlineColor = Color3.fromRGB(0, 255, 0)}
-    },
-    Beast = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(255, 0, 0), OutlineColor = Color3.fromRGB(255, 127, 127)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(255, 0, 0), OutlineColor = Color3.fromRGB(255, 0, 0)}
-    },
-    ComputerBlue = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(13, 105, 172), OutlineColor = Color3.fromRGB(20, 165, 255)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(0, 90, 255), OutlineColor = Color3.fromRGB(0, 90, 255)}
-    },
-    ComputerRed = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(196, 40, 28), OutlineColor = Color3.fromRGB(255, 63, 44)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(215, 0, 0), OutlineColor = Color3.fromRGB(215, 0, 0)}
-    },
-    ComputerGreen = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(40, 127, 71), OutlineColor = Color3.fromRGB(63, 199, 111)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(0, 215, 0), OutlineColor = Color3.fromRGB(0, 215, 0)}
-    },
-    Capsule = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(120, 200, 255), OutlineColor = Color3.fromRGB(160, 255, 255)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(95, 205, 255), OutlineColor = Color3.fromRGB(95, 205, 255)}
-    },
-    Exit = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(252, 255, 100), OutlineColor = Color3.fromRGB(255, 255, 160)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(255, 255, 0), OutlineColor = Color3.fromRGB(255, 255, 0)}
-    },
-    DoorOpen = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(0, 255, 0), OutlineColor = Color3.fromRGB(0, 0, 0)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(0, 255, 0), OutlineColor = Color3.fromRGB(0, 255, 0)}
-    },
-    DoorClose = {
-        Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(255, 0, 0), OutlineColor = Color3.fromRGB(0, 0, 0)},
-        Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(255, 0, 0), OutlineColor = Color3.fromRGB(255, 0, 0)}
+        Player = {
+            Fill = {FillTransparency = HighlightTransp.SurvivorFill, OutlineTransparency = HighlightTransp.SurvivorOutline, FillColor = GetSaved("SurvivorFill", DEFAULTS.SurvivorFill), OutlineColor = GetSaved("SurvivorOutline", DEFAULTS.SurvivorOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.SurvivorOutline, FillColor = GetSaved("SurvivorFill", DEFAULTS.SurvivorFill), OutlineColor = GetSaved("SurvivorOutline", DEFAULTS.SurvivorOutline)}
+        },
+        Beast = {
+            Fill = {FillTransparency = HighlightTransp.BeastFill, OutlineTransparency = HighlightTransp.BeastOutline, FillColor = GetSaved("BeastFill", DEFAULTS.BeastFill), OutlineColor = GetSaved("BeastOutline", DEFAULTS.BeastOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.BeastOutline, FillColor = GetSaved("BeastFill", DEFAULTS.BeastFill), OutlineColor = GetSaved("BeastOutline", DEFAULTS.BeastOutline)}
+        },
+        ComputerBlue = {
+            Fill = {FillTransparency = HighlightTransp.ComputerFill, OutlineTransparency = HighlightTransp.ComputerOutline, FillColor = GetSaved("ComputerFill", DEFAULTS.ComputerFill), OutlineColor = GetSaved("ComputerOutline", DEFAULTS.ComputerOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.ComputerOutline, FillColor = GetSaved("ComputerFill", DEFAULTS.ComputerFill), OutlineColor = GetSaved("ComputerOutline", DEFAULTS.ComputerOutline)}
+        },
+        ComputerRed = {
+            Fill = {FillTransparency = HighlightTransp.ComputerFill, OutlineTransparency = HighlightTransp.ComputerOutline, FillColor = GetSaved("ComputerFill", DEFAULTS.ComputerFill), OutlineColor = GetSaved("ComputerOutline", DEFAULTS.ComputerOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.ComputerOutline, FillColor = GetSaved("ComputerFill", DEFAULTS.ComputerFill), OutlineColor = GetSaved("ComputerOutline", DEFAULTS.ComputerOutline)}
+        },
+        ComputerGreen = {
+            Fill = {FillTransparency = HighlightTransp.ComputerFill, OutlineTransparency = HighlightTransp.ComputerOutline, FillColor = GetSaved("ComputerFill", DEFAULTS.ComputerFill), OutlineColor = GetSaved("ComputerOutline", DEFAULTS.ComputerOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.ComputerOutline, FillColor = GetSaved("ComputerFill", DEFAULTS.ComputerFill), OutlineColor = GetSaved("ComputerOutline", DEFAULTS.ComputerOutline)}
+        },
+        Capsule = {
+            Fill = {FillTransparency = HighlightTransp.FreezepodFill, OutlineTransparency = HighlightTransp.FreezepodOutline, FillColor = GetSaved("FreezepodFill", DEFAULTS.FreezepodFill), OutlineColor = GetSaved("FreezepodOutline", DEFAULTS.FreezepodOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.FreezepodOutline, FillColor = GetSaved("FreezepodFill", DEFAULTS.FreezepodFill), OutlineColor = GetSaved("FreezepodOutline", DEFAULTS.FreezepodOutline)}
+        },
+        Exit = {
+            Fill = {FillTransparency = 0.5, OutlineTransparency = 0, FillColor = Color3.fromRGB(252, 255, 100), OutlineColor = Color3.fromRGB(255, 255, 160)},
+            Outline = {FillTransparency = 1, OutlineTransparency = 0, FillColor = Color3.fromRGB(255, 255, 0), OutlineColor = Color3.fromRGB(255, 255, 0)}
+        },
+        DoorOpen = {
+            Fill = {FillTransparency = HighlightTransp.DoorFill, OutlineTransparency = HighlightTransp.DoorOutline, FillColor = GetSaved("DoorFill", DEFAULTS.DoorFill), OutlineColor = GetSaved("DoorOutline", DEFAULTS.DoorOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.DoorOutline, FillColor = GetSaved("DoorFill", DEFAULTS.DoorFill), OutlineColor = GetSaved("DoorOutline", DEFAULTS.DoorOutline)}
+        },
+        DoorClose = {
+            Fill = {FillTransparency = HighlightTransp.DoorFill, OutlineTransparency = HighlightTransp.DoorOutline, FillColor = GetSaved("DoorFill", DEFAULTS.DoorFillClose), OutlineColor = GetSaved("DoorOutline", DEFAULTS.DoorOutline)},
+            Outline = {FillTransparency = 1, OutlineTransparency = HighlightTransp.DoorOutline, FillColor = GetSaved("DoorFill", DEFAULTS.DoorFillClose), OutlineColor = GetSaved("DoorOutline", DEFAULTS.DoorOutline)}
+        }
     }
-}
+
+    local savePending = false
+    local function SaveColors()
+        if savePending then return end
+        savePending = true
+        task.delay(0.4, function()
+            savePending = false
+            local data = {
+                SurvivorFill = ColorToTable(estilos.Player.Fill.FillColor),
+                SurvivorOutline = ColorToTable(estilos.Player.Fill.OutlineColor),
+                BeastFill = ColorToTable(estilos.Beast.Fill.FillColor),
+                BeastOutline = ColorToTable(estilos.Beast.Fill.OutlineColor),
+                ComputerFill = ColorToTable(estilos.ComputerBlue.Fill.FillColor),
+                ComputerOutline = ColorToTable(estilos.ComputerBlue.Fill.OutlineColor),
+                FreezepodFill = ColorToTable(estilos.Capsule.Fill.FillColor),
+                FreezepodOutline = ColorToTable(estilos.Capsule.Fill.OutlineColor),
+                DoorFill = ColorToTable(estilos.DoorOpen.Fill.FillColor),
+                DoorOutline = ColorToTable(estilos.DoorOpen.Fill.OutlineColor),
+                CharmsSurvivor = ColorToTable(ESPColors.CharmsSurvivor),
+                CharmsBeast = ColorToTable(ESPColors.CharmsBeast),
+                Transp = HighlightTransp,
+            }
+            SavedColors = data
+            pcall(function()
+                if getgenv then getgenv().EclipseSavedColors = data end
+                if writefile then writefile(SAVE_FILE, HttpService:JSONEncode(data)) end
+            end)
+        end)
+    end
+
+    local function ApplyTransp(key, val)
+        HighlightTransp[key] = val
+        if key == "BeastFill" then estilos.Beast.Fill.FillTransparency = val
+        elseif key == "SurvivorFill" then estilos.Player.Fill.FillTransparency = val
+        elseif key == "ComputerFill" then estilos.ComputerBlue.Fill.FillTransparency = val estilos.ComputerRed.Fill.FillTransparency = val estilos.ComputerGreen.Fill.FillTransparency = val
+        elseif key == "FreezepodFill" then estilos.Capsule.Fill.FillTransparency = val
+        elseif key == "DoorFill" then estilos.DoorOpen.Fill.FillTransparency = val estilos.DoorClose.Fill.FillTransparency = val
+        elseif key == "BeastOutline" then estilos.Beast.Fill.OutlineTransparency = val estilos.Beast.Outline.OutlineTransparency = val
+        elseif key == "SurvivorOutline" then estilos.Player.Fill.OutlineTransparency = val estilos.Player.Outline.OutlineTransparency = val
+        elseif key == "ComputerOutline" then estilos.ComputerBlue.Fill.OutlineTransparency = val estilos.ComputerBlue.Outline.OutlineTransparency = val estilos.ComputerRed.Fill.OutlineTransparency = val estilos.ComputerRed.Outline.OutlineTransparency = val estilos.ComputerGreen.Fill.OutlineTransparency = val estilos.ComputerGreen.Outline.OutlineTransparency = val
+        elseif key == "FreezepodOutline" then estilos.Capsule.Fill.OutlineTransparency = val estilos.Capsule.Outline.OutlineTransparency = val
+        elseif key == "DoorOutline" then estilos.DoorOpen.Fill.OutlineTransparency = val estilos.DoorOpen.Outline.OutlineTransparency = val estilos.DoorClose.Fill.OutlineTransparency = val estilos.DoorClose.Outline.OutlineTransparency = val
+        elseif key == "CharmsSurvivor" or key == "CharmsBeast" then
+            for _, d in ipairs(workspace:GetDescendants()) do
+                if d:IsA("BoxHandleAdornment") then
+                    local beastBox = (d.Color3 == ESPColors.CharmsBeast)
+                    if (key == "CharmsBeast" and beastBox) or (key == "CharmsSurvivor" and not beastBox) then
+                        d.Transparency = val
+                    end
+                end
+            end
+        end
+    end
 
     local function aplicarHighlight(obj, tipo)
         if not obj then return end
@@ -702,212 +909,178 @@ do
         highlight.OutlineColor = estilo.OutlineColor
     end
 
-local settingsPageH = pages["Highlights"]
+    local settingsPageH = pages["Highlights"]
     local columnsH = Instance.new("Frame", settingsPageH)
     columnsH.Size = UDim2.new(1, 0, 0, 0)
     columnsH.AutomaticSize = Enum.AutomaticSize.Y
     columnsH.BackgroundTransparency = 1
+    local columnsLayoutH = Instance.new("UIListLayout", columnsH)
+    columnsLayoutH.FillDirection = Enum.FillDirection.Horizontal
+    columnsLayoutH.Padding = UDim.new(0, 10)
+    columnsLayoutH.SortOrder = Enum.SortOrder.LayoutOrder
+    columnsLayoutH.HorizontalFlex = Enum.UIFlexAlignment.Fill
+    columnsLayoutH.VerticalAlignment = Enum.VerticalAlignment.Top
 
     local leftColH = Instance.new("Frame", columnsH)
-    leftColH.Size = UDim2.new(0.5, -15, 0, 0)
+    leftColH.Size = UDim2.new(0.5, -5, 0, 0)
     leftColH.AutomaticSize = Enum.AutomaticSize.Y
     leftColH.BackgroundTransparency = 1
-    Instance.new("UIListLayout", leftColH).Padding = UDim.new(0, 10)
+    leftColH.LayoutOrder = 1
+    local leftLayoutH = Instance.new("UIListLayout", leftColH)
+    leftLayoutH.FillDirection = Enum.FillDirection.Vertical
+    leftLayoutH.Padding = UDim.new(0, 10)
+    leftLayoutH.SortOrder = Enum.SortOrder.LayoutOrder
 
     local rightColH = Instance.new("Frame", columnsH)
-    rightColH.Size = UDim2.new(0.5, -12, 0, 0)
-    rightColH.Position = UDim2.new(0.5, 1, 0, 0)
+    rightColH.Size = UDim2.new(0.5, -5, 0, 0)
     rightColH.AutomaticSize = Enum.AutomaticSize.Y
     rightColH.BackgroundTransparency = 1
-    Instance.new("UIListLayout", rightColH).Padding = UDim.new(0, 10)
+    rightColH.LayoutOrder = 2
+    local rightLayoutH = Instance.new("UIListLayout", rightColH)
+    rightLayoutH.FillDirection = Enum.FillDirection.Vertical
+    rightLayoutH.Padding = UDim.new(0, 10)
+    rightLayoutH.SortOrder = Enum.SortOrder.LayoutOrder
 
     local box1H, content1H = CreateGroupbox(leftColH, "Objects Features")
-    
+    box1H.LayoutOrder = 1
     local computerHighlight = false
     local computerCache = {}
-
     CreateToggle(content1H, "Computer", false, function(state)
         computerHighlight = state
         if state and game.ReplicatedStorage:FindFirstChild("CurrentMap") and game.ReplicatedStorage.CurrentMap.Value then
             local map = game.ReplicatedStorage.CurrentMap.Value
             computerCache = {}
-            local descendants = map:GetDescendants()
-            for i = 1, #descendants do
-                local obj = descendants[i]
-                if obj.Name == "ComputerTable" then
-                    computerCache[#computerCache + 1] = obj
-                end
+            for _, obj in ipairs(map:GetDescendants()) do
+                if obj.Name == "ComputerTable" then table.insert(computerCache, obj) end
             end
             task.spawn(function()
                 while computerHighlight do
                     task.wait(1)
-                    for i = 1, #computerCache do
-                        local computer = computerCache[i]
+                    for _, computer in ipairs(computerCache) do
                         if computer and computer:FindFirstChild("Screen") then
                             local c = computer.Screen.Color
-                            local r, g, b = c.R, c.G, c.B
-                            if r >= g and r >= b then
-                                aplicarHighlight(computer, "ComputerRed")
-                            elseif g >= r and g >= b then
-                                aplicarHighlight(computer, "ComputerGreen")
-                            else
-                                aplicarHighlight(computer, "ComputerBlue")
-                            end
+                            if c.R >= c.G and c.R >= c.B then aplicarHighlight(computer, "ComputerRed")
+                            elseif c.G >= c.R and c.G >= c.B then aplicarHighlight(computer, "ComputerGreen")
+                            else aplicarHighlight(computer, "ComputerBlue") end
                         end
                     end
                 end
-                for i = 1, #computerCache do
-                    local computer = computerCache[i]
+                for _, computer in ipairs(computerCache) do
                     if computer and computer:FindFirstChild("Highlight") then computer.Highlight:Destroy() end
                 end
             end)
         else
-            for i = 1, #computerCache do
-                local computer = computerCache[i]
+            for _, computer in ipairs(computerCache) do
                 if computer and computer:FindFirstChild("Highlight") then computer.Highlight:Destroy() end
             end
             computerCache = {}
         end
     end)
-    
     local capsuleHighlight = false
     local capsuleCache = {}
-
     CreateToggle(content1H, "Capsule", false, function(state)
         capsuleHighlight = state
         if state then
             capsuleCache = {}
-            local descendants = workspace:GetDescendants()
-            for i = 1, #descendants do
-                local obj = descendants[i]
-                if obj.Name == "FreezePod" then
-                    capsuleCache[#capsuleCache + 1] = obj
-                end
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj.Name == "FreezePod" then table.insert(capsuleCache, obj) end
             end
             task.spawn(function()
                 while capsuleHighlight do
                     task.wait(1)
-                    for i = 1, #capsuleCache do
-                        local capsule = capsuleCache[i]
+                    for _, capsule in ipairs(capsuleCache) do
                         if capsule then aplicarHighlight(capsule, "Capsule") end
                     end
                 end
-                for i = 1, #capsuleCache do
-                    local capsule = capsuleCache[i]
+                for _, capsule in ipairs(capsuleCache) do
                     if capsule and capsule:FindFirstChild("Highlight") then capsule.Highlight:Destroy() end
                 end
                 capsuleCache = {}
             end)
         else
-            for i = 1, #capsuleCache do
-                local capsule = capsuleCache[i]
+            for _, capsule in ipairs(capsuleCache) do
                 if capsule and capsule:FindFirstChild("Highlight") then capsule.Highlight:Destroy() end
             end
             capsuleCache = {}
         end
     end)
-    
     local exitHighlight = false
     local exitCache = {}
-
     CreateToggle(content1H, "Exit", false, function(state)
         exitHighlight = state
         if state then
             exitCache = {}
-            local descendants = workspace:GetDescendants()
-            for i = 1, #descendants do
-                local obj = descendants[i]
-                if obj.Name == "ExitDoor" then
-                    exitCache[#exitCache + 1] = obj
-                end
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj.Name == "ExitDoor" then table.insert(exitCache, obj) end
             end
             task.spawn(function()
                 while exitHighlight do
                     task.wait(1)
-                    for i = 1, #exitCache do
-                        local exit = exitCache[i]
+                    for _, exit in ipairs(exitCache) do
                         if exit then aplicarHighlight(exit, "Exit") end
                     end
                 end
-                for i = 1, #exitCache do
-                    local exit = exitCache[i]
+                for _, exit in ipairs(exitCache) do
                     if exit and exit:FindFirstChild("Highlight") then exit.Highlight:Destroy() end
                 end
                 exitCache = {}
             end)
         else
-            for i = 1, #exitCache do
-                local exit = exitCache[i]
+            for _, exit in ipairs(exitCache) do
                 if exit and exit:FindFirstChild("Highlight") then exit.Highlight:Destroy() end
             end
             exitCache = {}
         end
     end)
-    
     local doorHighlight = false
     local doorCache = {}
-
     CreateToggle(content1H, "Door", false, function(state)
-    doorHighlight = state
-    if state then
-        doorCache = {}
-        local descendants = workspace:GetDescendants()
-        for i = 1, #descendants do
-            local door = descendants[i]
-            if door.Name == "SingleDoor" or door.Name == "DoubleDoor" then
-                doorCache[#doorCache + 1] = door
+        doorHighlight = state
+        if state then
+            doorCache = {}
+            for _, door in ipairs(workspace:GetDescendants()) do
+                if door.Name == "SingleDoor" or door.Name == "DoubleDoor" then table.insert(doorCache, door) end
             end
-        end
-        task.spawn(function()
-            while doorHighlight do
-                task.wait(0.5)
-                for i = 1, #doorCache do
-                    local door = doorCache[i]
-                    if door and door.Parent then
-                        if door:FindFirstChild("DoorTrigger") then
+            task.spawn(function()
+                while doorHighlight do
+                    task.wait(0.5)
+                    for _, door in ipairs(doorCache) do
+                        if door and door.Parent and door:FindFirstChild("DoorTrigger") then
                             local action = door.DoorTrigger:FindFirstChild("ActionSign")
                             if action then
-                                if action.Value == 11 then
-                                    aplicarHighlight(door, "DoorOpen")
-                                elseif action.Value == 10 then
-                                    aplicarHighlight(door, "DoorClose")
-                                end
+                                if action.Value == 11 then aplicarHighlight(door, "DoorOpen")
+                                elseif action.Value == 10 then aplicarHighlight(door, "DoorClose") end
                             end
                         end
                     end
                 end
-            end
-            for i = 1, #doorCache do
-                local door = doorCache[i]
-                local highlight = door and door:FindFirstChildOfClass("Highlight")
-                if highlight then highlight:Destroy() end
+                for _, door in ipairs(doorCache) do
+                    local hl = door and door:FindFirstChildOfClass("Highlight")
+                    if hl then hl:Destroy() end
+                end
+                doorCache = {}
+            end)
+        else
+            for _, door in ipairs(doorCache) do
+                local hl = door and door:FindFirstChildOfClass("Highlight")
+                if hl then hl:Destroy() end
             end
             doorCache = {}
-        end)
-    else
-        for i = 1, #doorCache do
-            local door = doorCache[i]
-            local highlight = door and door:FindFirstChildOfClass("Highlight")
-            if highlight then highlight:Destroy() end
         end
-        doorCache = {}
-    end
-end)
+    end)
 
     local box3H, content3H = CreateGroupbox(leftColH, "Settings Highlights")
-
+    box3H.LayoutOrder = 2
     local chipHolder = Instance.new("Frame", content3H)
     chipHolder.Size = UDim2.new(1, 0, 0, 40)
     chipHolder.BackgroundTransparency = 1
-
     local layout = Instance.new("UIListLayout", chipHolder)
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     layout.VerticalAlignment = Enum.VerticalAlignment.Center
     layout.Padding = UDim.new(0, 8)
-
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
     local chips = {}
-
     local function CreateChip(text)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0, 80, 0, 28)
@@ -916,11 +1089,9 @@ end)
         btn.AutoButtonColor = false
         btn.Parent = chipHolder
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
         local stroke = Instance.new("UIStroke", btn)
         stroke.Color = Color3.fromRGB(90, 90, 90)
         stroke.Thickness = 1.2
-
         local label = Instance.new("TextLabel", btn)
         label.Size = UDim2.new(1, 0, 1, 0)
         label.BackgroundTransparency = 1
@@ -928,7 +1099,6 @@ end)
         label.TextColor3 = Color3.fromRGB(255, 255, 255)
         label.Font = Enum.Font.GothamBold
         label.TextSize = 13
-
         local function setSelected(state)
             if state then
                 TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
@@ -940,445 +1110,609 @@ end)
                 label.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
         end
-
         btn.MouseButton1Click:Connect(function()
             HighlightMode = text
-            for _, chip in pairs(chips) do
-                chip.setSelected(chip.name == HighlightMode)
-            end
+            for _, chip in pairs(chips) do chip.setSelected(chip.name == HighlightMode) end
         end)
-
         chips[text] = {name = text, setSelected = setSelected}
         setSelected(text == HighlightMode)
     end
-
     CreateChip("Fill")
     CreateChip("Outline")
 
-    local espGroup, espContent = CreateGroupbox(rightColH, "ESPs Features")
-    
-local playerHighlight = false
-local playerHighlightCache = {}
-local playerHighlightConnections = {}
-local playerNameCache = {}
+    local pickerSetters = {}
+    local transpSetters = {}
 
-CreateToggle(espContent, "Highlights", false, function(state)
-    playerHighlight = state
-    if state then
-        playerHighlightCache = {}
-        playerHighlightConnections = {}
+    local function CreateResetButton(parent, text, order, onClick)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 22)
+        btn.LayoutOrder = order
+        btn.BackgroundTransparency = 1
+        btn.Text = text
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 13
+        btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.AutoButtonColor = false
+        btn.Parent = parent
+        btn.MouseEnter:Connect(function() btn.TextColor3 = Color3.fromRGB(255, 255, 255) end)
+        btn.MouseLeave:Connect(function() btn.TextColor3 = Color3.fromRGB(180, 180, 180) end)
+        btn.MouseButton1Click:Connect(onClick)
+        return btn
+    end
 
-        local function addPlayerESP(player)
-            if player == game.Players.LocalPlayer then return end
-            playerHighlightCache[#playerHighlightCache + 1] = player
-        end
+    local function CreateColorPicker(parent, name, defaultColor, onChange, order, transpKey)
+        local parentLayout = parent:FindFirstChildOfClass("UIListLayout")
+        if parentLayout then parentLayout.SortOrder = Enum.SortOrder.LayoutOrder end
+        local h, s, v = defaultColor:ToHSV()
+        local transpVal = transpKey and HighlightTransp[transpKey] or 0.5
 
-        local function removePlayerESP(player)
-            for i = 1, #playerHighlightCache do
-                if playerHighlightCache[i] == player then
-                    table.remove(playerHighlightCache, i)
-                    break
-                end
+        local holder = Instance.new("Frame")
+        holder.Name = name .. "_Holder"
+        holder.BackgroundTransparency = 1
+        holder.Size = UDim2.new(1, 0, 0, 0)
+        holder.AutomaticSize = Enum.AutomaticSize.Y
+        holder.ClipsDescendants = false
+        holder.LayoutOrder = order or 0
+        holder.Active = true
+        holder.Parent = parent
+        local holderLayout = Instance.new("UIListLayout", holder)
+        holderLayout.FillDirection = Enum.FillDirection.Vertical
+        holderLayout.Padding = UDim.new(0, 6)
+        holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        local row = Instance.new("Frame")
+        row.Name = name
+        row.BackgroundTransparency = 1
+        row.Size = UDim2.new(1, 0, 0, 28)
+        row.LayoutOrder = 1
+        row.Parent = holder
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(1, -40, 1, 0)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(180, 180, 180)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Text = name
+        label.Parent = row
+        local preview = Instance.new("TextButton")
+        preview.BackgroundColor3 = defaultColor
+        preview.Size = UDim2.new(0, 26, 0, 22)
+        preview.Position = UDim2.new(1, -26, 0, 3)
+        preview.Text = ""
+        preview.AutoButtonColor = false
+        preview.Active = true
+        preview.ZIndex = 5
+        preview.Parent = row
+        Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", preview).Color = Color3.fromRGB(70, 70, 70)
+
+        local picker = Instance.new("Frame")
+        picker.Name = "Picker"
+        picker.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        picker.Size = UDim2.new(1, 0, 0, 148)
+        picker.Visible = false
+        picker.LayoutOrder = 2
+        picker.ZIndex = 5
+        picker.Active = true
+        picker.Parent = holder
+        Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 8)
+        Instance.new("UIStroke", picker).Color = Color3.fromRGB(70, 70, 70)
+
+        local svBox = Instance.new("ImageButton")
+        svBox.Name = "SVBox"
+        svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        svBox.Position = UDim2.new(0, 10, 0, 10)
+        svBox.Size = UDim2.new(1, -42, 1, -58)
+        svBox.AutoButtonColor = false
+        svBox.Active = true
+        svBox.ZIndex = 6
+        svBox.Image = ""
+        svBox.Parent = picker
+        Instance.new("UICorner", svBox).CornerRadius = UDim.new(0, 6)
+        local whiteOverlay = Instance.new("Frame")
+        whiteOverlay.Name = "WhiteGradient"
+        whiteOverlay.BackgroundColor3 = Color3.new(1, 1, 1)
+        whiteOverlay.BorderSizePixel = 0
+        whiteOverlay.Size = UDim2.new(1, 0, 1, 0)
+        whiteOverlay.ZIndex = 7
+        whiteOverlay.Active = false
+        whiteOverlay.Parent = svBox
+        Instance.new("UICorner", whiteOverlay).CornerRadius = UDim.new(0, 6)
+        local satGrad = Instance.new("UIGradient")
+        satGrad.Rotation = 0
+        satGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+        satGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+        satGrad.Parent = whiteOverlay
+        local valFrame = Instance.new("Frame")
+        valFrame.Name = "BlackGradient"
+        valFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+        valFrame.BorderSizePixel = 0
+        valFrame.Size = UDim2.new(1, 0, 1, 0)
+        valFrame.ZIndex = 8
+        valFrame.Active = false
+        valFrame.Parent = svBox
+        Instance.new("UICorner", valFrame).CornerRadius = UDim.new(0, 6)
+        local valGrad = Instance.new("UIGradient")
+        valGrad.Rotation = 90
+        valGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)})
+        valGrad.Parent = valFrame
+        local svCursor = Instance.new("Frame")
+        svCursor.Name = "SVCursor"
+        svCursor.Size = UDim2.new(0, 14, 0, 14)
+        svCursor.BackgroundTransparency = 1
+        svCursor.ZIndex = 10
+        svCursor.Active = false
+        svCursor.Parent = svBox
+        local svInner = Instance.new("Frame")
+        svInner.Size = UDim2.new(1, -4, 1, -4)
+        svInner.Position = UDim2.new(0, 2, 0, 2)
+        svInner.BackgroundTransparency = 1
+        svInner.ZIndex = 10
+        svInner.Active = false
+        svInner.Parent = svCursor
+        Instance.new("UICorner", svInner).CornerRadius = UDim.new(1, 0)
+        local svStroke = Instance.new("UIStroke", svInner)
+        svStroke.Color = Color3.fromRGB(255, 255, 255)
+        svStroke.Thickness = 2
+        local hueBar = Instance.new("ImageButton")
+        hueBar.Name = "HueBar"
+        hueBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        hueBar.Position = UDim2.new(1, -22, 0, 10)
+        hueBar.Size = UDim2.new(0, 12, 1, -58)
+        hueBar.AutoButtonColor = false
+        hueBar.Active = true
+        hueBar.ZIndex = 6
+        hueBar.Image = ""
+        hueBar.Parent = picker
+        Instance.new("UICorner", hueBar).CornerRadius = UDim.new(1, 0)
+        local hueGrad = Instance.new("UIGradient")
+        hueGrad.Rotation = 90
+        hueGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+            ColorSequenceKeypoint.new(0.16, Color3.fromHSV(0.16, 1, 1)),
+            ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromHSV(0.5, 1, 1)),
+            ColorSequenceKeypoint.new(0.66, Color3.fromHSV(0.66, 1, 1)),
+            ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+            ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1))
+        })
+        hueGrad.Parent = hueBar
+        local hueCursor = Instance.new("Frame")
+        hueCursor.Name = "HueCursor"
+        hueCursor.Size = UDim2.new(1, 6, 0, 6)
+        hueCursor.Position = UDim2.new(0, -3, 0, 0)
+        hueCursor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        hueCursor.BorderSizePixel = 0
+        hueCursor.ZIndex = 10
+        hueCursor.Active = false
+        hueCursor.Parent = hueBar
+        Instance.new("UICorner", hueCursor).CornerRadius = UDim.new(1, 0)
+        Instance.new("UIStroke", hueCursor).Color = Color3.fromRGB(0, 0, 0)
+
+        local transpLabel = Instance.new("TextLabel")
+        transpLabel.Name = "TransparencyLabel"
+        transpLabel.BackgroundTransparency = 1
+        transpLabel.Position = UDim2.new(0, 10, 0, 118)
+        transpLabel.Size = UDim2.new(1, -60, 0, 14)
+        transpLabel.Font = Enum.Font.Gotham
+        transpLabel.TextSize = 12
+        transpLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        transpLabel.TextXAlignment = Enum.TextXAlignment.Left
+        transpLabel.Text = "Transparency"
+        transpLabel.Parent = picker
+        local transpValLabel = Instance.new("TextLabel")
+        transpValLabel.Name = "TransparencyValue"
+        transpValLabel.BackgroundTransparency = 1
+        transpValLabel.Position = UDim2.new(1, -50, 0, 118)
+        transpValLabel.Size = UDim2.new(0, 40, 0, 14)
+        transpValLabel.Font = Enum.Font.Gotham
+        transpValLabel.TextSize = 12
+        transpValLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        transpValLabel.TextXAlignment = Enum.TextXAlignment.Right
+        transpValLabel.Text = string.format("%.2f", transpVal)
+        transpValLabel.Parent = picker
+        local transpTrack = Instance.new("TextButton")
+        transpTrack.Name = "TranspTrack"
+        transpTrack.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        transpTrack.Position = UDim2.new(0, 10, 0, 134)
+        transpTrack.Size = UDim2.new(1, -20, 0, 6)
+        transpTrack.Text = ""
+        transpTrack.AutoButtonColor = false
+        transpTrack.Active = true
+        transpTrack.ZIndex = 6
+        transpTrack.Parent = picker
+        Instance.new("UICorner", transpTrack).CornerRadius = UDim.new(1, 0)
+        local transpFill = Instance.new("Frame")
+        transpFill.Name = "TranspFill"
+        transpFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        transpFill.BorderSizePixel = 0
+        transpFill.Size = UDim2.new(transpVal, 0, 1, 0)
+        transpFill.ZIndex = 7
+        transpFill.Parent = transpTrack
+        Instance.new("UICorner", transpFill).CornerRadius = UDim.new(1, 0)
+
+        local function setTransp(val, fire)
+            val = math.clamp(val, 0, 1)
+            transpVal = val
+            transpFill.Size = UDim2.new(val, 0, 1, 0)
+            transpValLabel.Text = string.format("%.2f", val)
+            if transpKey then
+                HighlightTransp[transpKey] = val
+                if fire ~= false then ApplyTransp(transpKey, val) end
             end
-            if player.Character then
-                if player.Character:FindFirstChild("Highlight") then
-                    player.Character.Highlight:Destroy()
-                end
-                local billboard = playerNameCache[player.Character]
-                if billboard then
-                    pcall(function() billboard:Destroy() end)
-                    playerNameCache[player.Character] = nil
-                end
-            end
+            if fire ~= false then SaveColors() end
         end
+        if transpKey then transpSetters[transpKey] = function(v) setTransp(v, false) ApplyTransp(transpKey, v) end end
 
-        local function applyNameESP(player, character, color)
-            if not character then return end
-            local head = character:FindFirstChild("Head")
-            if not head then return end
+        local draggingTransp = false
+        local dragInputTransp = nil
+        local function updateTransp(input)
+            local pos = transpTrack.AbsolutePosition
+            local size = transpTrack.AbsoluteSize
+            if size.X <= 0 then return end
+            setTransp(math.clamp((input.Position.X - pos.X) / size.X, 0, 1))
+        end
+        transpTrack.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingTransp = true
+                dragInputTransp = input
+                updateTransp(input)
+            end
+        end)
+        transpTrack.InputEnded:Connect(function(input)
+            if input == dragInputTransp then
+                draggingTransp = false
+                dragInputTransp = nil
+            end
+        end)
 
-            local existing = playerNameCache[character]
-            if existing then
-                pcall(function()
-                    existing.TextLabel.TextColor3 = color
-                    existing.TextLabel.Text = player.Name
-                end)
+        local function updateVisual()
+            h = h % 1
+            s = math.clamp(s, 0, 1)
+            v = math.clamp(v, 0, 1)
+            local color = Color3.fromHSV(h, s, v)
+            preview.BackgroundColor3 = color
+            svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            svCursor.Position = UDim2.new(s, -7, 1 - v, -7)
+            hueCursor.Position = UDim2.new(0, -3, h, -3)
+            if onChange then onChange(color) end
+            SaveColors()
+        end
+        local function setColor(newColor)
+            h, s, v = newColor:ToHSV()
+            updateVisual()
+        end
+        pickerSetters[name] = setColor
+        local draggingSV = false
+        local draggingHue = false
+        local dragInput = nil
+        local function updateSV(input)
+            local pos = svBox.AbsolutePosition
+            local size = svBox.AbsoluteSize
+            if size.X <= 0 or size.Y <= 0 then return end
+            s = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+            v = 1 - math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+            updateVisual()
+        end
+        local function updateHue(input)
+            local pos = hueBar.AbsolutePosition
+            local size = hueBar.AbsoluteSize
+            if size.Y <= 0 then return end
+            h = math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+            updateVisual()
+        end
+        svBox.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSV = true dragInput = input updateSV(input) end
+        end)
+        hueBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingHue = true dragInput = input updateHue(input) end
+        end)
+        UIS.InputChanged:Connect(function(input)
+            if draggingTransp and input == dragInputTransp then
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then updateTransp(input) end
                 return
             end
-
-            local billboard = Instance.new("BillboardGui")
-            billboard.Name = "NameESP"
-            billboard.Adornee = head
-            billboard.AlwaysOnTop = true
-            billboard.Size = UDim2.new(0, 100, 0, 25)
-            billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-
-            local text = Instance.new("TextLabel")
-            text.Size = UDim2.new(1, 0, 1, 0)
-            text.BackgroundTransparency = 1
-            text.TextSize = 12
-            text.Font = Enum.Font.SourceSansBold
-            text.Text = player.Name
-            text.TextColor3 = color
-            text.Parent = billboard
-
-            billboard.Parent = head
-            playerNameCache[character] = billboard
-        end
-
-        local players = game.Players:GetPlayers()
-        for i = 1, #players do
-            addPlayerESP(players[i])
-        end
-
-        playerHighlightConnections[#playerHighlightConnections + 1] = game.Players.PlayerAdded:Connect(function(player)
-            if playerHighlight then addPlayerESP(player) end
+            if not draggingSV and not draggingHue then return end
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                if draggingSV then updateSV(input) elseif draggingHue then updateHue(input) end
+            elseif input.UserInputType == Enum.UserInputType.Touch and input == dragInput then
+                if draggingSV then updateSV(input) elseif draggingHue then updateHue(input) end
+            end
         end)
-        playerHighlightConnections[#playerHighlightConnections + 1] = game.Players.PlayerRemoving:Connect(removePlayerESP)
+        UIS.InputEnded:Connect(function(input)
+            if input == dragInputTransp then
+                draggingTransp = false
+                dragInputTransp = nil
+            end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or (input.UserInputType == Enum.UserInputType.Touch and input == dragInput) then
+                draggingSV = false
+                draggingHue = false
+                dragInput = nil
+            end
+        end)
+        preview.MouseButton1Click:Connect(function()
+            picker.Visible = not picker.Visible
+            task.wait()
+            holder.Size = UDim2.new(1, 0, 0, 0)
+        end)
+        updateVisual()
+        return setColor
+    end
 
-        task.spawn(function()
-            while playerHighlight do
-                task.wait(1)
-                for i = 1, #playerHighlightCache do
-                    local player = playerHighlightCache[i]
-                    if player.Character then
-                        local isBeast = getBeast and player == getBeast()
-                        local tipo = isBeast and "Beast" or "Player"
+    local boxOutlineH, contentOutlineH = CreateGroupbox(leftColH, "Outline Customization")
+    boxOutlineH.LayoutOrder = 3
+    CreateColorPicker(contentOutlineH, "Beast Outline", estilos.Beast.Fill.OutlineColor, function(c)
+        estilos.Beast.Fill.OutlineColor = c
+        estilos.Beast.Outline.OutlineColor = c
+    end, 1, "BeastOutline")
+    CreateColorPicker(contentOutlineH, "Survivor Outline", estilos.Player.Fill.OutlineColor, function(c)
+        estilos.Player.Fill.OutlineColor = c
+        estilos.Player.Outline.OutlineColor = c
+    end, 2, "SurvivorOutline")
+    CreateColorPicker(contentOutlineH, "Computer Outline", estilos.ComputerBlue.Fill.OutlineColor, function(c)
+        estilos.ComputerBlue.Fill.OutlineColor = c
+        estilos.ComputerRed.Fill.OutlineColor = c
+        estilos.ComputerGreen.Fill.OutlineColor = c
+        estilos.ComputerBlue.Outline.OutlineColor = c
+        estilos.ComputerRed.Outline.OutlineColor = c
+        estilos.ComputerGreen.Outline.OutlineColor = c
+    end, 3, "ComputerOutline")
+    CreateColorPicker(contentOutlineH, "Freezepod Outline", estilos.Capsule.Fill.OutlineColor, function(c)
+        estilos.Capsule.Fill.OutlineColor = c
+        estilos.Capsule.Outline.OutlineColor = c
+    end, 4, "FreezepodOutline")
+    CreateColorPicker(contentOutlineH, "Door Outline", estilos.DoorOpen.Fill.OutlineColor, function(c)
+        estilos.DoorOpen.Fill.OutlineColor = c
+        estilos.DoorOpen.Outline.OutlineColor = c
+        estilos.DoorClose.Fill.OutlineColor = c
+        estilos.DoorClose.Outline.OutlineColor = c
+    end, 5, "DoorOutline")
+    CreateResetButton(contentOutlineH, "Reset All Outline", 99, function()
+        if pickerSetters["Beast Outline"] then pickerSetters["Beast Outline"](DEFAULTS.BeastOutline) end
+        if pickerSetters["Survivor Outline"] then pickerSetters["Survivor Outline"](DEFAULTS.SurvivorOutline) end
+        if pickerSetters["Computer Outline"] then pickerSetters["Computer Outline"](DEFAULTS.ComputerOutline) end
+        if pickerSetters["Freezepod Outline"] then pickerSetters["Freezepod Outline"](DEFAULTS.FreezepodOutline) end
+        if pickerSetters["Door Outline"] then pickerSetters["Door Outline"](DEFAULTS.DoorOutline) end
+        if transpSetters["BeastOutline"] then transpSetters["BeastOutline"](DEFAULT_TRANSP.BeastOutline) end
+        if transpSetters["SurvivorOutline"] then transpSetters["SurvivorOutline"](DEFAULT_TRANSP.SurvivorOutline) end
+        if transpSetters["ComputerOutline"] then transpSetters["ComputerOutline"](DEFAULT_TRANSP.ComputerOutline) end
+        if transpSetters["FreezepodOutline"] then transpSetters["FreezepodOutline"](DEFAULT_TRANSP.FreezepodOutline) end
+        if transpSetters["DoorOutline"] then transpSetters["DoorOutline"](DEFAULT_TRANSP.DoorOutline) end
+        SaveColors()
+    end)
 
-                        aplicarHighlight(player.Character, tipo)
-
-                        local highlight = player.Character:FindFirstChildOfClass("Highlight")
-                        if highlight then
-                            applyNameESP(player, player.Character, highlight.FillColor)
+    local espGroup, espContent = CreateGroupbox(rightColH, "ESPs Features")
+    espGroup.LayoutOrder = 1
+    local playerHighlight = false
+    local playerHighlightCache = {}
+    local playerHighlightConnections = {}
+    local playerNameCache = {}
+    CreateToggle(espContent, "Highlights", false, function(state)
+        playerHighlight = state
+        if state then
+            playerHighlightCache = {}
+            playerHighlightConnections = {}
+            local function addPlayerESP(plr)
+                if plr == game.Players.LocalPlayer then return end
+                table.insert(playerHighlightCache, plr)
+            end
+            local function removePlayerESP(plr)
+                for i, v in ipairs(playerHighlightCache) do if v == plr then table.remove(playerHighlightCache, i) break end end
+                if plr.Character then
+                    if plr.Character:FindFirstChild("Highlight") then plr.Character.Highlight:Destroy() end
+                    local bb = playerNameCache[plr.Character]
+                    if bb then pcall(function() bb:Destroy() end) playerNameCache[plr.Character] = nil end
+                end
+            end
+            local function applyNameESP(plr, character, color)
+                if not character then return end
+                local head = character:FindFirstChild("Head")
+                if not head then return end
+                local existing = playerNameCache[character]
+                if existing then pcall(function() existing.TextLabel.TextColor3 = color existing.TextLabel.Text = plr.Name end) return end
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "NameESP"
+                billboard.Adornee = head
+                billboard.AlwaysOnTop = true
+                billboard.Size = UDim2.new(0, 100, 0, 25)
+                billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+                local text = Instance.new("TextLabel")
+                text.Size = UDim2.new(1, 0, 1, 0)
+                text.BackgroundTransparency = 1
+                text.TextSize = 12
+                text.Font = Enum.Font.SourceSansBold
+                text.Text = plr.Name
+                text.TextColor3 = color
+                text.Parent = billboard
+                billboard.Parent = head
+                playerNameCache[character] = billboard
+            end
+            for _, plr in ipairs(game.Players:GetPlayers()) do addPlayerESP(plr) end
+            table.insert(playerHighlightConnections, game.Players.PlayerAdded:Connect(function(plr) if playerHighlight then addPlayerESP(plr) end end))
+            table.insert(playerHighlightConnections, game.Players.PlayerRemoving:Connect(removePlayerESP))
+            task.spawn(function()
+                while playerHighlight do
+                    task.wait(1)
+                    for _, plr in ipairs(playerHighlightCache) do
+                        if plr.Character then
+                            local tipo = (getBeast and plr == getBeast()) and "Beast" or "Player"
+                            aplicarHighlight(plr.Character, tipo)
+                            local hl = plr.Character:FindFirstChildOfClass("Highlight")
+                            if hl then applyNameESP(plr, plr.Character, hl.FillColor) end
                         end
                     end
                 end
-            end
-
-            for i = 1, #playerHighlightCache do
-                removePlayerESP(playerHighlightCache[i])
-            end
-            for i = 1, #playerHighlightConnections do
-                playerHighlightConnections[i]:Disconnect()
+                for _, plr in ipairs(playerHighlightCache) do removePlayerESP(plr) end
+                for _, c in ipairs(playerHighlightConnections) do c:Disconnect() end
+                playerHighlightCache, playerHighlightConnections, playerNameCache = {}, {}, {}
+            end)
+        else
+            for _, c in ipairs(playerHighlightConnections) do c:Disconnect() end
+            for _, plr in ipairs(playerHighlightCache) do
+                if plr.Character then
+                    if plr.Character:FindFirstChild("Highlight") then plr.Character.Highlight:Destroy() end
+                    local bb = playerNameCache[plr.Character]
+                    if bb then pcall(function() bb:Destroy() end) end
+                end
             end
             playerHighlightCache, playerHighlightConnections, playerNameCache = {}, {}, {}
-        end)
-    else
-        for i = 1, #playerHighlightConnections do
-            playerHighlightConnections[i]:Disconnect()
         end
-        for i = 1, #playerHighlightCache do
-            local player = playerHighlightCache[i]
-            if player.Character then
-                if player.Character:FindFirstChild("Highlight") then
-                    player.Character.Highlight:Destroy()
-                end
-                local billboard = playerNameCache[player.Character]
-                if billboard then
-                    pcall(function() billboard:Destroy() end)
-                end
-            end
-        end
-        playerHighlightCache, playerHighlightConnections, playerNameCache = {}, {}, {}
-    end
-end)
+    end)
 
     local playerBox = false
     local playerBoxCache = {}
     local playerBoxConnections = {}
-
     CreateToggle(espContent, "Charms", false, function(state)
-    playerBox = state
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-
-    local function isBoxPart(part)
-        if not part:IsA("BasePart") then return false end
-        if part.Name == "HumanoidRootPart" then return false end
-        if part:FindFirstAncestorOfClass("Accessory") then return false end
-        local model = part:FindFirstAncestorOfClass("Model")
-        if not model then return false end
-        local humanoid = model:FindFirstChildOfClass("Humanoid")
-        if not humanoid then return false end
-        if humanoid.RigType ~= Enum.HumanoidRigType.R6 then return false end
-        local name = part.Name
-        return name == "Head" or name == "Torso" or name == "Left Arm" or name == "Right Arm" or name == "Left Leg" or name == "Right Leg"
-    end
-
-    local function clearESP(character)
-        local list = playerBoxCache[character]
-        if list then
-            for i = 1, #list do
-                local obj = list[i]
-                if obj then pcall(function() obj:Destroy() end) end
-            end
-            playerBoxCache[character] = nil
+        playerBox = state
+        local LocalPlayer = Players.LocalPlayer
+        local function isBoxPart(part)
+            if not part:IsA("BasePart") then return false end
+            if part.Name == "HumanoidRootPart" then return false end
+            if part:FindFirstAncestorOfClass("Accessory") then return false end
+            local model = part:FindFirstAncestorOfClass("Model")
+            if not model then return false end
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            if not humanoid or humanoid.RigType ~= Enum.HumanoidRigType.R6 then return false end
+            return part.Name == "Head" or part.Name == "Torso" or part.Name == "Left Arm" or part.Name == "Right Arm" or part.Name == "Left Leg" or part.Name == "Right Leg"
         end
-    end
-
-    local function applyBoxESP(player, character, color)
-        if not character then return end
-        local cached = playerBoxCache[character]
-        if cached then
-            for i = 1, #cached do
-                local obj = cached[i]
-                pcall(function()
-                    if obj:IsA("BoxHandleAdornment") then
-                        obj.Color3 = color
-                    end
-                end)
-            end
-            return
+        local function clearESP(character)
+            local list = playerBoxCache[character]
+            if list then for _, obj in ipairs(list) do pcall(function() obj:Destroy() end) end playerBoxCache[character] = nil end
         end
-        playerBoxCache[character] = {}
-        local list = playerBoxCache[character]
-        local parts = character:GetDescendants()
-        for i = 1, #parts do
-            local part = parts[i]
-            if isBoxPart(part) then
-                pcall(function()
-                    local box = Instance.new("BoxHandleAdornment")
-                    box.Adornee = part
-                    box.AlwaysOnTop = true
-                    box.ZIndex = 10
-                    box.Size = part.Size
-                    box.Transparency = 0.3
-                    box.Color3 = color
-                    box.Parent = part
-                    list[#list + 1] = box
-                end)
+        local function applyBoxESP(plr, character, color)
+            if not character then return end
+            local isBeast = getBeast and plr == getBeast()
+            local transp = isBeast and HighlightTransp.CharmsBeast or HighlightTransp.CharmsSurvivor
+            local cached = playerBoxCache[character]
+            if cached then for _, obj in ipairs(cached) do pcall(function() if obj:IsA("BoxHandleAdornment") then obj.Color3 = color obj.Transparency = transp end end) end return end
+            playerBoxCache[character] = {}
+            local list = playerBoxCache[character]
+            for _, part in ipairs(character:GetDescendants()) do
+                if isBoxPart(part) then
+                    pcall(function()
+                        local box = Instance.new("BoxHandleAdornment")
+                        box.Adornee = part box.AlwaysOnTop = true box.ZIndex = 10 box.Size = part.Size box.Transparency = transp box.Color3 = color box.Parent = part
+                        table.insert(list, box)
+                    end)
+                end
             end
         end
-    end
-
-    if state then
-        local playerList = Players:GetPlayers()
-        playerBoxConnections.loop = task.spawn(function()
-            while playerBox do
-                task.wait(1)
-                for i = 1, #playerList do
-                    local player = playerList[i]
-                    if player ~= LocalPlayer and player.Character then
-                        local color
-                        if getBeast and player == getBeast() then
-                            color = Color3.fromRGB(255, 0, 0)
-                        else
-                            color = Color3.fromRGB(0, 255, 0)
+        if state then
+            local playerList = Players:GetPlayers()
+            playerBoxConnections.loop = task.spawn(function()
+                while playerBox do
+                    task.wait(1)
+                    for _, plr in ipairs(playerList) do
+                        if plr ~= LocalPlayer and plr.Character then
+                            local color = (getBeast and plr == getBeast()) and ESPColors.CharmsBeast or ESPColors.CharmsSurvivor
+                            pcall(function() applyBoxESP(plr, plr.Character, color) end)
                         end
-                        pcall(function()
-                            applyBoxESP(player, player.Character, color)
-                        end)
                     end
                 end
-            end
-        end)
-        playerBoxConnections.added = Players.PlayerAdded:Connect(function(player)
-            playerList[#playerList + 1] = player
-        end)
-        playerBoxConnections.removing = Players.PlayerRemoving:Connect(function(player)
-            if player.Character then
-                pcall(function()
-                    clearESP(player.Character)
-                end)
-            end
-            for i = 1, #playerList do
-                if playerList[i] == player then
-                    table.remove(playerList, i)
-                    break
-                end
-            end
-        end)
-    else
-        for character, list in next, playerBoxCache do
-            for i = 1, #list do
-                local obj = list[i]
-                if obj then pcall(function() obj:Destroy() end) end
-            end
-            playerBoxCache[character] = nil
+            end)
+            playerBoxConnections.added = Players.PlayerAdded:Connect(function(plr) table.insert(playerList, plr) end)
+            playerBoxConnections.removing = Players.PlayerRemoving:Connect(function(plr)
+                if plr.Character then pcall(function() clearESP(plr.Character) end) end
+                for i, v in ipairs(playerList) do if v == plr then table.remove(playerList, i) break end end
+            end)
+        else
+            for char, list in pairs(playerBoxCache) do for _, obj in ipairs(list) do pcall(function() obj:Destroy() end) end playerBoxCache[char] = nil end
+            if playerBoxConnections.loop then task.cancel(playerBoxConnections.loop) playerBoxConnections.loop = nil end
+            if playerBoxConnections.added then playerBoxConnections.added:Disconnect() playerBoxConnections.added = nil end
+            if playerBoxConnections.removing then playerBoxConnections.removing:Disconnect() playerBoxConnections.removing = nil end
         end
-        if playerBoxConnections.loop then
-            task.cancel(playerBoxConnections.loop)
-            playerBoxConnections.loop = nil
-        end
-        if playerBoxConnections.added then
-            playerBoxConnections.added:Disconnect()
-            playerBoxConnections.added = nil
-        end
-        if playerBoxConnections.removing then
-            playerBoxConnections.removing:Disconnect()
-            playerBoxConnections.removing = nil
-        end
-    end
-end)
+    end)
 
     local playerSquare = false
     local playerSquareCache = {}
     local playerSquareConnections = {}
-        
     CreateToggle(espContent, "Square", false, function(state)
-    playerSquare = state
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local lplr = Players.LocalPlayer
-    local camera = workspace.CurrentCamera
-    local worldToViewportPoint = camera.WorldToViewportPoint
-    local HeadOff = Vector3.new(0,0.5,0)
-    local LegOff = Vector3.new(0,3,0)
-
-    local function clearSquare(player)
-        if playerSquareCache[player] then
-            playerSquareCache[player].Visible = false
-            playerSquareCache[player] = nil
+        playerSquare = state
+        local lplr = Players.LocalPlayer
+        local camera = workspace.CurrentCamera
+        local function clearSquare(plr) if playerSquareCache[plr] then playerSquareCache[plr].Visible = false playerSquareCache[plr] = nil end end
+        local function createSquare(plr)
+            if plr == lplr then return end
+            local sq = Drawing.new("Square") sq.Visible = false sq.Color = Color3.new(0, 255, 0) sq.Thickness = 1 sq.Transparency = 1 sq.Filled = false
+            playerSquareCache[plr] = sq
         end
-    end
-
-    local function createSquare(player)
-        if player == lplr then return end
-        local square = Drawing.new("Square")
-        square.Visible = false
-        square.Color = Color3.new(0, 255, 0)
-        square.Thickness = 1
-        square.Transparency = 1
-        square.Filled = false
-        playerSquareCache[player] = square
-    end
-
-    if state then
-        local plrs = Players:GetPlayers()
-        for i = 1, #plrs do
-            createSquare(plrs[i])
-        end
-
-        playerSquareConnections.added = Players.PlayerAdded:Connect(createSquare)
-        playerSquareConnections.removing = Players.PlayerRemoving:Connect(function(player)
-            clearSquare(player)
-        end)
-
-        playerSquareConnections.loop = RunService.RenderStepped:Connect(function()
-            local plrs = Players:GetPlayers()
-            for i = 1, #plrs do
-                local player = plrs[i]
-                local square = playerSquareCache[player]
-                if square and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-                    local RootPart = player.Character.HumanoidRootPart
-                    local RootPosition, RootVisible = worldToViewportPoint(camera, RootPart.Position)
-                    local HeadPosition = worldToViewportPoint(camera, RootPart.Position + HeadOff)
-                    local LegPosition = worldToViewportPoint(camera, RootPart.Position - LegOff)
-                    if RootVisible then
-                        local size = Vector2.new(1000 / RootPosition.Z, HeadPosition.Y - LegPosition.Y)
-                        local position = Vector2.new(RootPosition.X - size.X / 2, RootPosition.Y - size.Y / 2)
-                        square.Size = size
-                        square.Position = position
-                        if getBeast and player == getBeast() then
-                            square.Color = Color3.fromRGB(255, 0, 0)
-                        else
-                            square.Color = Color3.fromRGB(0, 255, 0)
-                        end
-                        square.Visible = true
-                    else
-                        square.Visible = false
-                    end
-                elseif square then
-                    square.Visible = false
+        if state then
+            for _, plr in ipairs(Players:GetPlayers()) do createSquare(plr) end
+            playerSquareConnections.added = Players.PlayerAdded:Connect(createSquare)
+            playerSquareConnections.removing = Players.PlayerRemoving:Connect(function(plr) clearSquare(plr) end)
+            playerSquareConnections.loop = RunService.RenderStepped:Connect(function()
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    local sq = playerSquareCache[plr]
+                    if sq and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                        local rp = plr.Character.HumanoidRootPart
+                        local RootPos, RootVis = camera:WorldToViewportPoint(rp.Position)
+                        local HeadPos = camera:WorldToViewportPoint(rp.Position + Vector3.new(0, 0.5, 0))
+                        local LegPos = camera:WorldToViewportPoint(rp.Position - Vector3.new(0, 3, 0))
+                        if RootVis then
+                            local size = Vector2.new(1000 / RootPos.Z, HeadPos.Y - LegPos.Y)
+                            sq.Size = size
+                            sq.Position = Vector2.new(RootPos.X - size.X / 2, RootPos.Y - size.Y / 2)
+                            sq.Color = (getBeast and plr == getBeast()) and ESPColors.SquareBeast or ESPColors.SquareSurvivor
+                            sq.Visible = true
+                        else sq.Visible = false end
+                    elseif sq then sq.Visible = false end
                 end
-            end
-        end)
-    else
-        for player, square in next, playerSquareCache do
-            if square then square.Visible = false end
-            playerSquareCache[player] = nil
+            end)
+        else
+            for plr, sq in pairs(playerSquareCache) do sq.Visible = false playerSquareCache[plr] = nil end
+            if playerSquareConnections.loop then playerSquareConnections.loop:Disconnect() playerSquareConnections.loop = nil end
+            if playerSquareConnections.added then playerSquareConnections.added:Disconnect() playerSquareConnections.added = nil end
+            if playerSquareConnections.removing then playerSquareConnections.removing:Disconnect() playerSquareConnections.removing = nil end
         end
-        if playerSquareConnections.loop then playerSquareConnections.loop:Disconnect() playerSquareConnections.loop = nil end
-        if playerSquareConnections.added then playerSquareConnections.added:Disconnect() playerSquareConnections.added = nil end
-        if playerSquareConnections.removing then playerSquareConnections.removing:Disconnect() playerSquareConnections.removing = nil end
-    end
-end)
+    end)
 
     local playerLine = false
     local playerLineCache = {}
     local playerLineConnections = {}
-        
     CreateToggle(espContent, "Trace Line", false, function(state)
-    playerLine = state
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local lplr = Players.LocalPlayer
-    local camera = workspace.CurrentCamera
-    local worldToViewportPoint = camera.WorldToViewportPoint
-
-    local function clearLine(player)
-        if playerLineCache[player] then
-            playerLineCache[player].Visible = false
-            playerLineCache[player] = nil
+        playerLine = state
+        local lplr = Players.LocalPlayer
+        local camera = workspace.CurrentCamera
+        local function clearLine(plr) if playerLineCache[plr] then playerLineCache[plr].Visible = false playerLineCache[plr] = nil end end
+        local function createLine(plr)
+            if plr == lplr then return end
+            local ln = Drawing.new("Line") ln.Visible = false ln.Color = Color3.new(0, 255, 0) ln.Thickness = 1 ln.Transparency = 1
+            playerLineCache[plr] = ln
         end
-    end
-
-    local function createLine(player)
-        if player == lplr then return end
-        local line = Drawing.new("Line")
-        line.Visible = false
-        line.Color = Color3.new(0, 255, 0)
-        line.Thickness = 1
-        line.Transparency = 1
-        playerLineCache[player] = line
-    end
-
-    if state then
-        local plrs = Players:GetPlayers()
-        for i = 1, #plrs do
-            createLine(plrs[i])
-        end
-
-        playerLineConnections.added = Players.PlayerAdded:Connect(createLine)
-        playerLineConnections.removing = Players.PlayerRemoving:Connect(function(player)
-            clearLine(player)
-        end)
-
-        playerLineConnections.loop = RunService.RenderStepped:Connect(function()
-            local plrs = Players:GetPlayers()
-            for i = 1, #plrs do
-                local player = plrs[i]
-                local line = playerLineCache[player]
-                if line and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-                    local RootPart = player.Character.HumanoidRootPart
-                    local Vector, OnScreen = worldToViewportPoint(camera, RootPart.Position)
-                    if OnScreen then
-                        line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                        line.To = Vector2.new(Vector.X, Vector.Y)
-                        if getBeast and player == getBeast() then
-                            line.Color = Color3.fromRGB(255, 0, 0)
-                        else
-                            line.Color = Color3.fromRGB(0, 255, 0)
-                        end
-                        line.Visible = true
-                    else
-                        line.Visible = false
-                    end
-                elseif line then
-                    line.Visible = false
+        if state then
+            for _, plr in ipairs(Players:GetPlayers()) do createLine(plr) end
+            playerLineConnections.added = Players.PlayerAdded:Connect(createLine)
+            playerLineConnections.removing = Players.PlayerRemoving:Connect(function(plr) clearLine(plr) end)
+            playerLineConnections.loop = RunService.RenderStepped:Connect(function()
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    local ln = playerLineCache[plr]
+                    if ln and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                        local vec, onScreen = camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+                        if onScreen then
+                            ln.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                            ln.To = Vector2.new(vec.X, vec.Y)
+                            ln.Color = (getBeast and plr == getBeast()) and ESPColors.LineBeast or ESPColors.LineSurvivor
+                            ln.Visible = true
+                        else ln.Visible = false end
+                    elseif ln then ln.Visible = false end
                 end
-            end
-        end)
-    else
-        for player, line in next, playerLineCache do
-            if line then line.Visible = false end
-            playerLineCache[player] = nil
+            end)
+        else
+            for plr, ln in pairs(playerLineCache) do ln.Visible = false playerLineCache[plr] = nil end
+            if playerLineConnections.loop then playerLineConnections.loop:Disconnect() playerLineConnections.loop = nil end
+            if playerLineConnections.added then playerLineConnections.added:Disconnect() playerLineConnections.added = nil end
+            if playerLineConnections.removing then playerLineConnections.removing:Disconnect() playerLineConnections.removing = nil end
         end
-        if playerLineConnections.loop then playerLineConnections.loop:Disconnect() playerLineConnections.loop = nil end
-        if playerLineConnections.added then playerLineConnections.added:Disconnect() playerLineConnections.added = nil end
-        if playerLineConnections.removing then playerLineConnections.removing:Disconnect() playerLineConnections.removing = nil end
-    end
-end)
+    end)
 
-local function clearGlow(char)
+    local beastConnections = {}
+    local beastIlluminationEnabled = false
+    local function clearGlow(char)
         if not char then return end
         local head = char:FindFirstChild("Head")
-        if head then
-            local g = head:FindFirstChild("BeastGlow")
-            if g then g:Destroy() end
-        end
+        if head then local g = head:FindFirstChild("BeastGlow") if g then g:Destroy() end end
     end
-
     local function applyGlow(char)
         if not char then return end
         local head = char:FindFirstChild("Head")
@@ -1387,42 +1721,67 @@ local function clearGlow(char)
             local bp = char:FindFirstChild("BeastPowers")
             local glow = head:FindFirstChild("BeastGlow")
             if bp then
-                if not glow then
-                    glow = Instance.new("PointLight")
-                    glow.Name = "BeastGlow"
-                    glow.Color = Color3.fromRGB(0, 255, 255)
-                    glow.Brightness = 8
-                    glow.Range = 25
-                    glow.Parent = head
-                end
-            else
-                if glow then glow:Destroy() end
-            end
+                if not glow then glow = Instance.new("PointLight") glow.Name = "BeastGlow" glow.Color = Color3.fromRGB(0, 255, 255) glow.Brightness = 8 glow.Range = 25 glow.Parent = head end
+            else if glow then glow:Destroy() end end
         end
         update()
         table.insert(beastConnections, char.ChildAdded:Connect(update))
         table.insert(beastConnections, char.ChildRemoved:Connect(update))
     end
-    
-    local beastIlluminationEnabled = false
-    local beastConnections = {}
-
     CreateToggle(espContent, "Beast GlowUp", false, function(enabled)
         beastIlluminationEnabled = enabled
-        for i = 1, #beastConnections do beastConnections[i]:Disconnect() end
+        for _, c in ipairs(beastConnections) do c:Disconnect() end
         beastConnections = {}
-        if not enabled then
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr.Character then clearGlow(plr.Character) end
-            end
-            return
-        end
+        if not enabled then for _, plr in ipairs(Players:GetPlayers()) do if plr.Character then clearGlow(plr.Character) end end return end
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr.Character then applyGlow(plr.Character) end
-            table.insert(beastConnections, plr.CharacterAdded:Connect(function(char)
-                if beastIlluminationEnabled then applyGlow(char) end
-            end))
+            table.insert(beastConnections, plr.CharacterAdded:Connect(function(char) if beastIlluminationEnabled then applyGlow(char) end end))
         end
+    end)
+
+    local boxFillH, contentFillH = CreateGroupbox(rightColH, "Color Customization")
+    boxFillH.LayoutOrder = 2
+    CreateColorPicker(contentFillH, "Beast Fill Color", estilos.Beast.Fill.FillColor, function(c)
+        estilos.Beast.Fill.FillColor = c
+        estilos.Beast.Outline.FillColor = c
+    end, 1, "BeastFill")
+    CreateColorPicker(contentFillH, "Survivor Fill Color", estilos.Player.Fill.FillColor, function(c)
+        estilos.Player.Fill.FillColor = c
+        estilos.Player.Outline.FillColor = c
+    end, 2, "SurvivorFill")
+    CreateColorPicker(contentFillH, "Freezepod Fill Color", estilos.Capsule.Fill.FillColor, function(c)
+        estilos.Capsule.Fill.FillColor = c
+        estilos.Capsule.Outline.FillColor = c
+    end, 3, "FreezepodFill")
+    CreateColorPicker(contentFillH, "Computer Fill Color", estilos.ComputerBlue.Fill.FillColor, function(c)
+        estilos.ComputerBlue.Fill.FillColor = c
+        estilos.ComputerRed.Fill.FillColor = c
+        estilos.ComputerGreen.Fill.FillColor = c
+    end, 4, "ComputerFill")
+    CreateColorPicker(contentFillH, "Door Fill Color", estilos.DoorOpen.Fill.FillColor, function(c)
+        estilos.DoorOpen.Fill.FillColor = c
+        estilos.DoorClose.Fill.FillColor = c
+    end, 5, "DoorFill")
+    CreateColorPicker(contentFillH, "Charms Survivor", ESPColors.CharmsSurvivor, function(c) ESPColors.CharmsSurvivor = c end, 6, "CharmsSurvivor")
+    CreateColorPicker(contentFillH, "Charms Beast", ESPColors.CharmsBeast, function(c) ESPColors.CharmsBeast = c end, 7, "CharmsBeast")
+    CreateResetButton(contentFillH, "Reset All Fill", 99, function()
+        if pickerSetters["Beast Fill Color"] then pickerSetters["Beast Fill Color"](DEFAULTS.BeastFill) end
+        if pickerSetters["Survivor Fill Color"] then pickerSetters["Survivor Fill Color"](DEFAULTS.SurvivorFill) end
+        if pickerSetters["Freezepod Fill Color"] then pickerSetters["Freezepod Fill Color"](DEFAULTS.FreezepodFill) end
+        if pickerSetters["Computer Fill Color"] then pickerSetters["Computer Fill Color"](DEFAULTS.ComputerFill) end
+        if pickerSetters["Door Fill Color"] then pickerSetters["Door Fill Color"](DEFAULTS.DoorFill) end
+        if pickerSetters["Charms Survivor"] then pickerSetters["Charms Survivor"](DEFAULTS.CharmsSurvivor) end
+        if pickerSetters["Charms Beast"] then pickerSetters["Charms Beast"](DEFAULTS.CharmsBeast) end
+        if transpSetters["BeastFill"] then transpSetters["BeastFill"](DEFAULT_TRANSP.BeastFill) end
+        if transpSetters["SurvivorFill"] then transpSetters["SurvivorFill"](DEFAULT_TRANSP.SurvivorFill) end
+        if transpSetters["FreezepodFill"] then transpSetters["FreezepodFill"](DEFAULT_TRANSP.FreezepodFill) end
+        if transpSetters["ComputerFill"] then transpSetters["ComputerFill"](DEFAULT_TRANSP.ComputerFill) end
+        if transpSetters["DoorFill"] then transpSetters["DoorFill"](DEFAULT_TRANSP.DoorFill) end
+        if transpSetters["CharmsSurvivor"] then transpSetters["CharmsSurvivor"](DEFAULT_TRANSP.CharmsSurvivor) end
+        if transpSetters["CharmsBeast"] then transpSetters["CharmsBeast"](DEFAULT_TRANSP.CharmsBeast) end
+        estilos.DoorClose.Fill.FillColor = DEFAULTS.DoorFillClose
+        estilos.DoorClose.Outline.FillColor = DEFAULTS.DoorFillClose
+        SaveColors()
     end)
 end
 
@@ -2176,238 +2535,209 @@ end
         end)
     end
 
-    do
-        local boxFOV, contentFOV = CreateGroupbox(rightColP, "Sensitivity")
-        boxFOV.BackgroundColor3 = Color3.fromRGB(25,25,25)
-        boxFOV.BackgroundTransparency = 1
-        boxFOV.BorderSizePixel = 0
-        boxFOV.Size = UDim2.new(1,0,0,270)
-        boxFOV.ClipsDescendants = false
-        Instance.new("UICorner", boxFOV).CornerRadius = UDim.new(0,8)
-        contentFOV.ClipsDescendants = false
+do
+    local boxFOV, contentFOV = CreateGroupbox(rightColP, "Sensitivity")
+    boxFOV.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    boxFOV.BackgroundTransparency = 1
+    boxFOV.BorderSizePixel = 0
+    boxFOV.Size = UDim2.new(1,0,0,270)
+    boxFOV.ClipsDescendants = false
+    Instance.new("UICorner", boxFOV).CornerRadius = UDim.new(0,8)
+    contentFOV.ClipsDescendants = false
 
-        local layout = contentFOV:FindFirstChildOfClass("UIListLayout")
-        if layout then
-            layout.SortOrder = Enum.SortOrder.LayoutOrder
-            layout.Padding = UDim.new(0, 6)
-        end
+    local layout = contentFOV:FindFirstChildOfClass("UIListLayout")
+    if layout then
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 8)
+    end
 
-        local Players = game:GetService("Players")
-        local player = Players.LocalPlayer
-        local HttpService = game:GetService("HttpService")
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local HttpService = game:GetService("HttpService")
 
-        local function SaveSensitivity()
-            pcall(function()
-                local data = {}
-                if isfile("FTF_Eclipse/config.json") then
-                    local ok, decoded = pcall(function()
-                        return HttpService:JSONDecode(readfile("FTF_Eclipse/config.json"))
-                    end)
-                    if ok and decoded then data = decoded end
-                end
-                data.SensitivityX = _G.CameraSensitivityX
-                data.SensitivityY = _G.CameraSensitivityY
-                writefile("FTF_Eclipse/config.json", HttpService:JSONEncode(data))
-            end)
-        end
-
-        local function LoadSensitivity()
+    local function SaveSensitivity()
+        pcall(function()
+            local data = {}
             if isfile("FTF_Eclipse/config.json") then
-                local ok, data = pcall(function()
+                local ok, decoded = pcall(function()
                     return HttpService:JSONDecode(readfile("FTF_Eclipse/config.json"))
                 end)
-                if ok and data then
-                    if data.SensitivityX then _G.CameraSensitivityX = data.SensitivityX end
-                    if data.SensitivityY then _G.CameraSensitivityY = data.SensitivityY end
-                end
+                if ok and decoded then data = decoded end
             end
-            _G.CameraSensitivityX = _G.CameraSensitivityX or 1
-            _G.CameraSensitivityY = _G.CameraSensitivityY or 1
+            data.SensitivityX = _G.CameraSensitivityX
+            data.SensitivityY = _G.CameraSensitivityY
+            writefile("FTF_Eclipse/config.json", HttpService:JSONEncode(data))
+        end)
+    end
+
+    local function LoadSensitivity()
+        if isfile("FTF_Eclipse/config.json") then
+            local ok, data = pcall(function()
+                return HttpService:JSONDecode(readfile("FTF_Eclipse/config.json"))
+            end)
+            if ok and data then
+                if data.SensitivityX then _G.CameraSensitivityX = data.SensitivityX end
+                if data.SensitivityY then _G.CameraSensitivityY = data.SensitivityY end
+            end
+        end
+        _G.CameraSensitivityX = _G.CameraSensitivityX or 1
+        _G.CameraSensitivityY = _G.CameraSensitivityY or 1
+    end
+
+    LoadSensitivity()
+
+    local CameraInput
+    pcall(function()
+        CameraInput = require(player.PlayerScripts.PlayerModule.CameraModule.CameraInput)
+    end)
+
+    if CameraInput then
+        if _G.OriginalGetRotation then
+            CameraInput.getRotation = _G.OriginalGetRotation
         end
 
-        LoadSensitivity()
+        _G.OriginalGetRotation = CameraInput.getRotation
 
-        local CameraInput
-        pcall(function()
-            CameraInput = require(player.PlayerScripts.PlayerModule.CameraModule.CameraInput)
+        CameraInput.getRotation = function(...)
+            local rot = _G.OriginalGetRotation(...)
+            return Vector2.new(rot.X * _G.CameraSensitivityX, rot.Y * _G.CameraSensitivityY)
+        end
+
+        local order = 0
+        local function NextOrder()
+            order += 1
+            return order
+        end
+
+        local function CreateSliderRow(title, initial, onChange)
+            local row = Instance.new("Frame", contentFOV)
+            row.LayoutOrder = NextOrder()
+            row.Size = UDim2.new(1, 0, 0, 32)
+            row.BackgroundTransparency = 1
+            row.ZIndex = 5
+
+            local nameLabel = Instance.new("TextLabel", row)
+            nameLabel.Size = UDim2.new(1, -40, 0, 16)
+            nameLabel.Position = UDim2.new(0, 0, 0, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = title
+            nameLabel.Font = CurrentFont or Enum.Font.GothamBold
+            nameLabel.TextSize = 12
+            nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            nameLabel.ZIndex = 6
+
+            local valueLabel = Instance.new("TextLabel", row)
+            valueLabel.Size = UDim2.new(0, 40, 0, 16)
+            valueLabel.Position = UDim2.new(1, -40, 0, 0)
+            valueLabel.BackgroundTransparency = 1
+            valueLabel.Text = string.format("%.1f", initial)
+            valueLabel.Font = Enum.Font.GothamBold
+            valueLabel.TextSize = 12
+            valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+            valueLabel.ZIndex = 6
+
+            local track = Instance.new("Frame", row)
+            track.Size = UDim2.new(1, 0, 0, 4)
+            track.Position = UDim2.new(0, 0, 0, 22)
+            track.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            track.BorderSizePixel = 0
+            track.ZIndex = 6
+            Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+
+            local fill = Instance.new("Frame", track)
+            fill.Size = UDim2.new(0, 0, 1, 0)
+            fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            fill.BorderSizePixel = 0
+            fill.ZIndex = 7
+            Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+            local current = initial
+            local dragging = false
+
+            local function UpdateVisual(v)
+                local percent = (v - 0.1) / (5 - 0.1)
+                fill.Size = UDim2.new(percent, 0, 1, 0)
+            end
+
+            local function Set(v)
+                current = math.clamp(v, 0.1, 5)
+                valueLabel.Text = string.format("%.1f", current)
+                UpdateVisual(current)
+                onChange(current)
+                SaveSensitivity()
+            end
+
+            local function UpdateFromInput(input)
+                local rel = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+                local v = 0.1 + math.clamp(rel, 0, 1) * (5 - 0.1)
+                Set(math.floor(v * 10 + 0.5) / 10)
+            end
+
+            track.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    UpdateFromInput(input)
+                end
+            end)
+
+            UIS.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    UpdateFromInput(input)
+                end
+            end)
+
+            UIS.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                end
+            end)
+
+            UpdateVisual(current)
+            return Set
+        end
+
+        local function CreateResetBtn(text)
+            local btn = Instance.new("TextButton", contentFOV)
+            btn.LayoutOrder = NextOrder()
+            btn.Size = UDim2.new(1, 0, 0, 20)
+            btn.BackgroundTransparency = 1
+            btn.Text = text
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 12
+            btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.AutoButtonColor = false
+            btn.ZIndex = 5
+            return btn
+        end
+
+        local setX = CreateSliderRow("Sensitivity X", _G.CameraSensitivityX, function(v)
+            _G.CameraSensitivityX = v
         end)
 
-        if CameraInput then
-            if _G.OriginalGetRotation then
-                CameraInput.getRotation = _G.OriginalGetRotation
-            end
+        local spacer = Instance.new("Frame", contentFOV)
+        spacer.LayoutOrder = NextOrder()
+        spacer.Size = UDim2.new(1, 0, 0, 2)
+        spacer.BackgroundTransparency = 1
 
-            _G.OriginalGetRotation = CameraInput.getRotation
+        local setY = CreateSliderRow("Sensitivity Y", _G.CameraSensitivityY, function(v)
+            _G.CameraSensitivityY = v
+        end)
 
-            CameraInput.getRotation = function(...)
-                local rot = _G.OriginalGetRotation(...)
-                return Vector2.new(rot.X * _G.CameraSensitivityX, rot.Y * _G.CameraSensitivityY)
-            end
+        local spacer2 = Instance.new("Frame", contentFOV)
+        spacer2.LayoutOrder = NextOrder()
+        spacer2.Size = UDim2.new(1, 0, 0, 6)
+        spacer2.BackgroundTransparency = 1
 
-            local order = 0
-            local function NextOrder()
-                order += 1
-                return order
-            end
+        local resetX = CreateResetBtn("Resetar X")
+        resetX.MouseButton1Click:Connect(function() setX(1) end)
 
-            local function CreateLabel(text)
-                local l = Instance.new("TextLabel", contentFOV)
-                l.LayoutOrder = NextOrder()
-                l.Size = UDim2.new(1, 0, 0, 20)
-                l.BackgroundTransparency = 1
-                l.Text = text
-                l.Font = CurrentFont or Enum.Font.GothamBold
-                l.TextSize = 12
-                l.TextColor3 = Color3.fromRGB(200, 200, 200)
-                l.TextXAlignment = Enum.TextXAlignment.Left
-                l.ZIndex = 5
-                return l
-            end
-
-            local function CreateDiscordBtn(parent, text, pos)
-                local btn = Instance.new("TextButton", parent)
-                btn.Size = UDim2.new(0, 30, 0, 30)
-                btn.Position = pos
-                btn.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-                btn.Text = text
-                btn.Font = Enum.Font.GothamBold
-                btn.TextSize = 16
-                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                btn.AutoButtonColor = false
-                btn.ClipsDescendants = true
-                btn.ZIndex = 6
-                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-                local stroke = Instance.new("UIStroke", btn)
-                stroke.Color = Color3.fromRGB(40, 40, 40)
-                stroke.Thickness = 1
-
-                btn.MouseButton1Down:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.08), {Size = UDim2.new(0, 27, 0, 27)}):Play()
-                    local ripple = Instance.new("Frame", btn)
-                    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-                    ripple.Position = UDim2.new(0.5, 0, 0.5, 0)
-                    ripple.Size = UDim2.new(0, 5, 0, 5)
-                    ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                    ripple.BackgroundTransparency = 0.4
-                    ripple.BorderSizePixel = 0
-                    ripple.ZIndex = 7
-                    Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
-                    TweenService:Create(ripple, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1.5, 0, 1.5, 0), BackgroundTransparency = 1}):Play()
-                    game:GetService("Debris"):AddItem(ripple, 0.35)
-                end)
-                btn.MouseButton1Up:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 30, 0, 30)}):Play()
-                end)
-                btn.MouseEnter:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(20, 20, 20)}):Play()
-                end)
-                btn.MouseLeave:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(5, 5, 5), Size = UDim2.new(0, 30, 0, 30)}):Play()
-                end)
-                return btn
-            end
-
-            local function CreateSliderRow(initial, onChange)
-                local row = Instance.new("Frame", contentFOV)
-                row.LayoutOrder = NextOrder()
-                row.Size = UDim2.new(1, 0, 0, 30)
-                row.BackgroundTransparency = 1
-                row.ZIndex = 5
-
-                local btnMinus = CreateDiscordBtn(row, "-", UDim2.new(0, 0, 0, 0))
-                local btnPlus = CreateDiscordBtn(row, "+", UDim2.new(1, -30, 0, 0))
-
-                local valueLabel = Instance.new("TextLabel", row)
-                valueLabel.Size = UDim2.new(1, -70, 1, 0)
-                valueLabel.Position = UDim2.new(0, 35, 0, 0)
-                valueLabel.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-                valueLabel.Text = string.format("%.1f", initial)
-                valueLabel.Font = Enum.Font.GothamBold
-                valueLabel.TextSize = 13
-                valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                valueLabel.ZIndex = 6
-                Instance.new("UICorner", valueLabel).CornerRadius = UDim.new(0, 10)
-                local s2 = Instance.new("UIStroke", valueLabel)
-                s2.Color = Color3.fromRGB(30, 30, 30)
-                s2.Thickness = 1
-
-                local current = initial
-                local function Set(v)
-                    current = math.clamp(v, 0.1, 5)
-                    valueLabel.Text = string.format("%.1f", current)
-                    TweenService:Create(valueLabel, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
-                    task.delay(0.12, function()
-                        TweenService:Create(valueLabel, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(5, 5, 5)}):Play()
-                    end)
-                    onChange(current)
-                    SaveSensitivity()
-                end
-
-                btnMinus.MouseButton1Click:Connect(function() Set(current - 0.1) end)
-                btnPlus.MouseButton1Click:Connect(function() Set(current + 0.1) end)
-                return Set
-            end
-
-            local function CreateResetBtn(text)
-                local btn = Instance.new("TextButton", contentFOV)
-                btn.LayoutOrder = NextOrder()
-                btn.Size = UDim2.new(1, 0, 0, 28)
-                btn.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-                btn.Text = text
-                btn.Font = Enum.Font.GothamBold
-                btn.TextSize = 12
-                btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-                btn.AutoButtonColor = false
-                btn.ClipsDescendants = true
-                btn.ZIndex = 5
-                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-                local st = Instance.new("UIStroke", btn)
-                st.Color = Color3.fromRGB(30, 30, 30)
-                st.Thickness = 1
-
-                local originalText = text
-                btn.MouseButton1Click:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(200, 30, 30)}):Play()
-                    btn.Text = "Resetado ✓"
-                    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    task.delay(0.7, function()
-                        TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(5, 5, 5)}):Play()
-                        btn.Text = originalText
-                        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-                    end)
-                end)
-                return btn
-            end
-
-            local labelX = CreateLabel("Sensitivity X: " .. string.format("%.1fx", _G.CameraSensitivityX))
-            local setX = CreateSliderRow(_G.CameraSensitivityX, function(v)
-                _G.CameraSensitivityX = v
-                labelX.Text = "Sensitivity X: " .. string.format("%.1fx", v)
-            end)
-
-            local spacer = Instance.new("Frame", contentFOV)
-            spacer.LayoutOrder = NextOrder()
-            spacer.Size = UDim2.new(1, 0, 0, 6)
-            spacer.BackgroundTransparency = 1
-
-            local labelY = CreateLabel("Sensitivity Y: " .. string.format("%.1fx", _G.CameraSensitivityY))
-            local setY = CreateSliderRow(_G.CameraSensitivityY, function(v)
-                _G.CameraSensitivityY = v
-                labelY.Text = "Sensitivity Y: " .. string.format("%.1fx", v)
-            end)
-
-            local spacer2 = Instance.new("Frame", contentFOV)
-            spacer2.LayoutOrder = NextOrder()
-            spacer2.Size = UDim2.new(1, 0, 0, 6)
-            spacer2.BackgroundTransparency = 1
-
-            local resetX = CreateResetBtn("Resetar X")
-            resetX.MouseButton1Click:Connect(function() setX(1) end)
-
-            local resetY = CreateResetBtn("Resetar Y")
-            resetY.MouseButton1Click:Connect(function() setY(1) end)
-        end
+        local resetY = CreateResetBtn("Resetar Y")
+        resetY.MouseButton1Click:Connect(function() setY(1) end)
     end
+end
 end
 
 do
@@ -2431,7 +2761,479 @@ do
     Instance.new("UIListLayout", rightColP).Padding = UDim.new(0, 10)
 
     local box1P, content1P = CreateGroupbox(leftColP, "Action Timers")
+    local boxTimerColors, contentTimerColors = CreateGroupbox(leftColP, "Timer Colors")
+    boxTimerColors.LayoutOrder = 2
     local box2P, content2P = CreateGroupbox(rightColP, "Beast Indicators")
+    local boxIndicatorColors, contentIndicatorColors = CreateGroupbox(rightColP, "Indicators Colors")
+    boxIndicatorColors.LayoutOrder = 2
+    for _, c in ipairs({contentTimerColors, contentIndicatorColors}) do
+        local l = c:FindFirstChildOfClass("UIListLayout")
+        if l then l.SortOrder = Enum.SortOrder.LayoutOrder end
+    end
+
+    local Http = game:GetService("HttpService")
+    local SAVE_FILE = "TimerColors.json"
+    local DEFAULT_COLORS = {
+        ComputerColor = Color3.fromRGB(255, 255, 255),
+        ExitColor = Color3.fromRGB(255, 170, 0),
+        DoorColor = Color3.fromRGB(133, 88, 0),
+        LifeColor = Color3.fromRGB(80, 160, 255),
+        WalkspeedColor = Color3.fromRGB(255, 255, 255),
+        GetUpColor = Color3.fromRGB(0, 255, 0),
+        BeastPowerColor = Color3.fromRGB(255, 170, 0),
+        BeastPowerV2Color = Color3.fromRGB(255, 255, 255),
+        BeastSpawnColor = Color3.fromRGB(255, 255, 255),
+    }
+    local DEFAULT_TRANSP = { TimerTransparency = 0, IndicatorTransparency = 0 }
+    local ComputerColor, ExitColor, DoorColor, LifeColor, WalkspeedColor
+    local GetUpColor, BeastPowerColor, BeastPowerV2Color, BeastSpawnColor
+    local TimerTransparency, IndicatorTransparency
+    local function colorToTable(c)
+        if not c then return {255, 255, 255} end
+        return {math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)}
+    end
+    local function tableToColor(t) if type(t) ~= "table" or not t[1] then return nil end return Color3.fromRGB(t[1], t[2], t[3]) end
+    local function LoadColors()
+        local data = nil
+        pcall(function()
+            if readfile and isfile and isfile(SAVE_FILE) then data = readfile(SAVE_FILE) end
+        end)
+        if data and data ~= "" then
+            local ok2, decoded = pcall(function() return Http:JSONDecode(data) end)
+            if ok2 and type(decoded) == "table" and next(decoded) then return decoded end
+        end
+        if getgenv().TimerColorsSaved and next(getgenv().TimerColorsSaved) then
+            return getgenv().TimerColorsSaved
+        end
+        return {}
+    end
+    local Loaded = LoadColors()
+    local function GetSaved(name, def)
+        local c = Loaded[name] and tableToColor(Loaded[name])
+        return c or def
+    end
+    local function GetSavedNum(name, def)
+        local v = Loaded[name]
+        if type(v) == "number" then return math.clamp(v, 0, 1) end
+        return def
+    end
+    local function SaveColors()
+        local toSave = {
+            ComputerColor = colorToTable(ComputerColor),
+            ExitColor = colorToTable(ExitColor),
+            DoorColor = colorToTable(DoorColor),
+            LifeColor = colorToTable(LifeColor),
+            WalkspeedColor = colorToTable(WalkspeedColor),
+            GetUpColor = colorToTable(GetUpColor),
+            BeastPowerColor = colorToTable(BeastPowerColor),
+            BeastPowerV2Color = colorToTable(BeastPowerV2Color),
+            BeastSpawnColor = colorToTable(BeastSpawnColor),
+            TimerTransparency = TimerTransparency or 0,
+            IndicatorTransparency = IndicatorTransparency or 0,
+        }
+        getgenv().TimerColorsSaved = toSave
+        local ok, encoded = pcall(function() return Http:JSONEncode(toSave) end)
+        if ok and encoded then
+            pcall(function() if writefile then writefile(SAVE_FILE, encoded) end end)
+        end
+    end
+
+    local UIS_P = game:GetService("UserInputService")
+    ComputerColor = GetSaved("ComputerColor", DEFAULT_COLORS.ComputerColor)
+    ExitColor = GetSaved("ExitColor", DEFAULT_COLORS.ExitColor)
+    DoorColor = GetSaved("DoorColor", DEFAULT_COLORS.DoorColor)
+    LifeColor = GetSaved("LifeColor", DEFAULT_COLORS.LifeColor)
+    WalkspeedColor = GetSaved("WalkspeedColor", DEFAULT_COLORS.WalkspeedColor)
+    GetUpColor = GetSaved("GetUpColor", DEFAULT_COLORS.GetUpColor)
+    BeastPowerColor = GetSaved("BeastPowerColor", DEFAULT_COLORS.BeastPowerColor)
+    BeastPowerV2Color = GetSaved("BeastPowerV2Color", DEFAULT_COLORS.BeastPowerV2Color)
+    BeastSpawnColor = GetSaved("BeastSpawnColor", DEFAULT_COLORS.BeastSpawnColor)
+    TimerTransparency = GetSavedNum("TimerTransparency", 0)
+    IndicatorTransparency = GetSavedNum("IndicatorTransparency", 0)
+    local OnComputerColorChanged = nil
+    local OnExitColorChanged = nil
+    local OnDoorColorChanged = nil
+    local OnLifeColorChanged = nil
+    local OnWalkspeedColorChanged = nil
+    local OnGetUpColorChanged = nil
+    local OnBeastPowerColorChanged = nil
+    local OnBeastPowerV2ColorChanged = nil
+    local OnBeastSpawnColorChanged = nil
+    local OnTimerTransparencyChanged = nil
+    local OnIndicatorTransparencyChanged = nil
+    local PickSetters = {}
+    local PickPreviews = {}
+    local SliderSetters = {}
+
+    local PickSetters = {}
+    local PickPreviews = {}
+    local SliderSetters = {}
+    local TranspUIs = {}
+
+    local function CreatePickColor(parent, name, defaultColor, onChange, saveKey, order, defaultTransp, onTranspChange, transpKey)
+        local h, s, v = defaultColor:ToHSV()
+        local transp = defaultTransp or 0
+
+        local holder = Instance.new("Frame")
+        holder.Name = name .. "_Holder"
+        holder.BackgroundTransparency = 1
+        holder.Size = UDim2.new(1, 0, 0, 0)
+        holder.AutomaticSize = Enum.AutomaticSize.Y
+        holder.ClipsDescendants = false
+        holder.ZIndex = 5
+        holder.LayoutOrder = order or 1
+        holder.Parent = parent
+
+        local holderLayout = Instance.new("UIListLayout", holder)
+        holderLayout.FillDirection = Enum.FillDirection.Vertical
+        holderLayout.Padding = UDim.new(0, 6)
+        holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local row = Instance.new("Frame")
+        row.BackgroundTransparency = 1
+        row.Size = UDim2.new(1, 0, 0, 24)
+        row.LayoutOrder = 1
+        row.Parent = holder
+
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(1, -40, 1, 0)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(210, 210, 210)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Text = name
+        label.Parent = row
+
+        local preview = Instance.new("TextButton")
+        preview.BackgroundColor3 = defaultColor
+        preview.Size = UDim2.new(0, 26, 0, 22)
+        preview.Position = UDim2.new(1, -26, 0, 3)
+        preview.Text = ""
+        preview.AutoButtonColor = false
+        preview.ZIndex = 5
+        preview.Parent = row
+        Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 6)
+        local ps = Instance.new("UIStroke", preview)
+        ps.Color = Color3.fromRGB(70, 70, 70)
+        ps.Thickness = 1
+        if saveKey then PickPreviews[saveKey] = preview end
+
+        local picker = Instance.new("Frame")
+        picker.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        picker.BackgroundTransparency = 0.1
+        picker.Size = UDim2.new(1, 0, 0, 165)
+        picker.Visible = false
+        picker.LayoutOrder = 2
+        picker.ZIndex = 5
+        picker.Parent = holder
+        Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 10)
+        local pks = Instance.new("UIStroke", picker)
+        pks.Color = Color3.fromRGB(60, 60, 60)
+        pks.Thickness = 1
+
+        local svBox = Instance.new("ImageButton")
+        svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        svBox.Position = UDim2.new(0, 10, 0, 10)
+        svBox.Size = UDim2.new(1, -42, 0, 110)
+        svBox.AutoButtonColor = false
+        svBox.Parent = picker
+        Instance.new("UICorner", svBox).CornerRadius = UDim.new(0, 6)
+
+        local whiteOverlay = Instance.new("Frame")
+        whiteOverlay.Name = "WhiteGradient"
+        whiteOverlay.BackgroundColor3 = Color3.new(1, 1, 1)
+        whiteOverlay.BorderSizePixel = 0
+        whiteOverlay.Size = UDim2.new(1, 0, 1, 0)
+        whiteOverlay.ZIndex = 7
+        whiteOverlay.Active = false
+        whiteOverlay.Parent = svBox
+        Instance.new("UICorner", whiteOverlay).CornerRadius = UDim.new(0, 6)
+        local satGrad = Instance.new("UIGradient")
+        satGrad.Rotation = 0
+        satGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+        satGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+        satGrad.Parent = whiteOverlay
+        local valFrame = Instance.new("Frame")
+        valFrame.Name = "BlackGradient"
+        valFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+        valFrame.BorderSizePixel = 0
+        valFrame.Size = UDim2.new(1, 0, 1, 0)
+        valFrame.ZIndex = 8
+        valFrame.Active = false
+        valFrame.Parent = svBox
+        Instance.new("UICorner", valFrame).CornerRadius = UDim.new(0, 6)
+        local valGrad = Instance.new("UIGradient")
+        valGrad.Rotation = 90
+        valGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)})
+        valGrad.Parent = valFrame
+
+        local svCursor = Instance.new("Frame")
+        svCursor.Size = UDim2.new(0, 14, 0, 14)
+        svCursor.BackgroundTransparency = 1
+        svCursor.Parent = svBox
+        local svInner = Instance.new("Frame")
+        svInner.Size = UDim2.new(1, -4, 1, -4)
+        svInner.Position = UDim2.new(0, 2, 0, 2)
+        svInner.BackgroundTransparency = 1
+        svInner.Parent = svCursor
+        Instance.new("UICorner", svInner).CornerRadius = UDim.new(1, 0)
+        local svStroke = Instance.new("UIStroke", svInner)
+        svStroke.Color = Color3.fromRGB(255, 255, 255)
+        svStroke.Thickness = 2
+
+        local hueBar = Instance.new("ImageButton")
+        hueBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        hueBar.Position = UDim2.new(1, -22, 0, 10)
+        hueBar.Size = UDim2.new(0, 12, 1, -58)
+        hueBar.AutoButtonColor = false
+        hueBar.Parent = picker
+        Instance.new("UICorner", hueBar).CornerRadius = UDim.new(1, 0)
+        local hueGrad = Instance.new("UIGradient")
+        hueGrad.Rotation = 90
+        hueGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+            ColorSequenceKeypoint.new(0.16, Color3.fromHSV(0.16, 1, 1)),
+            ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromHSV(0.5, 1, 1)),
+            ColorSequenceKeypoint.new(0.66, Color3.fromHSV(0.66, 1, 1)),
+            ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+            ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1)),
+        })
+        hueGrad.Parent = hueBar
+
+        local hueCursor = Instance.new("Frame")
+        hueCursor.Name = "HueCursor"
+        hueCursor.AnchorPoint = Vector2.new(0, 0.5)
+        hueCursor.Size = UDim2.new(1, 6, 0, 6)
+        hueCursor.Position = UDim2.new(0, -3, 0, 0)
+        hueCursor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        hueCursor.BorderSizePixel = 0
+        hueCursor.ZIndex = 10
+        hueCursor.Active = false
+        hueCursor.Parent = hueBar
+        Instance.new("UICorner", hueCursor).CornerRadius = UDim.new(0, 2)
+        Instance.new("UIStroke", hueCursor).Color = Color3.fromRGB(0, 0, 0)
+
+        local transpLabel = Instance.new("TextLabel")
+        transpLabel.BackgroundTransparency = 1
+        transpLabel.Position = UDim2.new(0, 10, 0, 128)
+        transpLabel.Size = UDim2.new(1, -70, 0, 14)
+        transpLabel.Font = Enum.Font.Gotham
+        transpLabel.TextSize = 12
+        transpLabel.TextColor3 = Color3.fromRGB(190, 190, 190)
+        transpLabel.TextXAlignment = Enum.TextXAlignment.Left
+        transpLabel.Text = "Transparency"
+        transpLabel.Parent = picker
+
+        local transpVal = Instance.new("TextLabel")
+        transpVal.BackgroundTransparency = 1
+        transpVal.Position = UDim2.new(1, -52, 0, 128)
+        transpVal.Size = UDim2.new(0, 42, 0, 14)
+        transpVal.Font = Enum.Font.Gotham
+        transpVal.TextSize = 12
+        transpVal.TextColor3 = Color3.fromRGB(190, 190, 190)
+        transpVal.TextXAlignment = Enum.TextXAlignment.Right
+        transpVal.Text = string.format("%.2f", transp)
+        transpVal.Parent = picker
+
+        local transpTrack = Instance.new("TextButton")
+        transpTrack.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        transpTrack.Position = UDim2.new(0, 10, 0, 147)
+        transpTrack.Size = UDim2.new(1, -20, 0, 4)
+        transpTrack.Text = ""
+        transpTrack.AutoButtonColor = false
+        transpTrack.Parent = picker
+        Instance.new("UICorner", transpTrack).CornerRadius = UDim.new(1, 0)
+
+        local transpFill = Instance.new("Frame")
+        transpFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        transpFill.Size = UDim2.new(transp, 0, 1, 0)
+        transpFill.BorderSizePixel = 0
+        transpFill.Parent = transpTrack
+        Instance.new("UICorner", transpFill).CornerRadius = UDim.new(1, 0)
+
+local UserInputService = game:GetService("UserInputService")
+
+local transpTrack = Instance.new("TextButton")
+transpTrack.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+transpTrack.Position = UDim2.new(0, 10, 0, 147)
+transpTrack.Size = UDim2.new(1, -20, 0, 4)
+transpTrack.Text = ""
+transpTrack.AutoButtonColor = false
+transpTrack.Parent = picker
+Instance.new("UICorner", transpTrack).CornerRadius = UDim.new(1, 0)
+
+local transpFill = Instance.new("Frame")
+transpFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+transpFill.Size = UDim2.new(transp, 0, 1, 0)
+transpFill.BorderSizePixel = 0
+transpFill.Parent = transpTrack
+Instance.new("UICorner", transpFill).CornerRadius = UDim.new(1, 0)
+
+if transpKey then
+    TranspUIs[transpKey] = TranspUIs[transpKey] or {}
+    table.insert(TranspUIs[transpKey], {fill = transpFill, val = transpVal})
+end
+
+local function updateVisual(fire, skipSave)
+    local color = Color3.fromHSV(h, s, v)
+    preview.BackgroundColor3 = color
+    svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+    svCursor.Position = UDim2.new(s, -7, 1 - v, -7)
+    hueCursor.Position = UDim2.new(0, -4, math.clamp(h, 0.03, 0.97), 0)
+    if fire ~= false and onChange then onChange(color, skipSave) end
+end
+
+local function setTranspVisual(val)
+    for _, ui in ipairs(TranspUIs[transpKey] or {}) do
+        ui.fill.Size = UDim2.new(val, 0, 1, 0)
+        ui.val.Text = string.format("%.2f", val)
+    end
+end
+
+local function setTransp(val, fire)
+    transp = math.clamp(val, 0, 1)
+    setTranspVisual(transp)
+    if fire ~= false and onTranspChange then onTranspChange(transp) end
+end
+
+if saveKey then
+    PickSetters[saveKey] = function(c)
+        h, s, v = c:ToHSV()
+        preview.BackgroundColor3 = c
+        svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        svCursor.Position = UDim2.new(s, -7, 1 - v, -7)
+        hueCursor.Position = UDim2.new(0, -4, math.clamp(h, 0.03, 0.97), 0)
+        if onChange then onChange(c, true) end
+    end
+end
+if transpKey then
+    SliderSetters[transpKey] = function(val)
+        setTranspVisual(val)
+        if onTranspChange then onTranspChange(val, true) end
+    end
+end
+
+local draggingSV = false
+local draggingHue = false
+local draggingTransp = false
+local dragInputTransp = nil
+
+local function updateSV(input)
+    local pos = svBox.AbsolutePosition
+    local size = svBox.AbsoluteSize
+    s = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+    v = 1 - math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+    updateVisual()
+    SaveColors()
+end
+local function updateHue(input)
+    local pos = hueBar.AbsolutePosition
+    local size = hueBar.AbsoluteSize
+    h = math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+    updateVisual()
+    SaveColors()
+end
+local function updateTransp(input)
+    local pos = transpTrack.AbsolutePosition
+    local size = transpTrack.AbsoluteSize
+    if size.X <= 0 then return end
+    local val = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+    setTransp(val)
+    SaveColors()
+end
+
+svBox.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSV = true updateSV(input) end
+end)
+hueBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingHue = true updateHue(input) end
+end)
+transpTrack.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingTransp = true dragInputTransp = input updateTransp(input) end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if draggingSV then updateSV(input) end
+        if draggingHue then updateHue(input) end
+        if draggingTransp and input == dragInputTransp then updateTransp(input) end
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        draggingSV = false draggingHue = false
+        if input == dragInputTransp then draggingTransp = false dragInputTransp = nil end
+    end
+end)
+
+preview.MouseButton1Click:Connect(function()
+    picker.Visible = not picker.Visible
+end)
+updateVisual(false)
+setTransp(transp, false)
+end
+
+local function CreateTransparencySlider(parent, name, defaultValue, onChange, saveKey, order)
+    if saveKey then
+        SliderSetters[saveKey] = function(v)
+            if onChange then onChange(v, true) end
+        end
+    end
+    return nil
+end
+
+local function CreateResetButton(parent, text, keys, transpKeys)
+    local btn = Instance.new("TextButton")
+    btn.Name = text
+    btn.Size = UDim2.new(1, 0, 0, 20)
+    btn.BackgroundTransparency = 1
+    btn.Text = text
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.TextColor3 = Color3.fromRGB(170, 170, 170)
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.ZIndex = 5
+    btn.LayoutOrder = 99
+    btn.Parent = parent
+    btn.MouseButton1Click:Connect(function()
+        for _, k in ipairs(keys) do
+            local def = DEFAULT_COLORS[k]
+            if PickSetters[k] then PickSetters[k](def) end
+            if PickPreviews[k] then PickPreviews[k].BackgroundColor3 = def end
+        end
+        for _, k in ipairs(transpKeys or {}) do
+            local def = DEFAULT_TRANSP[k] or 0
+            if SliderSetters[k] then SliderSetters[k](def) end
+        end
+        task.wait()
+        SaveColors()
+        for _, k in ipairs(keys) do
+            if PickPreviews[k] then PickPreviews[k].BackgroundColor3 = DEFAULT_COLORS[k] end
+        end
+    end)
+    btn.MouseEnter:Connect(function() btn.TextColor3 = Color3.fromRGB(255, 255, 255) end)
+    btn.MouseLeave:Connect(function() btn.TextColor3 = Color3.fromRGB(170, 170, 170) end)
+    return btn
+end
+
+    CreatePickColor(contentTimerColors, "Computer Color", ComputerColor, function(c, skip) ComputerColor = c if OnComputerColorChanged then OnComputerColorChanged(c) end if not skip then SaveColors() end end, "ComputerColor", 1)
+    CreatePickColor(contentTimerColors, "Exit Door Color", ExitColor, function(c, skip) ExitColor = c if OnExitColorChanged then OnExitColorChanged(c) end if not skip then SaveColors() end end, "ExitColor", 2)
+    CreatePickColor(contentTimerColors, "Door Timer Color", DoorColor, function(c, skip) DoorColor = c if OnDoorColorChanged then OnDoorColorChanged(c) end if not skip then SaveColors() end end, "DoorColor", 3)
+    CreatePickColor(contentTimerColors, "Life Timer Color", LifeColor, function(c, skip) LifeColor = c if OnLifeColorChanged then OnLifeColorChanged(c) end if not skip then SaveColors() end end, "LifeColor", 4)
+    CreatePickColor(contentTimerColors, "Walkspeed Color", WalkspeedColor, function(c, skip) WalkspeedColor = c if OnWalkspeedColorChanged then OnWalkspeedColorChanged(c) end if not skip then SaveColors() end end, "WalkspeedColor", 5)
+    CreateTransparencySlider(contentTimerColors, "Transparency", TimerTransparency, function(v, skip) TimerTransparency = v if OnTimerTransparencyChanged then OnTimerTransparencyChanged(v) end if not skip then SaveColors() end end, "TimerTransparency", 6)
+    CreateResetButton(contentTimerColors, "Reset Timer Colors", {"ComputerColor", "ExitColor", "DoorColor", "LifeColor", "WalkspeedColor"}, {"TimerTransparency"})
+
+    CreatePickColor(contentIndicatorColors, "GetUp Color", GetUpColor, function(c, skip) GetUpColor = c if OnGetUpColorChanged then OnGetUpColorChanged(c) end if not skip then SaveColors() end end, "GetUpColor", 1)
+    CreatePickColor(contentIndicatorColors, "Beast Power Color", BeastPowerColor, function(c, skip) BeastPowerColor = c if OnBeastPowerColorChanged then OnBeastPowerColorChanged(c) end if not skip then SaveColors() end end, "BeastPowerColor", 2)
+    CreatePickColor(contentIndicatorColors, "Beast Power V2 Color", BeastPowerV2Color, function(c, skip) BeastPowerV2Color = c if OnBeastPowerV2ColorChanged then OnBeastPowerV2ColorChanged(c) end if not skip then SaveColors() end end, "BeastPowerV2Color", 3)
+    CreatePickColor(contentIndicatorColors, "Beast Spawn Color", BeastSpawnColor, function(c, skip) BeastSpawnColor = c if OnBeastSpawnColorChanged then OnBeastSpawnColorChanged(c) end if not skip then SaveColors() end end, "BeastSpawnColor", 4)
+    CreateTransparencySlider(contentIndicatorColors, "Transparency", IndicatorTransparency, function(v, skip) IndicatorTransparency = v if OnIndicatorTransparencyChanged then OnIndicatorTransparencyChanged(v) end if not skip then SaveColors() end end, "IndicatorTransparency", 5)
+    CreateResetButton(contentIndicatorColors, "Reset Indicators Colors", {"GetUpColor", "BeastPowerColor", "BeastPowerV2Color", "BeastSpawnColor"}, {"IndicatorTransparency"})
 
     do
         local enabled = false
@@ -2439,17 +3241,10 @@ do
         local P = game:GetService("Players")
         local RS = game:GetService("ReplicatedStorage")
         local W = workspace
-
         CreateToggle(content1P, "Computer Progress", false, function(v)
             enabled = v
-            if not v then
-                for _, d in pairs(comps) do
-                    if d.gui then d.gui:Destroy() end
-                end
-                comps = {}
-            end
+            if not v then for _, d in pairs(comps) do if d.gui then d.gui:Destroy() end end comps = {} end
         end)
-
         local function make(pc)
             if comps[pc] then return end
             local g = Instance.new("BillboardGui")
@@ -2466,20 +3261,22 @@ do
             txt.TextColor3 = Color3.new(1, 1, 1)
             txt.TextStrokeTransparency = 0.4
             txt.Text = "0%"
+            txt.TextTransparency = TimerTransparency
             local bg = Instance.new("Frame", g)
             bg.Position = UDim2.new(0, 0, 0.55, 0)
             bg.Size = UDim2.new(1, 0, 0.35, 0)
             bg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             bg.BorderSizePixel = 0
+            bg.BackgroundTransparency = TimerTransparency
             Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
             local bar = Instance.new("Frame", bg)
             bar.Size = UDim2.new(0, 0, 1, 0)
             bar.BorderSizePixel = 0
-            bar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            bar.BackgroundColor3 = ComputerColor
+            bar.BackgroundTransparency = TimerTransparency
             Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
-            comps[pc] = {gui = g, bar = bar, txt = txt, p = 0, d = false}
+            comps[pc] = {gui = g, bar = bar, txt = txt, bg = bg, p = 0, d = false}
         end
-
         local function progress(pc)
             local m = 0
             for _, p in pairs(pc:GetChildren()) do
@@ -2489,46 +3286,39 @@ do
                         local s = pl and pl:FindFirstChild("TempPlayerStatsModule")
                         local ap = s and s:FindFirstChild("ActionProgress")
                         local r = s and s:FindFirstChild("Ragdoll")
-                        if ap and r and not r.Value then
-                            m = math.max(m, ap.Value)
-                        end
+                        if ap and r and not r.Value then m = math.max(m, ap.Value) end
                     end
                 end
             end
             return m
         end
-
+        OnComputerColorChanged = function(c) for _, d in pairs(comps) do if d.bar and not d.d then d.bar.BackgroundColor3 = c end end end
+        local _oldTimerTransp = OnTimerTransparencyChanged
+        OnTimerTransparencyChanged = function(t)
+            if _oldTimerTransp then _oldTimerTransp(t) end
+            for _, d in pairs(comps) do
+                if d.bar then d.bar.BackgroundTransparency = t end
+                if d.bg then d.bg.BackgroundTransparency = t end
+                if d.txt then d.txt.TextTransparency = t end
+            end
+        end
         RunService.Heartbeat:Connect(function()
             if not enabled then return end
             for pc, d in pairs(comps) do
                 if not d.d then
                     d.p = math.max(d.p, progress(pc))
                     d.bar.Size = UDim2.new(d.p, 0, 1, 0)
-                    if d.p >= 1 then
-                        d.d = true
-                        d.txt.Text = "COMPLETED"
-                        d.txt.TextColor3 = Color3.fromRGB(0, 255, 0)
-                        d.bar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-                    else
-                        d.txt.Text = string.format("%.1f%%", d.p * 100)
-                    end
+                    if d.p >= 1 then d.d = true d.txt.Text = "COMPLETED" d.txt.TextColor3 = Color3.fromRGB(0, 255, 0) d.bar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                    else d.txt.Text = string.format("%.1f%%", d.p * 100) end
                 end
             end
         end)
-
         task.spawn(function()
             while true do
                 if enabled then
-                    local m = RS:FindFirstChild("CurrentMap")
-                    m = m and m.Value
+                    local m = RS:FindFirstChild("CurrentMap") m = m and m.Value
                     local map = m and W:FindFirstChild(tostring(m))
-                    if map then
-                        for _, o in pairs(map:GetChildren()) do
-                            if o.Name == "ComputerTable" and not comps[o] then
-                                make(o)
-                            end
-                        end
-                    end
+                    if map then for _, o in pairs(map:GetChildren()) do if o.Name == "ComputerTable" and not comps[o] then make(o) end end end
                 end
                 task.wait(1)
             end
@@ -2543,19 +3333,16 @@ do
     local folder
     local connAdded
     local loopThread
-
     local function getProgress(plr)
         local stats = plr:FindFirstChild("TempPlayerStatsModule")
         if not stats then return 0 end
         local ap = stats:FindFirstChild("ActionProgress") or stats:FindFirstChild("DoorProgress")
         return ap and ap.Value or 0
     end
-
     local function addDoor(d)
         if doors[d] then return end
         local part = d.PrimaryPart or d:FindFirstChildWhichIsA("BasePart")
         if not part then return end
-
         local g = Instance.new("BillboardGui")
         g.Name = "ExitDoorTimer"
         g.Size = UDim2.new(0,140,0,40)
@@ -2563,7 +3350,6 @@ do
         g.AlwaysOnTop = true
         g.Adornee = part
         g.Parent = folder
-
         local t = Instance.new("TextLabel")
         t.Size = UDim2.new(1,0,0.6,0)
         t.BackgroundTransparency = 1
@@ -2573,65 +3359,58 @@ do
         t.TextColor3 = Color3.new(1,1,1)
         t.TextStrokeTransparency = 0
         t.TextStrokeColor3 = Color3.new(0,0,0)
+        t.TextTransparency = TimerTransparency
         t.Parent = g
-
         local bg = Instance.new("Frame")
         bg.Size = UDim2.new(0.8,0,0,6)
         bg.Position = UDim2.new(0.1,0,0.7,0)
         bg.BackgroundColor3 = Color3.fromRGB(20,20,20)
         bg.BorderSizePixel = 0
+        bg.BackgroundTransparency = TimerTransparency
         bg.Parent = g
-
         local f = Instance.new("Frame")
         f.Size = UDim2.new(0,0,1,0)
-        f.BackgroundColor3 = Color3.fromRGB(255,170,0)
+        f.BackgroundColor3 = ExitColor
         f.BorderSizePixel = 0
+        f.BackgroundTransparency = TimerTransparency
         f.Parent = bg
-
-        doors[d] = {p = part, t = t, f = f, gui = g, frozen = false}
+        doors[d] = {p = part, t = t, f = f, bg = bg, gui = g, frozen = false}
     end
-
     local function removeAll()
         if connAdded then connAdded:Disconnect() connAdded = nil end
         loopThread = nil
         if folder then folder:Destroy() folder = nil end
         table.clear(doors)
     end
-
+    OnExitColorChanged = function(c) for _, data in pairs(doors) do if data.f and not data.frozen then data.f.BackgroundColor3 = c end if data.t and data.t.Text ~= "EXIT" and not data.frozen then data.t.TextColor3 = c end end end
+    local _prevExitTransp = OnTimerTransparencyChanged
+    local _oldExitHandler = OnTimerTransparencyChanged
+    local prevTimerTranspHandler = OnTimerTransparencyChanged
+    OnTimerTransparencyChanged = function(t)
+        if prevTimerTranspHandler then prevTimerTranspHandler(t) end
+        for _, data in pairs(doors) do
+            if data.f then data.f.BackgroundTransparency = t end
+            if data.bg then data.bg.BackgroundTransparency = t end
+            if data.t then data.t.TextTransparency = t end
+        end
+    end
     CreateToggle(content1P, "Exit Door Timer", false, function(v)
         enabled = v
-        if not v then
-            removeAll()
-            return
-        end
-
+        if not v then removeAll() return end
         removeAll()
-
         folder = Instance.new("Folder")
         folder.Name = "ExitDoorUI"
         folder.Parent = LP:WaitForChild("PlayerGui")
-
-        for _,o in ipairs(workspace:GetDescendants()) do
-            if o:IsA("Model") and (o.Name == "ExitDoor" or o.Name == "Exit") then
-                addDoor(o)
-            end
-        end
-
+        for _,o in ipairs(workspace:GetDescendants()) do if o:IsA("Model") and (o.Name == "ExitDoor" or o.Name == "Exit") then addDoor(o) end end
         connAdded = workspace.DescendantAdded:Connect(function(o)
-            if enabled and o:IsA("Model") and (o.Name == "ExitDoor" or o.Name == "Exit") then
-                task.wait(0.2)
-                addDoor(o)
-            end
+            if enabled and o:IsA("Model") and (o.Name == "ExitDoor" or o.Name == "Exit") then task.wait(0.2) addDoor(o) end
         end)
-
         task.spawn(function()
             loopThread = true
             while enabled and loopThread do
                 task.wait(0.1)
                 for d,data in pairs(doors) do
-                    if not d.Parent then
-                        if data.gui then data.gui:Destroy() end
-                        doors[d] = nil
+                    if not d.Parent then if data.gui then data.gui:Destroy() end doors[d] = nil
                     else
                         local best = 0
                         local using = false
@@ -2640,31 +3419,16 @@ do
                             local hrp = char and char:FindFirstChild("HumanoidRootPart")
                             if hrp and (hrp.Position - data.p.Position).Magnitude <= 12 then
                                 local prog = getProgress(plr)
-                                if prog > 0 then
-                                    using = true
-                                    best = math.max(best, prog)
-                                end
+                                if prog > 0 then using = true best = math.max(best, prog) end
                             end
                         end
-
                         local prog = using and math.clamp(best,0,1) or 0
-
                         if prog >= 0.99 and not data.frozen then
-                            data.frozen = true
-                            data.f.Size = UDim2.new(1,0,1,0)
-                            data.f.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-                            data.t.Text = "OPEN: 100%"
-                            data.t.TextColor3 = Color3.fromRGB(0, 255, 0)
+                            data.frozen = true data.f.Size = UDim2.new(1,0,1,0) data.f.BackgroundColor3 = Color3.fromRGB(0, 255, 0) data.t.Text = "OPEN: 100%" data.t.TextColor3 = Color3.fromRGB(0, 255, 0)
                         elseif prog <= 0.01 and data.frozen then
-                            data.frozen = false
-                            data.f.BackgroundColor3 = Color3.fromRGB(255,170,0)
-                            data.f.Size = UDim2.new(0,0,1,0)
-                            data.t.Text = "EXIT"
-                            data.t.TextColor3 = Color3.new(1,1,1)
+                            data.frozen = false data.f.BackgroundColor3 = ExitColor data.f.Size = UDim2.new(0,0,1,0) data.t.Text = "EXIT" data.t.TextColor3 = Color3.new(1,1,1)
                         elseif not data.frozen then
-                            data.f.Size = UDim2.new(prog,0,1,0)
-                            data.t.Text = (prog > 0.01) and ("OPENING: "..math.floor(prog*100).."%") or "EXIT"
-                            data.t.TextColor3 = (prog > 0) and Color3.fromRGB(255,170,0) or Color3.new(1,1,1)
+                            data.f.Size = UDim2.new(prog,0,1,0) data.t.Text = (prog > 0.01) and ("OPENING: "..math.floor(prog*100).."%") or "EXIT" data.t.TextColor3 = (prog > 0) and ExitColor or Color3.new(1,1,1)
                         end
                     end
                 end
@@ -2679,7 +3443,6 @@ do
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local TweenService = game:GetService("TweenService")
     local map = ReplicatedStorage:WaitForChild("CurrentMap")
-
     local tick = tick
     local string_format = string.format
     local math_clamp = math.clamp
@@ -2687,96 +3450,83 @@ do
     local Vector3_new = Vector3.new
     local UDim2_new = UDim2.new
     local localPlayer = Players.LocalPlayer
-
     local enabled = false
     local lastUpdate = 0
-
     if getgenv().DoorTrackerConn then getgenv().DoorTrackerConn:Disconnect() getgenv().DoorTrackerConn = nil end
     if getgenv().DoorMapChangedConn then getgenv().DoorMapChangedConn:Disconnect() getgenv().DoorMapChangedConn = nil end
-    if getgenv().DoorsList then
-        for i = 1, #getgenv().DoorsList do
-            local door = getgenv().DoorsList[i]
-            if door and door.Parent then
-                local b = door:FindFirstChild("BillboardGui")
-                if b then b:Destroy() end
-            end
-        end
-    end
-
+    if getgenv().DoorsList then for i = 1, #getgenv().DoorsList do local door = getgenv().DoorsList[i] if door and door.Parent then local b = door:FindFirstChild("BillboardGui") if b then b:Destroy() end end end end
     getgenv().DoorsList = {}
     getgenv().DoorProgressData = {}
-
-    local textColor = Color3.fromRGB(133, 88, 0)
-    local progressFillColor = Color3.fromRGB(133, 88, 0)
     local backgroundColor = Color3.fromRGB(32, 32, 32)
     local progressTransparency = 0.1
     local backgroundTransparency = 0.4
     local displaySeconds = true
     local displayOpener = true
-
+    OnDoorColorChanged = function(c)
+        for door, _ in pairs(getgenv().DoorProgressData) do
+            if door and door.Parent then
+                local gui = door:FindFirstChild("BillboardGui")
+                if gui then
+                    local fill = gui:FindFirstChild("ProgressBox") and gui.ProgressBox:FindFirstChild("ProgressFill")
+                    if fill then fill.BackgroundColor3 = c end
+                    local pct = gui:FindFirstChild("PercentageBox")
+                    if pct then pct.TextColor3 = c end
+                    local nameL = gui:FindFirstChild("PlayerNameLabel")
+                    if nameL then nameL.TextColor3 = c end
+                end
+            end
+        end
+    end
+    local prevDoorTransp = OnTimerTransparencyChanged
+    OnTimerTransparencyChanged = function(t)
+        if prevDoorTransp then prevDoorTransp(t) end
+        for door, _ in pairs(getgenv().DoorProgressData) do
+            if door and door.Parent then
+                local gui = door:FindFirstChild("BillboardGui")
+                if gui then
+                    local box = gui:FindFirstChild("ProgressBox")
+                    if box then box.BackgroundTransparency = math.clamp(0.4 + t * 0.6, 0, 1) end
+                    local fill = box and box:FindFirstChild("ProgressFill")
+                    if fill then fill.BackgroundTransparency = math.clamp(0.1 + t * 0.8, 0, 1) end
+                    local pct = gui:FindFirstChild("PercentageBox")
+                    if pct then pct.TextTransparency = t end
+                    local nameL = gui:FindFirstChild("PlayerNameLabel")
+                    if nameL then nameL.TextTransparency = t end
+                end
+            end
+        end
+    end
     CreateToggle(content1P, "Door Timer", false, function(state)
         enabled = state
         if not state then
             if getgenv().DoorTrackerConn then getgenv().DoorTrackerConn:Disconnect() getgenv().DoorTrackerConn = nil end
-            for door, _ in pairs(getgenv().DoorProgressData) do
-                if door and door.Parent then
-                    local b = door:FindFirstChild("BillboardGui")
-                    if b then b:Destroy() end
-                end
-            end
+            for door, _ in pairs(getgenv().DoorProgressData) do if door and door.Parent then local b = door:FindFirstChild("BillboardGui") if b then b:Destroy() end end end
             table.clear(getgenv().DoorsList)
             table.clear(getgenv().DoorProgressData)
-        else
-            setupDoors()
-            startTracker()
-        end
+        else setupDoors() startTracker() end
     end)
-
     local function getmap() return map.Value end
-
     local function getObjectPosition(object)
-        if object:IsA("Model") then
-            local primary = object.PrimaryPart
-            if primary then return primary.Position end
-            local cf = object:GetPivot()
-            if cf then return cf.Position end
-        elseif object:IsA("BasePart") then
-            return object.Position
-        end
+        if object:IsA("Model") then local primary = object.PrimaryPart if primary then return primary.Position end local cf = object:GetPivot() if cf then return cf.Position end
+        elseif object:IsA("BasePart") then return object.Position end
         return Vector3_new(0, 0, 0)
     end
-
     local function findNearestObject(playerPosition, objectList)
         local nearestObject = nil
         local shortestDistance = math.huge
-        for i = 1, #objectList do
-            local object = objectList[i]
-            if object.Parent then
-                local distance = (playerPosition - getObjectPosition(object)).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    nearestObject = object
-                end
-            end
-        end
+        for i = 1, #objectList do local object = objectList[i] if object.Parent then local distance = (playerPosition - getObjectPosition(object)).Magnitude if distance < shortestDistance then shortestDistance = distance nearestObject = object end end end
         return nearestObject, shortestDistance
     end
-
     local function isDoorLocked(door)
         local trigger = door:FindFirstChild("DoorTrigger")
-        if trigger then
-            local actionSign = trigger:FindFirstChild("ActionSign")
-            if actionSign then return actionSign.Value ~= 11 end
-        end
+        if trigger then local actionSign = trigger:FindFirstChild("ActionSign") if actionSign then return actionSign.Value ~= 11 end end
         return true
     end
-
     local function isValidDoor(obj)
         if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then return false end
         if not (obj:IsA("Model") or obj:IsA("BasePart")) then return false end
         return true
     end
-
     local function createUIForDoor(door)
         if door:FindFirstChild("BillboardGui") then door.BillboardGui:Destroy() end
         local BillboardGui = Instance_new("BillboardGui")
@@ -2789,29 +3539,26 @@ do
         BillboardGui.StudsOffset = Vector3_new(0, 0, 0)
         BillboardGui.Enabled = true
         BillboardGui.Parent = door
-
         local ProgressBox = Instance_new("TextLabel")
         ProgressBox.Name = "ProgressBox"
         ProgressBox.AnchorPoint = Vector2.new(0.5, 0)
         ProgressBox.BackgroundColor3 = backgroundColor
-        ProgressBox.BackgroundTransparency = backgroundTransparency
+        ProgressBox.BackgroundTransparency = math.clamp(0.4 + TimerTransparency * 0.6, 0, 1)
         ProgressBox.BorderSizePixel = 0
         ProgressBox.Position = UDim2_new(0.5, 0, 0.6, 0)
         ProgressBox.Size = UDim2_new(0.7, 0, 0.08, 0)
         ProgressBox.SizeConstraint = Enum.SizeConstraint.RelativeYY
         ProgressBox.Text = ""
         ProgressBox.Parent = BillboardGui
-
         local ProgressFill = Instance_new("TextLabel")
         ProgressFill.Name = "ProgressFill"
-        ProgressFill.BackgroundColor3 = progressFillColor
-        ProgressFill.BackgroundTransparency = progressTransparency
+        ProgressFill.BackgroundColor3 = DoorColor
+        ProgressFill.BackgroundTransparency = math.clamp(0.1 + TimerTransparency * 0.8, 0, 1)
         ProgressFill.BorderSizePixel = 0
         ProgressFill.Size = UDim2_new(0, 0, 1, 0)
         ProgressFill.ZIndex = 2
         ProgressFill.Text = ""
         ProgressFill.Parent = ProgressBox
-
         local PercentageBox = Instance_new("TextLabel")
         PercentageBox.Name = "PercentageBox"
         PercentageBox.AnchorPoint = Vector2.new(0.5, 0)
@@ -2820,10 +3567,10 @@ do
         PercentageBox.Size = UDim2_new(0.7, 0, 0.1, 0)
         PercentageBox.SizeConstraint = Enum.SizeConstraint.RelativeYY
         PercentageBox.Text = "0.0%"
-        PercentageBox.TextColor3 = textColor
+        PercentageBox.TextColor3 = DoorColor
+        PercentageBox.TextTransparency = TimerTransparency
         PercentageBox.TextScaled = true
         PercentageBox.Parent = BillboardGui
-
         local PlayerNameLabel = Instance_new("TextLabel")
         PlayerNameLabel.Name = "PlayerNameLabel"
         PlayerNameLabel.AnchorPoint = Vector2.new(0.5, 0)
@@ -2832,86 +3579,51 @@ do
         PlayerNameLabel.Size = UDim2_new(0.7, 0, 0.12, 0)
         PlayerNameLabel.SizeConstraint = Enum.SizeConstraint.RelativeYY
         PlayerNameLabel.Text = ""
-        PlayerNameLabel.TextColor3 = textColor
+        PlayerNameLabel.TextColor3 = DoorColor
+        PlayerNameLabel.TextTransparency = TimerTransparency
         PlayerNameLabel.TextScaled = true
         PlayerNameLabel.TextStrokeTransparency = 0.5
         PlayerNameLabel.Parent = BillboardGui
     end
-
     local function updateDoorUI(door, progress, timeRemaining)
         local gui = door:FindFirstChild("BillboardGui")
         if not gui then return end
-
         local ProgressBox = gui:FindFirstChild("ProgressBox")
         local ProgressFill = ProgressBox and ProgressBox:FindFirstChild("ProgressFill")
         local PercentageBox = gui:FindFirstChild("PercentageBox")
         local PlayerNameLabel = gui:FindFirstChild("PlayerNameLabel")
         if not ProgressBox or not ProgressFill or not PercentageBox then return end
-
         progress = math_clamp(progress or 0, 0, 1)
-
         local percentageText = string_format("%.1f%%", progress * 100)
-        if displaySeconds and timeRemaining and timeRemaining > 0 then
-            PercentageBox.Text = percentageText.. " | ".. string_format("%.1fs", timeRemaining)
-        else
-            PercentageBox.Text = percentageText
-        end
-
+        if displaySeconds and timeRemaining and timeRemaining > 0 then PercentageBox.Text = percentageText.. " | ".. string_format("%.1fs", timeRemaining) else PercentageBox.Text = percentageText end
         local data = getgenv().DoorProgressData[door]
-        if PlayerNameLabel and data then
-            PlayerNameLabel.Text = displayOpener and data.playerName ~= "" and data.playerName or ""
-        end
-
+        if PlayerNameLabel and data then PlayerNameLabel.Text = displayOpener and data.playerName ~= "" and data.playerName or "" end
         local targetSize = UDim2_new(progress, 0, 1, 0)
-        if ProgressFill.Size ~= targetSize then
-            TweenService:Create(ProgressFill, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
-        end
+        if ProgressFill.Size ~= targetSize then TweenService:Create(ProgressFill, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play() end
     end
-
     local function checkDoorStates()
         for door, data in pairs(getgenv().DoorProgressData) do
             if door and door.Parent then
                 local locked = isDoorLocked(door)
                 if data.playerName == "" then
                     local newProgress = locked and 0 or 1
-                    if data.progress ~= newProgress then
-                        data.progress = newProgress
-                        data.timeRemaining = nil
-                        updateDoorUI(door, newProgress, nil)
-                    end
+                    if data.progress ~= newProgress then data.progress = newProgress data.timeRemaining = nil updateDoorUI(door, newProgress, nil) end
                 end
             end
         end
     end
-
     function setupDoors()
         getgenv().DoorsList = {}
         getgenv().DoorProgressData = {}
         local currentMap = getmap()
-        if currentMap then
-            for _, v in pairs(currentMap:GetDescendants()) do
-                local name = v.Name:lower()
-                if (name == "singledoor" or name == "doubledoor") and isValidDoor(v) then
-                    table.insert(getgenv().DoorsList, v)
-                    getgenv().DoorProgressData[v] = {
-                        progress = 0, playerName = "", lastProgress = 0, lastUpdateTime = tick(), timeRemaining = nil, tween = nil
-                    }
-                    createUIForDoor(v)
-                    updateDoorUI(v, 0, nil)
-                end
-            end
-        end
+        if currentMap then for _, v in pairs(currentMap:GetDescendants()) do local name = v.Name:lower() if (name == "singledoor" or name == "doubledoor") and isValidDoor(v) then table.insert(getgenv().DoorsList, v) getgenv().DoorProgressData[v] = {progress = 0, playerName = "", lastProgress = 0, lastUpdateTime = tick(), timeRemaining = nil, tween = nil} createUIForDoor(v) updateDoorUI(v, 0, nil) end end end
     end
-
     function startTracker()
         if getgenv().DoorTrackerConn then return end
-
         getgenv().DoorTrackerConn = RunService.Heartbeat:Connect(function()
             if not enabled then return end
-
             if tick() - lastUpdate < 0.1 then return end
             lastUpdate = tick()
-
             local activeDoors = {}
             local players = Players:GetPlayers()
             for i = 1, #players do
@@ -2923,11 +3635,9 @@ do
                         local progressVal = stats:FindFirstChild("ActionProgress")
                         local ragdollVal = stats:FindFirstChild("Ragdoll")
                         local progress = progressVal and progressVal.Value or 0
-
                         if progress > 0 and not (ragdollVal and ragdollVal.Value) then
                             local playerPosition = character.HumanoidRootPart.Position
                             local nearestDoor, doorDistance = findNearestObject(playerPosition, getgenv().DoorsList)
-
                             if nearestDoor and doorDistance < 8 then
                                 local data = getgenv().DoorProgressData[nearestDoor]
                                 if data then
@@ -2936,19 +3646,8 @@ do
                                         local deltaProgress = progress - data.lastProgress
                                         local timeSinceLastUpdate = currentTime - data.lastUpdateTime
                                         local timeRemaining = nil
-
-                                        if deltaProgress > 0 and timeSinceLastUpdate > 0 then
-                                            timeRemaining = (1 - progress) / (deltaProgress / timeSinceLastUpdate)
-                                        else
-                                            timeRemaining = (1 - progress) * 1.5
-                                        end
-
-                                        data.progress = progress
-                                        data.playerName = plr.Name
-                                        data.timeRemaining = timeRemaining
-                                        data.lastProgress = progress
-                                        data.lastUpdateTime = currentTime
-
+                                        if deltaProgress > 0 and timeSinceLastUpdate > 0 then timeRemaining = (1 - progress) / (deltaProgress / timeSinceLastUpdate) else timeRemaining = (1 - progress) * 1.5 end
+                                        data.progress = progress data.playerName = plr.Name data.timeRemaining = timeRemaining data.lastProgress = progress data.lastUpdateTime = currentTime
                                         updateDoorUI(nearestDoor, progress, timeRemaining)
                                         activeDoors[nearestDoor] = true
                                     end
@@ -2958,32 +3657,17 @@ do
                     end
                 end
             end
-
             for door, data in pairs(getgenv().DoorProgressData) do
                 if not activeDoors[door] then
-                    if data.playerName ~= "" then
-                        data.playerName = ""
-                        updateDoorUI(door, data.progress, nil)
-                    end
-                    if isDoorLocked(door) and data.progress > 0 and data.progress < 1 then
-                        data.progress = 0
-                        data.timeRemaining = nil
-                        updateDoorUI(door, 0, nil)
-                    elseif not isDoorLocked(door) then
-                        data.progress = 1
-                        updateDoorUI(door, 1, nil)
-                    end
+                    if data.playerName ~= "" then data.playerName = "" updateDoorUI(door, data.progress, nil) end
+                    if isDoorLocked(door) and data.progress > 0 and data.progress < 1 then data.progress = 0 data.timeRemaining = nil updateDoorUI(door, 0, nil)
+                    elseif not isDoorLocked(door) then data.progress = 1 updateDoorUI(door, 1, nil) end
                 end
             end
-
             checkDoorStates()
         end)
-
         if getgenv().DoorMapChangedConn then getgenv().DoorMapChangedConn:Disconnect() end
-        getgenv().DoorMapChangedConn = map.Changed:Connect(function()
-            task.wait(2)
-            if enabled then setupDoors() end
-        end)
+        getgenv().DoorMapChangedConn = map.Changed:Connect(function() task.wait(2) if enabled then setupDoors() end end)
     end
 end
 
@@ -2991,36 +3675,30 @@ do
     local _G_Life = false
     local _G_LifeC = {}
     local LP = Players.LocalPlayer
-
-    local function disconnectAll()
-        for _, c in ipairs(_G_LifeC) do pcall(function() c:Disconnect() end) end
-        table.clear(_G_LifeC)
-    end
-
+    local function disconnectAll() for _, c in ipairs(_G_LifeC) do pcall(function() c:Disconnect() end) end table.clear(_G_LifeC) end
     local function clearAllTags()
         for _, p in ipairs(Players:GetPlayers()) do
-            if p.Character then
-                local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
-                if head then
-                    local tag = head:FindFirstChild("LifeTag")
-                    if tag then tag:Destroy() end
-                end
-            end
+            if p.Character then local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart") if head then local tag = head:FindFirstChild("LifeTag") if tag then tag:Destroy() end end end
         end
     end
-
-    local function beast(p)
-        local s = p:FindFirstChild("TempPlayerStatsModule", true)
-        local v = s and s:FindFirstChild("IsBeast")
-        return v and v.Value
-    end
-
+    local function beast(p) local s = p:FindFirstChild("TempPlayerStatsModule", true) local v = s and s:FindFirstChild("IsBeast") return v and v.Value end
     local function color(v)
-        if v >= 400 then return Color3.fromRGB(80,160,255)
-        elseif v >= 200 then return Color3.fromRGB(255,210,80)
+        if v >= 400 then return LifeColor
+        elseif v >= 200 then return LifeColor:Lerp(Color3.fromRGB(255,210,80), 0.5)
         else return Color3.fromRGB(255,80,80) end
     end
-
+    OnLifeColorChanged = function(c)
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart") if head then local tag = head:FindFirstChild("LifeTag") if tag then local t = tag:FindFirstChildOfClass("TextLabel") if t and t.Text ~= "000s" then t.TextColor3 = c end end end end
+        end
+    end
+    local prevLifeTransp = OnTimerTransparencyChanged
+    OnTimerTransparencyChanged = function(t)
+        if prevLifeTransp then prevLifeTransp(t) end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart") if head then local tag = head:FindFirstChild("LifeTag") if tag then local txt = tag:FindFirstChildOfClass("TextLabel") if txt then txt.TextTransparency = t end end end end
+        end
+    end
     local function createTag(char, player)
         if not _G_Life or player == LP then return end
         local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
@@ -3028,34 +3706,24 @@ do
         local stats = player:FindFirstChild("TempPlayerStatsModule", true)
         local hp = stats and stats:FindFirstChild("Health")
         if not hp then return end
-        
         local gui = Instance.new("BillboardGui")
         gui.Name = "LifeTag"
         gui.Size = UDim2.new(0, 60, 0, 20)
         gui.StudsOffset = Vector3.new(0, 3, 0)
         gui.AlwaysOnTop = true
         gui.Parent = head
-        
         local text = Instance.new("TextLabel")
         text.Size = UDim2.new(1, 0, 1, 0)
         text.BackgroundTransparency = 1
         text.TextScaled = true
         text.Font = Enum.Font.Arcade
         text.TextStrokeTransparency = 0.4
+        text.TextTransparency = TimerTransparency
         text.Parent = gui
-        
         local smooth = 500
         local conn = RunService.RenderStepped:Connect(function(dt)
-            if not _G_Life or not char.Parent then 
-                gui:Destroy() 
-                return 
-            end
-            if beast(player) then
-                text.Text = "000s"
-                text.TextColor3 = Color3.fromRGB(255,0,0)
-                smooth = 500
-                return
-            end
+            if not _G_Life or not char.Parent then gui:Destroy() return end
+            if beast(player) then text.Text = "000s" text.TextColor3 = Color3.fromRGB(255,0,0) smooth = 500 return end
             local target = math.floor(math.clamp(hp.Value, 0, 100) / 100 * 500)
             smooth += (target - smooth) * math.clamp(dt * 8, 0, 1)
             local v = math.floor(smooth + 0.5)
@@ -3064,35 +3732,23 @@ do
         end)
         table.insert(_G_LifeC, conn)
     end
-
     local function hookPlayer(p)
-        table.insert(_G_LifeC, p.CharacterAdded:Connect(function(c)
-            task.wait(0.3)
-            if _G_Life then createTag(c, p) end
-        end))
+        table.insert(_G_LifeC, p.CharacterAdded:Connect(function(c) task.wait(0.3) if _G_Life then createTag(c, p) end end))
         if p.Character and _G_Life then createTag(p.Character, p) end
     end
-
     CreateToggle(content1P, "Life Timer", false, function(v)
         _G_Life = v
         disconnectAll()
         clearAllTags()
         if not v then return end
-        
         for _, p in ipairs(Players:GetPlayers()) do hookPlayer(p) end
         table.insert(_G_LifeC, Players.PlayerAdded:Connect(hookPlayer))
-        
         task.spawn(function()
             while _G_Life do
                 task.wait(2)
                 if not _G_Life then break end
                 for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= LP and p.Character then
-                        local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
-                        if head and not head:FindFirstChild("LifeTag") then
-                            createTag(p.Character, p)
-                        end
-                    end
+                    if p ~= LP and p.Character then local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart") if head and not head:FindFirstChild("LifeTag") then createTag(p.Character, p) end end
                 end
             end
         end)
@@ -3103,19 +3759,24 @@ end
         local walkEnabled = false
         local connections = {}
         local localPlayer = Players.LocalPlayer
-
+        OnWalkspeedColorChanged = function(c)
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Character then local head = plr.Character:FindFirstChild("Head") if head then local tag = head:FindFirstChild("SpeedTag") if tag then local l = tag:FindFirstChildOfClass("TextLabel") if l then l.TextColor3 = c end end end end
+            end
+        end
+        local prevWalkTransp = OnTimerTransparencyChanged
+        OnTimerTransparencyChanged = function(t)
+            if prevWalkTransp then prevWalkTransp(t) end
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Character then local head = plr.Character:FindFirstChild("Head") if head then local tag = head:FindFirstChild("SpeedTag") if tag then local l = tag:FindFirstChildOfClass("TextLabel") if l then l.TextTransparency = t end end end end
+            end
+        end
         CreateToggle(content1P, "Walkspeed", false, function(Value)
             walkEnabled = Value
             if not Value then
                 for _, c in ipairs(connections) do pcall(function() c:Disconnect() end) end
                 table.clear(connections)
-                for _, plr in ipairs(Players:GetPlayers()) do
-                    local head = plr.Character and plr.Character:FindFirstChild("Head")
-                    if head then
-                        local tag = head:FindFirstChild("SpeedTag")
-                        if tag then tag:Destroy() end
-                    end
-                end
+                for _, plr in ipairs(Players:GetPlayers()) do local head = plr.Character and plr.Character:FindFirstChild("Head") if head then local tag = head:FindFirstChild("SpeedTag") if tag then tag:Destroy() end end end
                 return
             end
             table.clear(connections)
@@ -3136,28 +3797,22 @@ end
                 local label = Instance.new("TextLabel")
                 label.Size = UDim2.new(1, 0, 1, 0)
                 label.BackgroundTransparency = 1
-                label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                label.TextColor3 = WalkspeedColor
+                label.TextTransparency = TimerTransparency
                 label.TextStrokeTransparency = 0.3
                 label.TextScaled = true
                 label.Font = Enum.Font.GothamBold
                 label.Parent = billboard
                 local conn
                 conn = RunService.RenderStepped:Connect(function()
-                    if not walkEnabled or not character.Parent or not humanoid then
-                        conn:Disconnect()
-                        billboard:Destroy()
-                        return
-                    end
+                    if not walkEnabled or not character.Parent or not humanoid then conn:Disconnect() billboard:Destroy() return end
                     local speed = humanoid.WalkSpeed
                     label.Text = humanoid.MoveDirection.Magnitude > 0 and tostring(math.floor(speed)) or "0"
                 end)
                 table.insert(connections, conn)
             end
             local function monitorPlayer(plr)
-                local c1 = plr.CharacterAdded:Connect(function(char)
-                    task.wait(0.5)
-                    createSpeedTag(char)
-                end)
+                local c1 = plr.CharacterAdded:Connect(function(char) task.wait(0.5) createSpeedTag(char) end)
                 table.insert(connections, c1)
                 if plr.Character then createSpeedTag(plr.Character) end
             end
@@ -3167,9 +3822,7 @@ end
             task.spawn(function()
                 while walkEnabled do
                     task.wait(2)
-                    for _, plr in ipairs(Players:GetPlayers()) do
-                        if plr.Character then createSpeedTag(plr.Character) end
-                    end
+                    for _, plr in ipairs(Players:GetPlayers()) do if plr.Character then createSpeedTag(plr.Character) end end
                 end
             end)
         end)
@@ -3179,24 +3832,19 @@ end
         local Players = game:GetService("Players")
         local RunService = game:GetService("RunService")
         local LP = Players.LocalPlayer
-
-        local E = {
-            LP = LP,
-            DURATION = 27.7,
-            enabled = false,
-            playerUI = {},
-            nameTags = {},
-            countdownTags = {},
-            uiOffset = 70,
-            connections = {}
-        }
-
+        local E = { LP = LP, DURATION = 27.7, enabled = false, playerUI = {}, nameTags = {}, countdownTags = {}, uiOffset = 70, connections = {} }
         local function GetSmoothColor(timeLeft)
             local percent = math.clamp(timeLeft / E.DURATION, 0, 1)
-            local hue = 0.33 * percent
-            return Color3.fromHSV(hue, 1, 1)
+            return GetUpColor:Lerp(Color3.fromRGB(255, 0, 0), 1 - percent)
         end
-
+        OnGetUpColorChanged = function(c)
+            for _, data in pairs(E.playerUI) do if data.timerLabel then data.timerLabel.TextColor3 = c end end
+            for _, gui in pairs(E.countdownTags) do local l = gui:FindFirstChild("CountdownLabel") if l then l.TextColor3 = c end end
+        end
+        OnIndicatorTransparencyChanged = function(t)
+            for _, data in pairs(E.playerUI) do if data.timerLabel then data.timerLabel.TextTransparency = t end end
+            for _, gui in pairs(E.countdownTags) do local l = gui:FindFirstChild("CountdownLabel") if l then l.TextTransparency = t end end
+        end
         local function createNameTag(player, head)
             if E.nameTags[player] then E.nameTags[player]:Destroy() end
             local billboardGui = Instance.new("BillboardGui")
@@ -3221,14 +3869,7 @@ end
             E.nameTags[player] = billboardGui
             return billboardGui
         end
-
-        local function removeNameTag(player)
-            if E.nameTags[player] then
-                E.nameTags[player]:Destroy()
-                E.nameTags[player] = nil
-            end
-        end
-
+        local function removeNameTag(player) if E.nameTags[player] then E.nameTags[player]:Destroy() E.nameTags[player] = nil end end
         local function createCountdownLabel(player, head)
             if E.countdownTags[player] then E.countdownTags[player]:Destroy() end
             local billboardGui = Instance.new("BillboardGui")
@@ -3243,7 +3884,8 @@ end
             label.BackgroundTransparency = 1
             label.TextScaled = true
             label.Font = Enum.Font.GothamBold
-            label.TextColor3 = Color3.fromRGB(0, 255, 0)
+            label.TextColor3 = GetUpColor
+            label.TextTransparency = IndicatorTransparency
             label.TextStrokeTransparency = 1
             label.Text = string.format("%.3f", E.DURATION)
             label.Parent = billboardGui
@@ -3253,33 +3895,14 @@ end
             E.countdownTags[player] = billboardGui
             return billboardGui, label
         end
-
-        local function removeCountdownLabel(player)
-            if E.countdownTags[player] then
-                E.countdownTags[player]:Destroy()
-                E.countdownTags[player] = nil
-            end
-        end
-
+        local function removeCountdownLabel(player) if E.countdownTags[player] then E.countdownTags[player]:Destroy() E.countdownTags[player] = nil end end
         local function RepositionBottomUIs()
             local index = 0
-            for _, data in pairs(E.playerUI) do
-                if data.frame and data.frame.Parent then
-                    data.frame.Position = UDim2.new(1, -260, 1, -90 - (index * E.uiOffset))
-                    index += 1
-                end
-            end
+            for _, data in pairs(E.playerUI) do if data.frame and data.frame.Parent then data.frame.Position = UDim2.new(1, -260, 1, -90 - (index * E.uiOffset)) index += 1 end end
         end
-
         local function removeBottomRightUI(player)
-            if E.playerUI[player] then
-                if E.playerUI[player].connection then E.playerUI[player].connection:Disconnect() end
-                E.playerUI[player].screenGui:Destroy()
-                E.playerUI[player] = nil
-                RepositionBottomUIs()
-            end
+            if E.playerUI[player] then if E.playerUI[player].connection then E.playerUI[player].connection:Disconnect() end E.playerUI[player].screenGui:Destroy() E.playerUI[player] = nil RepositionBottomUIs() end
         end
-
         local function updateBottomRightUI(player, endTime)
             if player == E.LP then return end
             if E.playerUI[player] then return end
@@ -3311,7 +3934,8 @@ end
             timerLabel.BackgroundTransparency = 1
             timerLabel.TextSize = 36
             timerLabel.Font = Enum.Font.GothamBold
-            timerLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            timerLabel.TextColor3 = GetUpColor
+            timerLabel.TextTransparency = IndicatorTransparency
             timerLabel.TextStrokeTransparency = 1
             timerLabel.TextXAlignment = Enum.TextXAlignment.Right
             timerLabel.Text = string.format("%.3f", E.DURATION)
@@ -3326,16 +3950,11 @@ end
             renderSteppedConnection = RunService.RenderStepped:Connect(function()
                 if not E.enabled then removeBottomRightUI(player) return end
                 local secondsLeft = endTime - tick()
-                if secondsLeft < 0 or not player.Parent then
-                    removeBottomRightUI(player)
-                else
-                    timerLabel.Text = string.format("%.3f", secondsLeft)
-                    timerLabel.TextColor3 = GetSmoothColor(secondsLeft)
-                end
+                if secondsLeft < 0 or not player.Parent then removeBottomRightUI(player)
+                else timerLabel.Text = string.format("%.3f", secondsLeft) timerLabel.TextColor3 = GetSmoothColor(secondsLeft) end
             end)
             E.playerUI[player] = {screenGui = screenGui, frame = frame, timerLabel = timerLabel, connection = renderSteppedConnection}
         end
-
         local function startRagdollCountdown(player, ragdoll)
             local character = player.Character or player.CharacterAdded:Wait()
             local head = character:FindFirstChild("Head")
@@ -3346,25 +3965,13 @@ end
             local endTime = tick() + E.DURATION
             local renderSteppedConnection
             renderSteppedConnection = RunService.RenderStepped:Connect(function()
-                if not ragdoll.Value or not player.Parent or not E.enabled then
-                    removeCountdownLabel(player)
-                    removeNameTag(player)
-                    renderSteppedConnection:Disconnect()
-                    return
-                end
+                if not ragdoll.Value or not player.Parent or not E.enabled then removeCountdownLabel(player) removeNameTag(player) renderSteppedConnection:Disconnect() return end
                 local secondsLeft = endTime - tick()
-                if secondsLeft < 0 then
-                    removeCountdownLabel(player)
-                    removeNameTag(player)
-                    renderSteppedConnection:Disconnect()
-                else
-                    label.Text = string.format("%.3f", secondsLeft)
-                    label.TextColor3 = GetSmoothColor(secondsLeft)
-                end
+                if secondsLeft < 0 then removeCountdownLabel(player) removeNameTag(player) renderSteppedConnection:Disconnect()
+                else label.Text = string.format("%.3f", secondsLeft) label.TextColor3 = GetSmoothColor(secondsLeft) end
             end)
             if E.LP ~= player then updateBottomRightUI(player, endTime) end
         end
-
         local function onRagdollChanged(player)
             local tempStats = player:WaitForChild("TempPlayerStatsModule")
             local ragdoll = tempStats:WaitForChild("Ragdoll")
@@ -3373,23 +3980,13 @@ end
                 local character = player.Character or player.CharacterAdded:Wait()
                 local head = character:FindFirstChild("Head")
                 if not head then return end
-                if ragdoll.Value then
-                    startRagdollCountdown(player, ragdoll)
-                else
-                    removeBottomRightUI(player)
-                    removeNameTag(player)
-                    removeCountdownLabel(player)
-                end
+                if ragdoll.Value then startRagdollCountdown(player, ragdoll)
+                else removeBottomRightUI(player) removeNameTag(player) removeCountdownLabel(player) end
             end)
             table.insert(E.connections, conn)
-            local charRemoving = player.CharacterRemoving:Connect(function()
-                removeNameTag(player)
-                removeCountdownLabel(player)
-                removeBottomRightUI(player)
-            end)
+            local charRemoving = player.CharacterRemoving:Connect(function() removeNameTag(player) removeCountdownLabel(player) removeBottomRightUI(player) end)
             table.insert(E.connections, charRemoving)
         end
-
         local function CleanupAll()
             for _, conn in ipairs(E.connections) do pcall(function() conn:Disconnect() end) end
             table.clear(E.connections)
@@ -3397,42 +3994,32 @@ end
             for player, _ in pairs(E.nameTags) do removeNameTag(player) end
             for player, _ in pairs(E.countdownTags) do removeCountdownLabel(player) end
         end
-
         local function Init()
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player.Character then
-                    onRagdollChanged(player)
-                else
-                    player.CharacterAdded:Connect(function() onRagdollChanged(player) end)
-                end
-            end
-            local added = Players.PlayerAdded:Connect(function(player)
-                player.CharacterAdded:Connect(function() onRagdollChanged(player) end)
-            end)
+            for _, player in ipairs(Players:GetPlayers()) do if player.Character then onRagdollChanged(player) else player.CharacterAdded:Connect(function() onRagdollChanged(player) end) end end
+            local added = Players.PlayerAdded:Connect(function(player) player.CharacterAdded:Connect(function() onRagdollChanged(player) end) end)
             table.insert(E.connections, added)
         end
-
-        CreateToggle(content2P, "GetUp Timer", false, function(Value)
-            E.enabled = Value
-            if Value then
-                Init()
-            else
-                CleanupAll()
-            end
-        end)
+        CreateToggle(content2P, "GetUp Timer", false, function(Value) E.enabled = Value if Value then Init() else CleanupAll() end end)
     end
 
     do
         local beastEnabled = false
         local loopThread = nil
         local CoreGui = game:GetService("CoreGui")
-
+        local currentLabel = nil
+        OnBeastPowerColorChanged = function(c) if currentLabel then currentLabel.TextColor3 = c end end
+        local prevBeastTransp = OnIndicatorTransparencyChanged
+        OnIndicatorTransparencyChanged = function(t)
+            if prevBeastTransp then prevBeastTransp(t) end
+            if currentLabel then currentLabel.TextTransparency = t currentLabel.BackgroundTransparency = math.clamp(0.35 + t * 0.5, 0, 1) end
+        end
         CreateToggle(content2P, "Beast Power", false, function(Value)
             beastEnabled = Value
             if not Value then
                 if loopThread then task.cancel(loopThread) loopThread = nil end
                 local old = CoreGui:FindFirstChild("BeastPowerGui")
                 if old then old:Destroy() end
+                currentLabel = nil
                 return
             end
             local old = CoreGui:FindFirstChild("BeastPowerGui")
@@ -3445,17 +4032,16 @@ end
             label.Size = UDim2.new(0, 200, 0, 20)
             label.Position = UDim2.new(0.5, -100, 0.83, 0)
             label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            label.BackgroundTransparency = 0.35
+            label.BackgroundTransparency = math.clamp(0.35 + IndicatorTransparency * 0.5, 0, 1)
+            label.TextTransparency = IndicatorTransparency
             label.TextScaled = true
             label.Font = Enum.Font.GothamBold
             label.Text = ""
+            label.TextColor3 = BeastPowerColor
             label.Parent = gui
+            currentLabel = label
             local function getBeast()
-                for _,p in ipairs(Players:GetPlayers()) do
-                    local char = p.Character
-                    local bp = char and char:FindFirstChild("BeastPowers")
-                    if bp then return bp end
-                end
+                for _,p in ipairs(Players:GetPlayers()) do local char = p.Character local bp = char and char:FindFirstChild("BeastPowers") if bp then return bp end end
                 return nil
             end
             loopThread = task.spawn(function()
@@ -3463,26 +4049,16 @@ end
                 while beastEnabled do
                     task.wait(0.2)
                     local bp = getBeast()
-                    if not bp then
-                        gui.Enabled = false
-                        readyShown = false
+                    if not bp then gui.Enabled = false readyShown = false
                     else
                         gui.Enabled = true
                         local percent = bp:FindFirstChild("PowerProgressPercent")
                         if percent then
                             local value = math.floor(percent.Value * 100)
                             if value >= 100 then
-                                if not readyShown then
-                                    label.TextColor3 = Color3.fromRGB(0, 255, 0)
-                                    label.Text = "BeastPower is Full"
-                                    readyShown = true
-                                end
-                            elseif value >= 70 then
-                                label.TextColor3 = Color3.fromRGB(255, 170, 0)
-                                label.Text = "BeastPower Back In: ".. value.. "%"
-                                readyShown = false
+                                if not readyShown then label.TextColor3 = Color3.fromRGB(0, 255, 0) label.Text = "BeastPower is Full" readyShown = true end
                             else
-                                label.TextColor3 = Color3.fromRGB(255, 0, 0)
+                                label.TextColor3 = BeastPowerColor
                                 label.Text = "BeastPower Back In: ".. value.. "%"
                                 readyShown = false
                             end
@@ -3497,23 +4073,10 @@ end
         local _G_BeastPower2_Session = 0
         local _G_BeastPower2_Connections = {}
         local running = false
-
-        local function disconnectAll()
-            for _, c in ipairs(_G_BeastPower2_Connections) do pcall(function() c:Disconnect() end) end
-            _G_BeastPower2_Connections = {}
-        end
-
+        local function disconnectAll() for _, c in ipairs(_G_BeastPower2_Connections) do pcall(function() c:Disconnect() end) end _G_BeastPower2_Connections = {} end
         local function clearAll()
-            for _, plr in ipairs(Players:GetPlayers()) do
-                local char = plr.Character
-                local head = char and char:FindFirstChild("Head")
-                if head then
-                    local g = head:FindFirstChild("RP")
-                    if g then g:Destroy() end
-                end
-            end
+            for _, plr in ipairs(Players:GetPlayers()) do local char = plr.Character local head = char and char:FindFirstChild("Head") if head then local g = head:FindFirstChild("RP") if g then g:Destroy() end end end
         end
-
         local function mkBBG(head)
             if head:FindFirstChild("RP") then return end
             local g = Instance.new("BillboardGui")
@@ -3525,33 +4088,27 @@ end
             local l = Instance.new("TextLabel")
             l.Size = UDim2.new(1, 0, 1, 0)
             l.BackgroundTransparency = 1
-            l.TextColor3 = Color3.new(1,1,1)
+            l.TextColor3 = BeastPowerV2Color
+            l.TextTransparency = IndicatorTransparency
             l.TextScaled = false
             l.TextSize = 11
             l.Font = Enum.Font.GothamBold
             l.Text = "0%"
             l.Parent = g
         end
-
-        local function rmBBG(head)
-            local g = head and head:FindFirstChild("RP")
-            if g then g:Destroy() end
+        local function rmBBG(head) local g = head and head:FindFirstChild("RP") if g then g:Destroy() end end
+        OnBeastPowerV2ColorChanged = function(c)
+            for _, plr in ipairs(Players:GetPlayers()) do local char = plr.Character local head = char and char:FindFirstChild("Head") if head then local g = head:FindFirstChild("RP") if g then local l = g:FindFirstChildOfClass("TextLabel") if l and l.Text ~= "Full" then l.TextColor3 = c end end end end
         end
-
-                local function setupCharacter(char)
+        local prevV2Transp = OnIndicatorTransparencyChanged
+        OnIndicatorTransparencyChanged = function(t)
+            if prevV2Transp then prevV2Transp(t) end
+            for _, plr in ipairs(Players:GetPlayers()) do local char = plr.Character local head = char and char:FindFirstChild("Head") if head then local g = head:FindFirstChild("RP") if g then local l = g:FindFirstChildOfClass("TextLabel") if l then l.TextTransparency = t end end end end
+        end
+        local function setupCharacter(char)
             if not running then return end
-            table.insert(_G_BeastPower2_Connections, char.ChildAdded:Connect(function(child)
-                if child.Name == "BeastPowers" then
-                    local head = char:FindFirstChild("Head")
-                    if head then mkBBG(head) end
-                end
-            end))
-            table.insert(_G_BeastPower2_Connections, char.ChildRemoved:Connect(function(child)
-                if child.Name == "BeastPowers" then
-                    local head = char:FindFirstChild("Head")
-                    if head then rmBBG(head) end
-                end
-            end))
+            table.insert(_G_BeastPower2_Connections, char.ChildAdded:Connect(function(child) if child.Name == "BeastPowers" then local head = char:FindFirstChild("Head") if head then mkBBG(head) end end end))
+            table.insert(_G_BeastPower2_Connections, char.ChildRemoved:Connect(function(child) if child.Name == "BeastPowers" then local head = char:FindFirstChild("Head") if head then rmBBG(head) end end end))
             table.insert(_G_BeastPower2_Connections, RunService.Heartbeat:Connect(function()
                 if not running then return end
                 local head = char:FindFirstChild("Head")
@@ -3564,18 +4121,12 @@ end
                     local label = g:FindFirstChildOfClass("TextLabel")
                     if label and v then
                         local value = math.clamp(v.Value * 100, 0, 100)
-                        if value >= 100 then
-                            label.Text = "Full"
-                            label.TextColor3 = Color3.fromRGB(0, 255, 0)
-                        else
-                            label.Text = tostring(math.floor(value)).. "%"
-                            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        end
+                        if value >= 100 then label.Text = "Full" label.TextColor3 = Color3.fromRGB(0, 255, 0)
+                        else label.Text = tostring(math.floor(value)).. "%" label.TextColor3 = BeastPowerV2Color end
                     end
                 end
             end))
         end
-
         CreateToggle(content2P, "Beast Power V2", false, function(Value)
             _G_BeastPower2_Session += 1
             disconnectAll()
@@ -3584,17 +4135,9 @@ end
             if not Value then return end
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr.Character then setupCharacter(plr.Character) end
-                table.insert(_G_BeastPower2_Connections, plr.CharacterAdded:Connect(function(char)
-                    task.wait(1)
-                    setupCharacter(char)
-                end))
+                table.insert(_G_BeastPower2_Connections, plr.CharacterAdded:Connect(function(char) task.wait(1) setupCharacter(char) end))
             end
-            table.insert(_G_BeastPower2_Connections, Players.PlayerAdded:Connect(function(plr)
-                table.insert(_G_BeastPower2_Connections, plr.CharacterAdded:Connect(function(char)
-                    task.wait(1)
-                    setupCharacter(char)
-                end))
-            end))
+            table.insert(_G_BeastPower2_Connections, Players.PlayerAdded:Connect(function(plr) table.insert(_G_BeastPower2_Connections, plr.CharacterAdded:Connect(function(char) task.wait(1) setupCharacter(char) end)) end))
         end)
     end
 
@@ -3603,23 +4146,24 @@ end
         local LP = Players.LocalPlayer
         local _G_BTC = nil
         local _G_BCC = nil
-
-        local function disconnectAll()
-            if _G_BTC then pcall(function() _G_BTC:Disconnect() end) end
-            if _G_BCC then pcall(function() _G_BCC:Disconnect() end) end
+        local currentSpawnLabel = nil
+        OnBeastSpawnColorChanged = function(c) if currentSpawnLabel then currentSpawnLabel.TextColor3 = c end end
+        local prevSpawnTransp = OnIndicatorTransparencyChanged
+        OnIndicatorTransparencyChanged = function(t)
+            if prevSpawnTransp then prevSpawnTransp(t) end
+            if currentSpawnLabel then currentSpawnLabel.TextTransparency = t end
         end
-
+        local function disconnectAll() if _G_BTC then pcall(function() _G_BTC:Disconnect() end) end if _G_BCC then pcall(function() _G_BCC:Disconnect() end) end end
         CreateToggle(content2P, "Beast Spawn Timer", false, function(v)
             disconnectAll()
             local old = CoreGui:FindFirstChild("BeastTimerGui")
             if old then old:Destroy() end
+            currentSpawnLabel = nil
             if not v then return end
-
             local gui = Instance.new("ScreenGui")
             gui.Name = "BeastTimerGui"
             gui.DisplayOrder = 999
             gui.Parent = CoreGui
-
             local label = Instance.new("TextLabel")
             label.AnchorPoint = Vector2.new(0.5, 0.5)
             label.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -3630,9 +4174,11 @@ end
             label.TextStrokeTransparency = 0.2
             label.TextStrokeColor3 = Color3.fromRGB(120, 0, 0)
             label.Text = ""
+            label.TextColor3 = BeastSpawnColor
+            label.TextTransparency = IndicatorTransparency
             label.Visible = false
             label.Parent = gui
-
+            currentSpawnLabel = label
             local function drip(text, color)
                 for i = 1, math.random(2, 4) do
                     local d = label:Clone()
@@ -3640,46 +4186,28 @@ end
                     d.Text = text
                     d.TextColor3 = color
                     d.Position = label.Position + UDim2.new(0, math.random(-6, 6), 0, 0)
-                    game:GetService("TweenService"):Create(d, TweenInfo.new(0.8), {
-                        Position = d.Position + UDim2.new(0, 0, 0, math.random(35, 60)),
-                        TextTransparency = 1
-                    }):Play()
+                    game:GetService("TweenService"):Create(d, TweenInfo.new(0.8), { Position = d.Position + UDim2.new(0, 0, 0, math.random(35, 60)), TextTransparency = 1 }):Play()
                     game:GetService("Debris"):AddItem(d, 1)
                 end
             end
-
             local lastPos = nil
             local active = false
             local timeLeft = 0
             local TELEPORT = 20
             local DURATION = 16
-
             local function isBeast()
                 local stats = LP:FindFirstChild("TempPlayerStatsModule")
                 if not stats then return false end
                 local ok, mod = pcall(require, stats)
                 return ok and mod and mod.IsBeast
             end
-
             _G_BTC = RunService.Heartbeat:Connect(function(dt)
                 local char = LP.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
-
-                if isBeast() then
-                    label.Visible = false
-                    active = false
-                    return
-                end
-
-                if lastPos and not active and (hrp.Position - lastPos).Magnitude > TELEPORT then
-                    active = true
-                    timeLeft = DURATION
-                    label.Visible = true
-                end
-
+                if isBeast() then label.Visible = false active = false return end
+                if lastPos and not active and (hrp.Position - lastPos).Magnitude > TELEPORT then active = true timeLeft = DURATION label.Visible = true end
                 lastPos = hrp.Position
-
                 if active then
                     timeLeft -= dt
                     if timeLeft <= 0 then
@@ -3689,31 +4217,17 @@ end
                         label.TextColor3 = Color3.fromRGB(255, 255, 255)
                         label.Visible = true
                         game:GetService("TweenService"):Create(label, TweenInfo.new(1), {TextTransparency = 0}):Play()
-                        task.spawn(function()
-                            for i = 1, 25 do
-                                drip(label.Text, Color3.fromRGB(180, 0, 0))
-                                task.wait(0.1)
-                            end
-                        end)
-                        task.delay(3.5, function()
-                            if not active then label.Visible = false end
-                        end)
+                        task.spawn(function() for i = 1, 25 do drip(label.Text, Color3.fromRGB(180, 0, 0)) task.wait(0.1) end end)
+                        task.delay(3.5, function() if not active then label.Visible = false end end)
                     else
-                        local color = timeLeft <= 5 and Color3.fromRGB(255, 60, 60) or Color3.fromRGB(255, 255, 255)
+                        local color = timeLeft <= 5 and Color3.fromRGB(255, 60, 60) or BeastSpawnColor
                         label.TextColor3 = color
                         label.Text = string.format("%.2f", timeLeft)
-                        if timeLeft <= 5 and math.random() < 0.6 then
-                            drip(label.Text, color)
-                        end
+                        if timeLeft <= 5 and math.random() < 0.6 then drip(label.Text, color) end
                     end
                 end
             end)
-
-            _G_BCC = LP.CharacterAdded:Connect(function()
-                active = false
-                lastPos = nil
-                label.Visible = false
-            end)
+            _G_BCC = LP.CharacterAdded:Connect(function() active = false lastPos = nil label.Visible = false end)
         end)
     end
 end
@@ -4531,7 +5045,7 @@ do
     end
 
     do
-        local CINZA = Color3.fromRGB(160,160,160)
+        local CINZA = Color3.fromRGB(105,105,105)
         local skinOriginal = {}
         local skinConnections = {}
 
@@ -5569,10 +6083,15 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
     contentFog.AutomaticSize = Enum.AutomaticSize.Y
     contentFog.ZIndex = 5
     Instance.new("UIStroke", boxFog).Color = Color3.fromRGB(70,70,70)
-    Instance.new("UIListLayout", contentFog).Padding = UDim.new(0, 8)
     Instance.new("UIPadding", contentFog).PaddingLeft = UDim.new(0, 10)
     Instance.new("UIPadding", contentFog).PaddingRight = UDim.new(0, 10)
+    for _, o in pairs(contentFog:GetDescendants()) do
+        if o:IsA("UIListLayout") then o.SortOrder = Enum.SortOrder.LayoutOrder o.Padding = UDim.new(0, 8) end
+    end
+    local contentLayoutFog = contentFog:FindFirstChildOfClass("UIListLayout")
+    if contentLayoutFog then contentLayoutFog.Padding = UDim.new(0, 8) contentLayoutFog.SortOrder = Enum.SortOrder.LayoutOrder end
 
+    local UIS = game:GetService("UserInputService")
     local FlashEnabled = false
     local Brightness2 = 5
 
@@ -5603,7 +6122,7 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
     local FogConnection = nil
     local FogEnabled = false
     local Active = nil
-    local dropdownBtn = nil
+    local FogColor = Color3.fromRGB(0, 0, 0)
 
     local OriginalFog = {
         Color = Atmosphere and Atmosphere.Color or Color3.fromRGB(192,192,192),
@@ -5636,33 +6155,6 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         ["Gray Fog"] = function()
             Atmosphere.Color = Color3.fromRGB(128,128,128) Atmosphere.Haze = 2 Atmosphere.Density = 0.55 Atmosphere.Glare = 0 Atmosphere.Decay = Color3.fromRGB(100,100,100) Sky.MoonAngularSize = 10 Sky.StarCount = 0
         end,
-        ["White Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(255,255,255) Atmosphere.Haze = 2 Atmosphere.Density = 0.5 Atmosphere.Glare = 0.1 Atmosphere.Decay = Color3.fromRGB(255,255,255)
-        end,
-        ["Red Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(255,0,0) Atmosphere.Haze = 1.5 Atmosphere.Density = 0.6 Atmosphere.Decay = Color3.fromRGB(100,0,0)
-        end,
-        ["Blue Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(0,100,255) Atmosphere.Haze = 1.8 Atmosphere.Density = 0.55 Atmosphere.Decay = Color3.fromRGB(0,50,150)
-        end,
-        ["Green Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(0,255,0) Atmosphere.Haze = 1.5 Atmosphere.Density = 0.5 Atmosphere.Decay = Color3.fromRGB(0,100,0)
-        end,
-        ["Purple Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(150,0,255) Atmosphere.Haze = 1.7 Atmosphere.Density = 0.6 Atmosphere.Decay = Color3.fromRGB(80,0,120)
-        end,
-        ["Yellow Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(255,255,0) Atmosphere.Haze = 1.4 Atmosphere.Density = 0.45 Atmosphere.Decay = Color3.fromRGB(150,150,0)
-        end,
-        ["Horror Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(50,0,0) Atmosphere.Haze = 3 Atmosphere.Density = 0.9 Atmosphere.Glare = 0 Atmosphere.Decay = Color3.fromRGB(20,0,0) Sky.StarCount = 0
-        end,
-        ["Space Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(10,10,30) Atmosphere.Haze = 1 Atmosphere.Density = 0.3 Atmosphere.Glare = 0.5 Atmosphere.Decay = Color3.fromRGB(5,5,20) Sky.StarCount = 5000
-        end,
-        ["Sunset Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(255,100,0) Atmosphere.Haze = 1.2 Atmosphere.Density = 0.4 Atmosphere.Decay = Color3.fromRGB(200,50,0) Atmosphere.Glare = 0.3
-        end,
         ["No Fog"] = function()
             Atmosphere.Color = Color3.fromRGB(0,0,0)
             Atmosphere.Glare = 0
@@ -5671,7 +6163,17 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
             Atmosphere.Density = 0
             Sky.MoonAngularSize = 10
             Sky.StarCount = 0
-        end
+        end,
+        ["Custom"] = function()
+            local r, g, b = FogColor.R, FogColor.G, FogColor.B
+            Atmosphere.Color = FogColor
+            Atmosphere.Haze = 1.7
+            Atmosphere.Density = 0.6
+            Atmosphere.Glare = 0
+            Atmosphere.Decay = Color3.new(r * 0.4, g * 0.4, b * 0.4)
+            Sky.MoonAngularSize = 10
+            Sky.StarCount = 0
+        end,
     }
 
     local function ApplyMode()
@@ -5699,7 +6201,6 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         FogEnabled = false
         if FogConnection then FogConnection:Disconnect() FogConnection = nil end
         FogMode = "Default"
-        if dropdownBtn then dropdownBtn.Text = "Fog Mode: Default" end
         RefreshLighting()
         if Atmosphere and Sky then presets["Default"]() end
     end
@@ -5714,11 +6215,12 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         end
     end
 
-    local function CreateToggle(text)
+    local function CreateToggle(text, order)
         local holder = Instance.new("Frame", contentFog)
         holder.Size = UDim2.new(1,0,0,28)
         holder.BackgroundTransparency = 1
         holder.ZIndex = 5
+        holder.LayoutOrder = order or 0
         local label = Instance.new("TextLabel", holder)
         label.Size = UDim2.new(1,-50,1,0)
         label.BackgroundTransparency = 1
@@ -5747,10 +6249,10 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         return btn, circle
     end
 
-    local btnBlack, circleBlack = CreateToggle("Black Fog")
-    local btnGray, circleGray = CreateToggle("Gray Fog")
-    local btnNoFog, circleNoFog = CreateToggle("No Fog")
-    local btnToggle, circleToggle = CreateToggle("Enable Fog Mode")
+    local btnBlack, circleBlack = CreateToggle("Black Fog", 1)
+    local btnGray, circleGray = CreateToggle("Gray Fog", 2)
+    local btnNoFog, circleNoFog = CreateToggle("No Fog", 3)
+    local btnToggle, circleToggle = CreateToggle("Enable Fog Mode", 4)
 
     local function TurnOffAll()
         Active = nil
@@ -5762,166 +6264,246 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
     end
 
     btnBlack.MouseButton1Click:Connect(function()
-        if Active == "Black" then
-            TurnOffAll()
+        if Active == "Black" then TurnOffAll()
         else
             Active = "Black"
             ToggleVisual(btnBlack, circleBlack, true)
             ToggleVisual(btnGray, circleGray, false)
             ToggleVisual(btnNoFog, circleNoFog, false)
             ToggleVisual(btnToggle, circleToggle, false)
-            FogMode = "Black Fog"
-            StartFog()
+            FogMode = "Black Fog" StartFog()
         end
     end)
-
     btnGray.MouseButton1Click:Connect(function()
-        if Active == "Gray" then
-            TurnOffAll()
+        if Active == "Gray" then TurnOffAll()
         else
             Active = "Gray"
             ToggleVisual(btnBlack, circleBlack, false)
             ToggleVisual(btnGray, circleGray, true)
             ToggleVisual(btnNoFog, circleNoFog, false)
             ToggleVisual(btnToggle, circleToggle, false)
-            FogMode = "Gray Fog"
-            StartFog()
+            FogMode = "Gray Fog" StartFog()
         end
     end)
-
     btnNoFog.MouseButton1Click:Connect(function()
-        if Active == "NoFog" then
-            TurnOffAll()
+        if Active == "NoFog" then TurnOffAll()
         else
             Active = "NoFog"
             ToggleVisual(btnBlack, circleBlack, false)
             ToggleVisual(btnGray, circleGray, false)
             ToggleVisual(btnNoFog, circleNoFog, true)
             ToggleVisual(btnToggle, circleToggle, false)
-            FogMode = "No Fog"
-            StartFog()
+            FogMode = "No Fog" StartFog()
         end
     end)
-
     btnToggle.MouseButton1Click:Connect(function()
-        if Active == "Enable" then
-            TurnOffAll()
+        if Active == "Enable" then TurnOffAll()
         else
             Active = "Enable"
             ToggleVisual(btnBlack, circleBlack, false)
             ToggleVisual(btnGray, circleGray, false)
             ToggleVisual(btnNoFog, circleNoFog, false)
             ToggleVisual(btnToggle, circleToggle, true)
-            StartFog()
+            FogMode = "Custom" StartFog()
         end
     end)
 
-    local fogModes = {"Default", "White Fog", "Red Fog", "Blue Fog", "Green Fog", "Purple Fog", "Yellow Fog", "Horror Fog", "Space Fog", "Sunset Fog", "No Fog"}
-    local dropdownHolder = Instance.new("Frame", contentFog)
-    dropdownHolder.Size = UDim2.new(1,0,0,26)
-    dropdownHolder.BackgroundTransparency = 1
-    dropdownHolder.ZIndex = 100
+local UIS = game:GetService("UserInputService")
 
-    dropdownBtn = Instance.new("TextButton", dropdownHolder)
-    dropdownBtn.Size = UDim2.new(1,0,0,26)
-    dropdownBtn.BackgroundColor3 = Color3.fromRGB(0,0,0)
-    dropdownBtn.BackgroundTransparency = 1
-    dropdownBtn.Text = "Fog Mode: Default"
-    dropdownBtn.Font = Enum.Font.GothamBold
-    dropdownBtn.TextSize = 13
-    dropdownBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    dropdownBtn.TextXAlignment = Enum.TextXAlignment.Left
-    dropdownBtn.ZIndex = 101
-    Instance.new("UICorner", dropdownBtn).CornerRadius = UDim.new(0,4)
-    Instance.new("UIStroke", dropdownBtn).Color = Color3.fromRGB(40,40,40)
+local function CreateFogColorPicker(parent, name, defaultColor, onChange, order)
+    local h, s, v = defaultColor:ToHSV()
+    local holder = Instance.new("Frame")
+    holder.Name = name .. "_Holder"
+    holder.BackgroundTransparency = 1
+    holder.Size = UDim2.new(1, 0, 0, 0)
+    holder.AutomaticSize = Enum.AutomaticSize.Y
+    holder.ClipsDescendants = false
+    holder.LayoutOrder = order or 0
+    holder.ZIndex = 5
+    holder.Parent = parent
+    local holderLayout = Instance.new("UIListLayout", holder)
+    holderLayout.FillDirection = Enum.FillDirection.Vertical
+    holderLayout.Padding = UDim.new(0, 6)
+    holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    local arrow = Instance.new("TextLabel", dropdownBtn)
-    arrow.Size = UDim2.new(0,20,1,0)
-    arrow.Position = UDim2.new(1,-25,0,0)
-    arrow.BackgroundTransparency = 1
-    arrow.Text = "▼"
-    arrow.Font = Enum.Font.GothamBold
-    arrow.TextSize = 10
-    arrow.TextColor3 = Color3.fromRGB(150,150,150)
-    arrow.ZIndex = 102
+    local row = Instance.new("Frame")
+    row.Name = name
+    row.BackgroundTransparency = 1
+    row.Size = UDim2.new(1, 0, 0, 28)
+    row.LayoutOrder = 1
+    row.Parent = holder
 
-    local scrollFrame = Instance.new("ScrollingFrame", dropdownHolder)
-    scrollFrame.Size = UDim2.new(1,0,0,0)
-    scrollFrame.Position = UDim2.new(0,0,0,28)
-    scrollFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
-    scrollFrame.BackgroundTransparency = 0
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ZIndex = 200
-    scrollFrame.ClipsDescendants = true
-    scrollFrame.ScrollBarThickness = 4
-    scrollFrame.CanvasSize = UDim2.new(0,0,0,0)
-    Instance.new("UICorner", scrollFrame).CornerRadius = UDim.new(0,4)
-    Instance.new("UIStroke", scrollFrame).Color = Color3.fromRGB(40,40,40)
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, -40, 1, 0)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 13
+    label.TextColor3 = Color3.fromRGB(180, 180, 180)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = name
+    label.Parent = row
 
-    local layout = Instance.new("UIListLayout", scrollFrame)
+    local preview = Instance.new("TextButton")
+    preview.BackgroundColor3 = defaultColor
+    preview.Size = UDim2.new(0, 26, 0, 22)
+    preview.Position = UDim2.new(1, -26, 0, 3)
+    preview.Text = ""
+    preview.AutoButtonColor = false
+    preview.ZIndex = 5
+    preview.Parent = row
+    Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 4)
+    Instance.new("UIStroke", preview).Color = Color3.fromRGB(70, 70, 70)
 
-    local open = false
-    local itemHeight = 26
+    local picker = Instance.new("Frame")
+    picker.Name = "Picker"
+    picker.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    picker.Size = UDim2.new(1, 0, 0, 130)
+    picker.Visible = false
+    picker.LayoutOrder = 2
+    picker.ZIndex = 5
+    picker.Parent = holder
+    Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", picker).Color = Color3.fromRGB(70, 70, 70)
 
-    local function closeDropdown()
-        open = false
-        arrow.Text = "▼"
-        TweenService:Create(scrollFrame, TweenInfo.new(0.15), {Size = UDim2.new(1,0,0,0)}):Play()
-        TweenService:Create(dropdownHolder, TweenInfo.new(0.15), {Size = UDim2.new(1,0,0,26)}):Play()
+    local svBox = Instance.new("ImageButton")
+    svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+    svBox.Position = UDim2.new(0, 10, 0, 10)
+    svBox.Size = UDim2.new(1, -42, 0, 110)
+    svBox.AutoButtonColor = false
+    svBox.Parent = picker
+    Instance.new("UICorner", svBox).CornerRadius = UDim.new(0, 6)
+
+    local whiteOverlay = Instance.new("Frame")
+    whiteOverlay.BackgroundColor3 = Color3.new(1, 1, 1)
+    whiteOverlay.BorderSizePixel = 0
+    whiteOverlay.Size = UDim2.new(1, 0, 1, 0)
+    whiteOverlay.ZIndex = 7
+    whiteOverlay.Active = false
+    whiteOverlay.Parent = svBox
+    Instance.new("UICorner", whiteOverlay).CornerRadius = UDim.new(0, 6)
+    local satGrad = Instance.new("UIGradient")
+    satGrad.Rotation = 0
+    satGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+    satGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+    satGrad.Parent = whiteOverlay
+
+    local valFrame = Instance.new("Frame")
+    valFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+    valFrame.BorderSizePixel = 0
+    valFrame.Size = UDim2.new(1, 0, 1, 0)
+    valFrame.ZIndex = 8
+    valFrame.Active = false
+    valFrame.Parent = svBox
+    Instance.new("UICorner", valFrame).CornerRadius = UDim.new(0, 6)
+    local valGrad = Instance.new("UIGradient")
+    valGrad.Rotation = 90
+    valGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)})
+    valGrad.Parent = valFrame
+
+    local svCursor = Instance.new("Frame")
+    svCursor.Size = UDim2.new(0, 14, 0, 14)
+    svCursor.BackgroundTransparency = 1
+    svCursor.ZIndex = 9
+    svCursor.Parent = svBox
+    local svInner = Instance.new("Frame")
+    svInner.Size = UDim2.new(1, -4, 1, -4)
+    svInner.Position = UDim2.new(0, 2, 0, 2)
+    svInner.BackgroundTransparency = 1
+    svInner.Parent = svCursor
+    Instance.new("UICorner", svInner).CornerRadius = UDim.new(1, 0)
+    local svStroke = Instance.new("UIStroke", svInner)
+    svStroke.Color = Color3.fromRGB(255, 255, 255)
+    svStroke.Thickness = 2
+
+    local hueBar = Instance.new("ImageButton")
+    hueBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    hueBar.Position = UDim2.new(1, -22, 0, 10)
+    hueBar.Size = UDim2.new(0, 12, 0, 110)
+    hueBar.AutoButtonColor = false
+    hueBar.Parent = picker
+    Instance.new("UICorner", hueBar).CornerRadius = UDim.new(1, 0)
+    local hueGrad = Instance.new("UIGradient")
+    hueGrad.Rotation = 90
+    hueGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+        ColorSequenceKeypoint.new(0.16, Color3.fromHSV(0.16, 1, 1)),
+        ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromHSV(0.5, 1, 1)),
+        ColorSequenceKeypoint.new(0.66, Color3.fromHSV(0.66, 1, 1)),
+        ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+        ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1)),
+    })
+    hueGrad.Parent = hueBar
+
+    local hueCursor = Instance.new("Frame")
+    hueCursor.AnchorPoint = Vector2.new(0, 0.5)
+    hueCursor.Size = UDim2.new(1, 6, 0, 6)
+    hueCursor.Position = UDim2.new(0, -3, 0, 0)
+    hueCursor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    hueCursor.BorderSizePixel = 0
+    hueCursor.ZIndex = 10
+    hueCursor.Active = false
+    hueCursor.Parent = hueBar
+    Instance.new("UICorner", hueCursor).CornerRadius = UDim.new(0, 2)
+    Instance.new("UIStroke", hueCursor).Color = Color3.fromRGB(0, 0, 0)
+
+    local function updateVisual()
+        local color = Color3.fromHSV(h, s, v)
+        preview.BackgroundColor3 = color
+        svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+        svCursor.Position = UDim2.new(s, -7, 1 - v, -7)
+        hueCursor.Position = UDim2.new(0, -4, math.clamp(h, 0.03, 0.97), 0)
+        if onChange then onChange(color) end
     end
 
-    local function openDropdown()
-        open = true
-        arrow.Text = "▲"
-        local dropdownHeight = #fogModes * itemHeight
-        if dropdownHeight > 280 then dropdownHeight = 280 end
-        scrollFrame.CanvasSize = UDim2.new(0,0,0,#fogModes * itemHeight)
-        TweenService:Create(scrollFrame, TweenInfo.new(0.15), {Size = UDim2.new(1,0,0,dropdownHeight)}):Play()
-        TweenService:Create(dropdownHolder, TweenInfo.new(0.15), {Size = UDim2.new(1,0,0,28 + dropdownHeight)}):Play()
+    local draggingSV = false
+    local draggingHue = false
+
+    local function updateSV(input)
+        local pos = svBox.AbsolutePosition
+        local size = svBox.AbsoluteSize
+        s = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+        v = 1 - math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+        updateVisual()
+    end
+    local function updateHue(input)
+        local pos = hueBar.AbsolutePosition
+        local size = hueBar.AbsoluteSize
+        h = math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+        updateVisual()
     end
 
-    for i, v in ipairs(fogModes) do
-        local item = Instance.new("TextButton", scrollFrame)
-        item.Size = UDim2.new(1,0,0,itemHeight)
-        item.Text = v
-        item.BackgroundTransparency = 1
-        item.TextColor3 = Color3.fromRGB(230,230,230)
-        item.Font = Enum.Font.Gotham
-        item.TextSize = 13
-        item.BorderSizePixel = 0
-        item.ZIndex = 201
-        item.TextXAlignment = Enum.TextXAlignment.Center
-
-        if i < #fogModes then
-            local line = Instance.new("Frame", item)
-            line.Size = UDim2.new(1,-20,0,1)
-            line.Position = UDim2.new(0,10,1,-1)
-            line.BackgroundColor3 = Color3.fromRGB(35,35,35)
-            line.BorderSizePixel = 0
-            line.ZIndex = 202
-        end
-
-        item.MouseButton1Click:Connect(function()
-            FogMode = v
-            dropdownBtn.Text = "Fog Mode: ".. v
-            Active = "Enable"
-            ToggleVisual(btnBlack, circleBlack, false)
-            ToggleVisual(btnGray, circleGray, false)
-            ToggleVisual(btnNoFog, circleNoFog, false)
-            ToggleVisual(btnToggle, circleToggle, true)
-            if FogEnabled then ApplyMode() else StartFog() end
-            closeDropdown()
-        end)
-    end
-
-    dropdownBtn.MouseButton1Click:Connect(function()
-        if open then closeDropdown() else openDropdown() end
+    svBox.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSV = true updateSV(input) end
     end)
+    hueBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingHue = true updateHue(input) end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            if draggingSV then updateSV(input) end
+            if draggingHue then updateHue(input) end
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSV = false draggingHue = false end
+    end)
+    preview.MouseButton1Click:Connect(function()
+        picker.Visible = not picker.Visible
+    end)
+    updateVisual()
+end
+
+CreateFogColorPicker(contentFog, "Fog Color", FogColor, function(c)
+    FogColor = c
+    if FogEnabled and FogMode == "Custom" then ApplyMode() end
+end, 5)
 
     local holderFlash = Instance.new("Frame", contentFog)
     holderFlash.Size = UDim2.new(1,0,0,28)
     holderFlash.BackgroundTransparency = 1
     holderFlash.ZIndex = 5
+    holderFlash.LayoutOrder = 6
     local labelFlash = Instance.new("TextLabel", holderFlash)
     labelFlash.Size = UDim2.new(1,-50,1,0)
     labelFlash.BackgroundTransparency = 1
@@ -5959,10 +6541,68 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         UpdateFlashlight(FlashEnabled)
     end)
 
-    CreateSlider(contentFog, "Flashlight Intensity", 1, 10, Brightness2, function(Value)
-        Brightness2 = Value
-        if FlashEnabled then UpdateFlashlight(true) end
-    end)
+    do
+        local holder = Instance.new("Frame", contentFog)
+        holder.Name = "FlashlightIntensityHolder"
+        holder.Size = UDim2.new(1, 0, 0, 40)
+        holder.BackgroundTransparency = 1
+        holder.ZIndex = 5
+        holder.LayoutOrder = 7
+        local label = Instance.new("TextLabel", holder)
+        label.Size = UDim2.new(1, -50, 0, 20)
+        label.Position = UDim2.new(0, 0, 0, 5)
+        label.BackgroundTransparency = 1
+        label.Text = "Flashlight Intensity"
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(235, 235, 235)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 5
+        local valueLabel = Instance.new("TextLabel", holder)
+        valueLabel.Size = UDim2.new(0, 40, 0, 20)
+        valueLabel.Position = UDim2.new(1, -40, 0, 5)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = string.format("%.2f", Brightness2)
+        valueLabel.Font = Enum.Font.GothamBold
+        valueLabel.TextSize = 13
+        valueLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+        valueLabel.ZIndex = 5
+        local bar = Instance.new("TextButton", holder)
+        bar.Size = UDim2.new(1, 0, 0, 5)
+        bar.Position = UDim2.new(0, 0, 0, 28)
+        bar.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+        bar.BorderSizePixel = 0
+        bar.Text = ""
+        bar.AutoButtonColor = false
+        bar.ZIndex = 5
+        Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 3)
+        local fill = Instance.new("Frame", bar)
+        fill.Size = UDim2.new((Brightness2 - 1) / (10 - 1), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        fill.BorderSizePixel = 0
+        fill.ZIndex = 6
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
+        local dragging = false
+        local function update(inputX)
+            local scale = math.clamp((inputX - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+            local value = 1 + (10 - 1) * scale
+            value = math.floor(value * 100 + 0.5) / 100
+            TweenService:Create(fill, TweenInfo.new(0.08), {Size = UDim2.new(scale, 0, 1, 0)}):Play()
+            valueLabel.Text = string.format("%.2f", value)
+            Brightness2 = value
+            if FlashEnabled then UpdateFlashlight(true) end
+        end
+        bar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true update(input.Position.X) end
+        end)
+        UIS.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then update(input.Position.X) end
+        end)
+        UIS.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+        end)
+    end
 
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
@@ -7091,14 +7731,29 @@ local boxJump, contentJump = CreateGroupbox(leftColH, "Jump & Classic")
 boxJump.LayoutOrder = 3
 
 local player = game.Players.LocalPlayer
-local touchGui = player:WaitForChild("PlayerGui")
-local touchFrame = touchGui:FindFirstChild("TouchGui") and touchGui.TouchGui:FindFirstChild("TouchControlFrame")
-local jumpButton = touchFrame and touchFrame:FindFirstChild("JumpButton")
-local thumbstick = touchFrame and (touchFrame:FindFirstChild("ThumbstickFrame") or touchFrame:FindFirstChild("DynamicThumbstickFrame"))
 
-local originalJumpPosition = jumpButton and jumpButton.Position
-local originalJumpSize = jumpButton and jumpButton.Size
-local originalThumbstickPosition = thumbstick and thumbstick.Position
+local originals = {}
+local function GetOriginal(btn)
+    if not btn then return nil, nil end
+    local o = originals[btn]
+    if o then return o.Pos, o.Size end
+    originals[btn] = {Pos = btn.Position, Size = btn.Size}
+    return btn.Position, btn.Size
+end
+
+local function GetTouchFrame()
+    local touchGui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("TouchGui")
+    if not touchGui then return nil end
+    return touchGui:FindFirstChild("TouchControlFrame")
+end
+local function GetJumpButton()
+    local tf = GetTouchFrame()
+    return tf and tf:FindFirstChild("JumpButton")
+end
+local function GetThumbstick()
+    local tf = GetTouchFrame()
+    return tf and (tf:FindFirstChild("ThumbstickFrame") or tf:FindFirstChild("DynamicThumbstickFrame"))
+end
 
 local JumpEnabled = SaveData.JumpEnabled
 local JumpX = SaveData.JumpX
@@ -7112,29 +7767,35 @@ local ThumbstickY = SaveData.ThumbstickY
 local ThumbstickSliders = {}
 
 local function ApplyThumbstick()
-    if not thumbstick or not originalThumbstickPosition then return end
+    local thumbstick = GetThumbstick()
+    if not thumbstick then return end
+    local origPos = GetOriginal(thumbstick)
+    if not origPos then return end
     pcall(function()
         if ThumbstickEnabled then
-            local offsetX = originalThumbstickPosition.X.Offset + (ThumbstickX * 5)
-            local offsetY = originalThumbstickPosition.Y.Offset + (ThumbstickY * 5)
-            thumbstick.Position = UDim2.new(originalThumbstickPosition.X.Scale, offsetX, originalThumbstickPosition.Y.Scale, offsetY)
+            local offsetX = origPos.X.Offset + (ThumbstickX * 5)
+            local offsetY = origPos.Y.Offset + (ThumbstickY * 5)
+            thumbstick.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
         else
-            thumbstick.Position = originalThumbstickPosition
+            thumbstick.Position = origPos
         end
     end)
 end
 
 local function ApplyJump()
-    if not jumpButton or not originalJumpPosition then return end
+    local jumpButton = GetJumpButton()
+    if not jumpButton then return end
+    local origPos, origSize = GetOriginal(jumpButton)
+    if not origPos or not origSize then return end
     pcall(function()
         if JumpEnabled then
-            local offsetX = originalJumpPosition.X.Offset + (JumpX * 5)
-            local offsetY = originalJumpPosition.Y.Offset + (JumpY * 5)
-            jumpButton.Position = UDim2.new(originalJumpPosition.X.Scale, offsetX, originalJumpPosition.Y.Scale, offsetY)
-            jumpButton.Size = UDim2.new(0, originalJumpSize.X.Offset * JumpScale, 0, originalJumpSize.Y.Offset * JumpScale)
+            local offsetX = origPos.X.Offset + (JumpX * 5)
+            local offsetY = origPos.Y.Offset + (JumpY * 5)
+            jumpButton.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
+            jumpButton.Size = UDim2.new(0, origSize.X.Offset * JumpScale, 0, origSize.Y.Offset * JumpScale)
         else
-            jumpButton.Position = originalJumpPosition
-            jumpButton.Size = originalJumpSize
+            jumpButton.Position = origPos
+            jumpButton.Size = origSize
         end
     end)
 end
@@ -7200,14 +7861,12 @@ local EEnabled = SaveData.EEnabled
 local EX = SaveData.EX
 local EY = SaveData.EY
 local ESize = SaveData.ESize
-local EOriginalPosition, EOriginalSize
 local ESliders = {}
 
 local CEnabled = SaveData.CEnabled
 local CX = SaveData.CX
 local CY = SaveData.CY
 local CSize = SaveData.CSize
-local COriginalPosition, COriginalSize
 local CSliders = {}
 
 local function GetButtonByText(Text)
@@ -7231,16 +7890,17 @@ end
 local function ApplyEButton()
     local Button = GetButtonByText("E")
     if not Button then return end
-    if not EOriginalPosition then EOriginalPosition = Button.Position EOriginalSize = Button.Size end
+    local origPos, origSize = GetOriginal(Button)
+    if not origPos or not origSize then return end
     pcall(function()
         if EEnabled then
-            local offsetX = EOriginalPosition.X.Offset + (EX * 5)
-            local offsetY = EOriginalPosition.Y.Offset + (EY * 5)
-            Button.Position = UDim2.new(EOriginalPosition.X.Scale, offsetX, EOriginalPosition.Y.Scale, offsetY)
+            local offsetX = origPos.X.Offset + (EX * 5)
+            local offsetY = origPos.Y.Offset + (EY * 5)
+            Button.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
             Button.Size = UDim2.fromOffset(ESize, ESize)
         else
-            Button.Position = EOriginalPosition
-            Button.Size = EOriginalSize
+            Button.Position = origPos
+            Button.Size = origSize
         end
     end)
 end
@@ -7248,16 +7908,17 @@ end
 local function ApplyCButton()
     local Button = GetButtonByText("C")
     if not Button then return end
-    if not COriginalPosition then COriginalPosition = Button.Position COriginalSize = Button.Size end
+    local origPos, origSize = GetOriginal(Button)
+    if not origPos or not origSize then return end
     pcall(function()
         if CEnabled then
-            local offsetX = COriginalPosition.X.Offset + (CX * 5)
-            local offsetY = COriginalPosition.Y.Offset + (CY * 5)
-            Button.Position = UDim2.new(COriginalPosition.X.Scale, offsetX, COriginalPosition.Y.Scale, offsetY)
+            local offsetX = origPos.X.Offset + (CX * 5)
+            local offsetY = origPos.Y.Offset + (CY * 5)
+            Button.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
             Button.Size = UDim2.fromOffset(CSize, CSize)
         else
-            Button.Position = COriginalPosition
-            Button.Size = COriginalSize
+            Button.Position = origPos
+            Button.Size = origSize
         end
     end)
 end
@@ -7307,20 +7968,37 @@ end)
 for _, slider in pairs(ESliders) do slider.Visible = EEnabled end
 for _, slider in pairs(CSliders) do slider.Visible = CEnabled end
 
-task.spawn(function()
-    task.wait(2)
-    local tg = player:WaitForChild("PlayerGui")
-    local tf = tg:FindFirstChild("TouchGui") and tg.TouchGui:FindFirstChild("TouchControlFrame")
-    if tf then
-        if not jumpButton then jumpButton = tf:FindFirstChild("JumpButton") end
-        if not thumbstick then thumbstick = tf:FindFirstChild("ThumbstickFrame") or tf:FindFirstChild("DynamicThumbstickFrame") end
-        if jumpButton and not originalJumpPosition then originalJumpPosition = jumpButton.Position originalJumpSize = jumpButton.Size end
-        if thumbstick and not originalThumbstickPosition then originalThumbstickPosition = thumbstick.Position end
-    end
+local function ApplyAll()
     ApplyJump()
     ApplyThumbstick()
     ApplyEButton()
     ApplyCButton()
+end
+
+task.spawn(function()
+    task.wait(2)
+    ApplyAll()
+    while true do
+        task.wait(0.5)
+        ApplyAll()
+    end
+end)
+
+pcall(function()
+    player.PlayerGui.ChildAdded:Connect(function(child)
+        if child.Name == "TouchGui" or child.Name == "ContextActionGui" then
+            task.wait(0.5)
+            ApplyAll()
+            task.wait(0.5)
+            ApplyAll()
+        end
+    end)
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        ApplyAll()
+        task.wait(1)
+        ApplyAll()
+    end)
 end)
 end
 
@@ -7331,9 +8009,9 @@ task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local player = Players.LocalPlayer
 
-    local FootstepVolume = 1.5
-    local JumpVolume = 1
-    local FallVolume = 1
+    local FootstepVolume = 15
+    local JumpVolume = 10
+    local FallVolume = 10
     local MuteFootsteps = false
     local MuteJump = false
     local MuteFall = false
@@ -7347,12 +8025,18 @@ task.spawn(function()
 
     local settingsPageH = pages["Sounds"]
     for _,v in pairs(settingsPageH:GetChildren()) do
-        if v:IsA("Frame") or v:IsA("UIListLayout") or v:IsA("UIPadding") then v:Destroy() end
+        if v:IsA("Frame") then v:Destroy() end
     end
+    pcall(function()
+        settingsPageH.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        settingsPageH.CanvasSize = UDim2.new(0, 0, 0, 0)
+        settingsPageH.ScrollBarThickness = 3
+    end)
 
     local columnsH = Instance.new("Frame", settingsPageH)
     columnsH.Name = "ColumnsContainer"
-    columnsH.Size = UDim2.new(1, 0, 1, 0)
+    columnsH.Size = UDim2.new(1, 0, 0, 0)
+    columnsH.AutomaticSize = Enum.AutomaticSize.Y
     columnsH.BackgroundTransparency = 1
     local padding = Instance.new("UIPadding", columnsH)
     padding.PaddingTop = UDim.new(0, 10)
@@ -7362,7 +8046,8 @@ task.spawn(function()
 
     local leftColH = Instance.new("Frame", columnsH)
     leftColH.Name = "LeftColumn"
-    leftColH.Size = UDim2.new(0.5, -10, 1, 0)
+    leftColH.Size = UDim2.new(0.5, -10, 0, 0)
+    leftColH.AutomaticSize = Enum.AutomaticSize.Y
     leftColH.BackgroundTransparency = 1
     local leftList = Instance.new("UIListLayout", leftColH)
     leftList.Padding = UDim.new(0, 10)
@@ -7370,7 +8055,8 @@ task.spawn(function()
 
     local rightColH = Instance.new("Frame", columnsH)
     rightColH.Name = "RightColumn"
-    rightColH.Size = UDim2.new(0.5, -10, 1, 0)
+    rightColH.Size = UDim2.new(0.5, -10, 0, 0)
+    rightColH.AutomaticSize = Enum.AutomaticSize.Y
     rightColH.Position = UDim2.new(0.5, 10, 0, 0)
     rightColH.BackgroundTransparency = 1
     local rightList = Instance.new("UIListLayout", rightColH)
@@ -7400,26 +8086,30 @@ task.spawn(function()
     end
 
     local function UpdateAllSounds()
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr.Character then
-                local isMe = (plr == player)
-                for _, obj in pairs(plr.Character:GetDescendants()) do
-                    if obj:IsA("Sound") then
-                        local t = GetType(obj.Name)
-                        if t == "Footsteps" then
-                            obj.Volume = isMe and (MuteFootsteps and 0 or FootstepVolume) or FootstepVolume
-                            obj.RollOffMinDistance = FootstepMinDist
-                            obj.RollOffMaxDistance = FootstepMaxDist
-                            obj.RollOffMode = Enum.RollOffMode.InverseTapered
-                        elseif t == "Jump" then
-                            if isMe then obj.Volume = MuteJump and 0 or JumpVolume end
-                        elseif t == "Fall" then
-                            if isMe then obj.Volume = MuteFall and 0 or FallVolume end
+        pcall(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character then
+                    local isMe = (plr == player)
+                    for _, obj in pairs(plr.Character:GetDescendants()) do
+                        if obj:IsA("Sound") then
+                            local t = GetType(obj.Name)
+                            if t == "Footsteps" then
+                                obj.Volume = (MuteFootsteps and isMe) and 0 or (FootstepVolume / 10)
+                                pcall(function()
+                                    obj.RollOffMinDistance = FootstepMinDist
+                                    obj.RollOffMaxDistance = FootstepMaxDist
+                                    obj.RollOffMode = Enum.RollOffMode.InverseTapered
+                                end)
+                            elseif t == "Jump" then
+                                if isMe then obj.Volume = MuteJump and 0 or (JumpVolume / 10) end
+                            elseif t == "Fall" then
+                                if isMe then obj.Volume = MuteFall and 0 or (FallVolume / 10) end
+                            end
                         end
                     end
                 end
             end
-        end
+        end)
     end
 
     local function WatchCharacter(char)
@@ -7508,7 +8198,12 @@ task.spawn(function()
         local dragging = false
         local function update(inputX)
             local scale = math.clamp((inputX - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
-            local value = math.floor((min + (max - min) * scale) * 100 + 0.5) / 100
+            local value
+            if max <= 5 then
+                value = math.floor((min + (max - min) * scale) * 100 + 0.5) / 100
+            else
+                value = math.floor((min + (max - min) * scale) + 0.5)
+            end
             TweenService:Create(fill, TweenInfo.new(0.08), {Size = UDim2.new(scale, 0, 1, 0)}):Play()
             valueLabel.Text = tostring(value)
             callback(value)
@@ -7637,12 +8332,12 @@ task.spawn(function()
 
     local volumeBox, volumeContent = CreateGroupbox(leftColH, "Volume")
     volumeBox.LayoutOrder = 1
-    local footstepSlider = CreateVolumeSlider(volumeContent, "FootSteps", 0, 2, 1.5, function(v) FootstepVolume = v UpdateAllSounds() end)
-    local jumpSlider = CreateVolumeSlider(volumeContent, "Jump", 0, 2, 1, function(v) JumpVolume = v UpdateAllSounds() end)
-    local fallSlider = CreateVolumeSlider(volumeContent, "Fall", 0, 2, 1, function(v) FallVolume = v UpdateAllSounds() end)
+    local footstepSlider = CreateVolumeSlider(volumeContent, "FootSteps", 0, 100, 15, function(v) FootstepVolume = v UpdateAllSounds() end)
+    local jumpSlider = CreateVolumeSlider(volumeContent, "Jump", 0, 100, 10, function(v) JumpVolume = v UpdateAllSounds() end)
+    local fallSlider = CreateVolumeSlider(volumeContent, "Fall", 0, 100, 10, function(v) FallVolume = v UpdateAllSounds() end)
     CreateResetButton(volumeContent, "Reset Volumes", function()
-        FootstepVolume = 1.5 JumpVolume = 1 FallVolume = 1
-        footstepSlider.SetValue(1.5) jumpSlider.SetValue(1) fallSlider.SetValue(1) UpdateAllSounds()
+        FootstepVolume = 15 JumpVolume = 10 FallVolume = 10
+        footstepSlider.SetValue(15) jumpSlider.SetValue(10) fallSlider.SetValue(10) UpdateAllSounds()
     end)
     CreateResetButton(volumeContent, "Reset Sounds", function()
         SelectedSounds = {Footsteps = DefaultSounds.Footsteps, Jump = DefaultSounds.Jump, Fall = DefaultSounds.Fall}
@@ -8711,14 +9406,33 @@ do
     if not isfolder("FTF_Eclipse") then makefolder("FTF_Eclipse") end
 
     local backgrounds = {
-        {"Style 1", "78186972924904"},{"Style 2", "105066440016571"},{"Style 3", "110215769551010"},{"Style 4", "115541469321190"},
-        {"Style 5", "97984932480755"},{"Style 6", "86192845180549"},{"Style 7", "85784609294289"},
-        {"Style 8", "140636010520663"},{"Style 9", "124240486073107"},{"Style 10", "85635291549219"},
-        {"Style 11", "117512819334968"},{"Style 12", "111750153717391"},{"Style 13", "98791036867631"},
-        {"Style 14", "131737959610359"},{"Style 15", "81997082602790"},{"Style 16", "117151748213203"},
-        {"Style 17", "112483283923855"},{"Style 18", "109490272700736"},{"Style 19", "125661929366351"},
-        {"Style 20", "74184537251110"},{"Style 21", "124786302962772"},{"Style 22", "125474858681812"},
-        {"Style 23", "99142368271124"},{"Style 24", "94865353552525"},{"Style 25", "120484401704545"},
+        {"Style 1", "92787928900360"},
+        {"Style 2", "109143338870022"},
+        {"Style 3", "78186972924904"},
+        {"Style 4", "105066440016571"},
+        {"Style 5", "110215769551010"},
+        {"Style 6", "115541469321190"},
+        {"Style 7", "97984932480755"},
+        {"Style 8", "86192845180549"},
+        {"Style 9", "85784609294289"},
+        {"Style 10", "140636010520663"},
+        {"Style 11", "124240486073107"},
+        {"Style 12", "85635291549219"},
+        {"Style 13", "117512819334968"},
+        {"Style 14", "111750153717391"},
+        {"Style 15", "98791036867631"},
+        {"Style 16", "131737959610359"},
+        {"Style 17", "81997082602790"},
+        {"Style 18", "117151748213203"},
+        {"Style 19", "112483283923855"},
+        {"Style 20", "109490272700736"},
+        {"Style 21", "125661929366351"},
+        {"Style 22", "74184537251110"},
+        {"Style 23", "124786302962772"},
+        {"Style 24", "125474858681812"},
+        {"Style 25", "99142368271124"},
+        {"Style 26", "94865353552525"},
+        {"Style 27", "120484401704545"},
     }
 
     getgenv().BackgroundLocked = getgenv().BackgroundLocked or false
@@ -8861,7 +9575,7 @@ do
         return box, content
     end
 
-    local boxSettings, contentSettings = CreateGroupbox(container, "Settings")
+    local boxSettings, contentSettings = CreateGroupbox(container, "Appearance")
 
     local function CreateDropdown(parent, labelText, list, default, callback)
         local holder = Instance.new("Frame", parent)
@@ -9022,7 +9736,115 @@ do
         SaveConfig()
     end)
 
-    local boxStats, contentStats = CreateGroupbox(container, "Stats")
+do
+    local holder = Instance.new("Frame", contentSettings)
+    holder.Size = UDim2.new(1, 0, 0, 68)
+    holder.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    holder.BackgroundTransparency = 0.3
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 6)
+
+    local label = Instance.new("TextLabel", holder)
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.new(0, 15, 0, 6)
+    label.BackgroundTransparency = 1
+    label.Text = "Shine Color"
+    label.Font = CurrentFont
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local preview = Instance.new("Frame", holder)
+    preview.Size = UDim2.new(0, 24, 0, 24)
+    preview.Position = UDim2.new(1, -34, 0, 6)
+    preview.BackgroundColor3 = getgenv().ShineColor or Color3.fromRGB(255, 255, 255)
+    preview.BorderSizePixel = 0
+    Instance.new("UICorner", preview).CornerRadius = UDim.new(1, 0)
+    Instance.new("UIStroke", preview).Color = Color3.fromRGB(60, 60, 60)
+
+    local colors = {
+        Color3.fromRGB(255, 255, 255),
+        Color3.fromRGB(255, 0, 0),
+        Color3.fromRGB(0, 170, 255),
+        Color3.fromRGB(0, 255, 120),
+        Color3.fromRGB(255, 200, 0),
+        Color3.fromRGB(170, 0, 255),
+        Color3.fromRGB(255, 80, 200),
+        Color3.fromRGB(255, 120, 0),
+    }
+
+    local function ApplyShineColor(color)
+        getgenv().ShineColor = color
+        preview.BackgroundColor3 = color
+        pcall(SaveConfig)
+        for _, data in pairs(tabShines) do
+            if data.gradient and data.gradient.Parent then
+                data.gradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(0.5, color),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+                })
+                data.gradient.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 1),
+                    NumberSequenceKeypoint.new(0.5, 0),
+                    NumberSequenceKeypoint.new(1, 1),
+                })
+            end
+        end
+    end
+
+    if getgenv().ShineColor then
+        task.delay(0.5, function() ApplyShineColor(getgenv().ShineColor) end)
+    end
+
+    local x = 15
+    for _, col in ipairs(colors) do
+        local btn = Instance.new("TextButton", holder)
+        btn.Size = UDim2.new(0, 22, 0, 22)
+        btn.Position = UDim2.new(0, x, 0, 34)
+        btn.BackgroundColor3 = col
+        btn.Text = ""
+        btn.AutoButtonColor = false
+        btn.BorderSizePixel = 0
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+        Instance.new("UIStroke", btn).Color = Color3.fromRGB(50, 50, 50)
+        btn.Activated:Connect(function()
+            ApplyShineColor(col)
+            Notify("Theme System", "Shine color applied!", 3)
+            TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+            task.delay(0.1, function()
+                TweenService:Create(btn, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+            end)
+        end)
+        x += 28
+    end
+
+    local hexBox = Instance.new("TextBox", holder)
+    hexBox.Size = UDim2.new(0, 70, 0, 22)
+    hexBox.Position = UDim2.new(1, -80, 0, 34)
+    hexBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    hexBox.PlaceholderText = "HEX"
+    hexBox.Text = ""
+    hexBox.Font = CurrentFont
+    hexBox.TextSize = 12
+    hexBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    hexBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+    hexBox.TextXAlignment = Enum.TextXAlignment.Center
+    hexBox.BorderSizePixel = 0
+    Instance.new("UICorner", hexBox).CornerRadius = UDim.new(0, 6)
+    hexBox.FocusLost:Connect(function(enter)
+        if not enter then return end
+        local hex = hexBox.Text:gsub("#", ""):gsub("%s+", "")
+        if #hex == 6 then
+            local ok, col = pcall(function() return Color3.fromHex(hex) end)
+            if ok and col then
+                ApplyShineColor(col)
+                Notify("FTF Eclipse V2.9", "Shine color aplicado!", 3)
+            end
+        end
+    end)
+end
+
+    local boxStats, contentStats = CreateGroupbox(container, "Configuration")
 
     local function CreateToggle(parent, text, default, callback)
         local toggleFrame = Instance.new("Frame", parent)
@@ -9078,6 +9900,10 @@ do
         end)
         return toggleFrame
     end
+
+CreateToggle(contentStats, "Touch Screen Interface", true, function(enabled)
+    CrosshairLayer.Visible = enabled
+end)
 
     local fpsGui, fpsLabel
     local fpsConnection
@@ -9274,85 +10100,696 @@ do
     CreateAnimatedButton(contentStats, "Inifine Yield")
 end
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local currentLanguage = "EN"
+
 local Translation = {
 	EN = {
 		Search = "Search...",
-		Info = "INFO",
-		Exit = "Exit Eclipse",
-		ExitText = "Are you sure you want to close the script? You will\nneed to re-execute to open it again.",
-		Cancel = "Cancel",
-		YesExit = "Yes, Exit",
-		Close = "Close",
-		Minimize = "Minimize",
-		Credits = "CREDITS",
-		Testers = "TESTERS",
-		PlayerInfo = "PLAYER INFO",
-		ServerInfo = "SERVER INFO",
-		Thanks = "Thank you for using Eclipse.",
-		Owner = "Owner: @kayquet",
-		CoOwner = "Co-owner: @gustavo_bawnana & @x67j",
-		TestersList = "Testers: Luan, Vitor & Mz",
-		FPS = "FPS",
-		Ping = "Ping",
-		Executor = "Executor",
-		Region = "Region: BR",
-		Players = "Players",
-		MaxPlayers = "Max Players"
+		Highlights = "Highlights", Visual = "Visual", Progress = "Progress",
+		Textures = "Textures", Fog = "Fog", AutoFarm = "Auto Farm",
+		Advanced = "Advanced", Sounds = "Sounds", VisualSkins = "Visual Skins",
+		Teleport = "Teleport", Setting = "Setting", Settings = "Settings",
+		ObjectsFeatures = "Objects Features",
+		ESPsFeatures = "ESPs Features",
+		SettingsHighlights = "Settings Highlights",
+		ColorCustomization = "Color Customization",
+		OutlineCustomization = "Outline Customization",
+		Computer = "Computer", Capsule = "Capsule", Exit = "Exit", Door = "Door",
+		Fill = "Fill", Outline = "Outline",
+		Charms = "Charms", Square = "Square", TraceLine = "Trace Line", BeastGlowUp = "Beast GlowUp",
+		BeastFillColor = "Beast Fill Color", SurvivorFillColor = "Survivor Fill Color",
+		ComputerFillColor = "Computer Fill Color", DoorFillColor = "Door Fill Color",
+		FreezepodFillColor = "Freezepod Fill Color",
+		BeastOutline = "Beast Outline", SurvivorOutline = "Survivor Outline",
+		ComputerOutline = "Computer Outline", FreezepodOutline = "Freezepod Outline",
+		DoorOutline = "Door Outline", CharmsSurvivor = "Charms Survivor", CharmsBeast = "Charms Beast",
+		ResetAllOutline = "Reset All Outline", ResetAllFill = "Reset All Fill",
+		Survivor = "Survivor", Beast = "Beast",
+		BeastUntiePlayer = "Beast Untie Player", AntiRagdoll = "Anti Ragdoll",
+		SlowBeast = "Slow Beast", SlowBeastRunner = "Slow Beast Runner",
+		BeastAbility = "Beast Ability", BeastPowerNotify = "Beast Power Notify",
+		TouchFling = "Touch Fling", MacroWallHop = "Macro WallHop",
+		CameraMode = "Camera Mode", Noclip = "Noclip", AutoHitBeast = "Auto Hit Beast",
+		AutoHitRange = "Auto Hit Range", AutoHitDelay = "Auto Hit Delay",
+		CrawlBeast = "Crawl Beast", AutoTieAura = "Auto Tie aura", AutoTieAfterHit = "Auto Tie After Hit",
+		Transparency = "Transparency",
+		PlayerSpoof = "Player Spoof", HideUsername = "Hide Username",
+		Username = "Username", Level = "Level", Icon = "Icon", None = "None",
+		IconDefault = "Icon: Default", TargetNick = "Target Nick", Nick = "Nick",
+		Camera = "Camera", EnableFOV = "Enable FOV", FieldOfView = "Field Of View",
+		Stretch065 = "Stretch 0.65", Stretch07 = "Stretch 0.7",
+		Sensitivity = "Sensitivity", SensitivityX = "Sensitivity X", SensitivityY = "Sensitivity Y",
+		ResetX = "Reset X", ResetY = "Reset Y",
+		ActionTimers = "Action Timers", ComputerProgress = "Computer Progress",
+		ExitDoorTimer = "Exit Door Timer", DoorTimer = "Door Timer",
+		LifeTimer = "Life Timer", Walkspeed = "Walkspeed",
+		TimerColors = "Timer Colors", ComputerColor = "Computer Color",
+		ExitDoorColor = "Exit Door Color", DoorTimerColor = "Door Timer Color",
+		LifeTimerColor = "Life Timer Color", WalkspeedColor = "Walkspeed Color",
+		ResetTimerColors = "Reset Timer Colors",
+		BeastIndicators = "Beast Indicators", GetUpTimer = "GetUp Timer",
+		BeastPower = "Beast Power", BeastPowerV2 = "Beast Power V2",
+		BeastSpawnTimer = "Beast Spawn Timer", IndicatorsColors = "Indicators Colors",
+		GetUpColor = "GetUp Color", BeastPowerColor = "Beast Power Color",
+		BeastPowerV2Color = "Beast Power V2 Color", BeastSpawnColor = "Beast Spawn Color",
+		ResetIndicatorsColors = "Reset Indicators Colors",
+		MapTextures = "Map Textures", WhiteBricks = "White Bricks",
+		SnowMap = "Snow Map", RemoveTextures = "Remove Textures",
+		MinecraftTexture = "Minecraft Texture", DoubleJumpEffect = "Double Jump Effect",
+		EnterTextureID = "Enter Texture ID...", Apply = "Apply",
+		FPSSetting = "FPS Setting", FPSBoost = "FPS Boost",
+		GrayCharacter = "Gray Character", Crosshair = "Crosshair",
+		ButtonJump = "Button Jump", Default = "Padrão",
+		Calibration = "Calibration", EnableCalibration = "Enable Calibration",
+		Brightness = "Brightness", Contrast = "Contrast", Saturation = "Saturation",
+		Exposure = "Exposure", Temperature = "Temperature", Blur = "Blur",
+		ResetAll = "Reset All", Shaders = "Shaders", EnableShaders = "Enable Shaders",
+		Preset = "Preset", ResetShaders = "Reset Shaders",
+		Morning = "Morning", Midday = "Midday", Afternoon = "Afternoon",
+		Evening = "Evening", Night = "Night", Midnight = "Midnight",
+		FogSettings = "Fog Settings", BlackFog = "Black Fog", GrayFog = "Gray Fog", NoFog = "No Fog",
+		EnableFogMode = "Enable Fog Mode", FogColor = "Fog Color",
+		Flashlight = "Flashlight", FlashlightIntensity = "Flashlight Intensity",
+		Character = "Character", EnableWalkSpeed = "Enable WalkSpeed",
+		EnableFatigue = "Enable Fatigue", FatigueDelay = "Fatigue Delay",
+		FatigueDuration = "Fatigue Duration", FatigueSpeed = "Fatigue Speed",
+		EnableHighJump = "Enable High Jump", JumpPower = "Jump Power",
+		EnableCrawl = "Enable Crawl", CrawlSpeed = "Crawl Speed",
+		JumpClassic = "Jump & Classic", EnableClassicThumbstick = "Enable Classic Thumbstick",
+		ThumbstickX = "Thumbstick X", ThumbstickY = "Thumbstick Y",
+		EnableJumpButton = "Enable Jump Button",
+		JumpX = "Jump X", JumpY = "Jump Y", JumpScale = "Jump Scale",
+		AutoTieRange = "Auto Tie Range",
+		HitAura = "Hit Aura", HitAuraRange = "Hit Aura Range",
+		EnableHitbox = "Enable Hitbox", HideHitbox = "Hide Hitbox",
+		HitboxX = "Hitbox X", HitboxY = "Hitbox Y", HitboxZ = "Hitbox Z",
+		ButtonEButtonC = "Button E & Button C",
+		EnableEButton = "Enable E Button",
+		EX = "E X", EY = "E Y", ESize = "E Size",
+		EnableCButton = "Enable C Button",
+		CX = "C X", CY = "C Y", CSize = "C Size",
+		Volume = "Volume", FootSteps = "FootSteps",
+		Jump = "Jump", Fall = "Fall",
+		ResetVolumes = "Reset Volumes", ResetSounds = "Reset Sounds",
+		MuteSystem = "Mute System",
+		MuteYourFootsteps = "Mute Your Footsteps",
+		MuteYourJump = "Mute Your Jump",
+		MuteYourFall = "Mute Your Fall",
+		MuteHitSound = "Mute Hit Sound",
+		StepDistance = "Step Distance",
+		MinDistance = "Min Distance", MaxDistance = "Max Distance",
+		RollOff = "RollOff", ResetDistance = "Reset Distance",
+		MusicPlayer = "Music Player", MusicVolume = "Music Volume",
+		Select = "Select", Play = "Play",
+		SkinChanger = "Skin Changer",
+		UsernamePlaceholder = "Username...",
+		MapObjects = "Map Objects",
+		TPComputer = "TP Computer",
+		TPExitdoor = "TP Exitdoor",
+		TPFreezepods = "TP Freezepods",
+		TPCrystalCove = "TP Crystal Cove",
+		TPBeastCave = "TP Beast Cave",
+		TPMap = "TP Map",
+		Extras = "Extras",
+		TeleportToBeast = "Teleport to Beast",
+		ResetCharacter = "Reset Character",
+		ServerRejoin = "Server Rejoin",
+		RandomServers = "Random Servers",
+		PlayersTeleport = "Players Teleport",
+		Update = "Atualizar",
+		Appearance = "Appearance",
+		UIBackground = "UI Background",
+		CustomBackgroundID = "Custom Background ID",
+		UIFont = "UI Font",
+		ShineColor = "Shine Color",
+		TouchScreenInterface = "Touch Screen Interface",
+		ShowFPS = "Show FPS",
+		Configuration = "Configuration",
+		ShowPing = "Show Ping",
+		ShowCPU = "Show CPU",
+		TextBoxLabel = "TextBox",
+		ThanksFooter = "FTF Eclipse V2.9 Mobile | Thank you for using FTF Eclipse.",
 	},
 	PT = {
 		Search = "Pesquisar...",
-		Info = "INFORMAÇÕES",
-		Exit = "Sair do Eclipse",
-		ExitText = "Tem certeza que quer fechar o script? Você\nprecisará executar novamente para abrir.",
-		Cancel = "Cancelar",
-		YesExit = "Sim, Sair",
-		Close = "Fechar",
-		Minimize = "Minimizar",
-		Credits = "CRÉDITOS",
-		Testers = "TESTADORES",
-		PlayerInfo = "INFO DO PLAYER",
-		ServerInfo = "INFO DO SERVIDOR",
-		Thanks = "Obrigado por usar Eclipse.",
-		Owner = "Dono: @kayquet",
-		CoOwner = "Sub-Dono: @gustavo_bawnana & @x67j",
-		TestersList = "Testadores: Luan, Vitor & Mz",
-		FPS = "FPS",
-		Ping = "Ping",
-		Executor = "Executor",
-		Region = "Região: BR",
-		Players = "Jogadores",
-		MaxPlayers = "Máx Jogadores"
+		Highlights = "Destaques", Visual = "Visual", Progress = "Progresso",
+		Textures = "Texturas", Fog = "Nevoeiro", AutoFarm = "Farm Automático",
+		Advanced = "Avançado", Sounds = "Sons", VisualSkins = "Skins Visuais",
+		Teleport = "Teleporte", Setting = "Configuração", Settings = "Configurações",
+		ObjectsFeatures = "Recursos dos Objetos",
+		ESPsFeatures = "Recursos de ESP",
+		SettingsHighlights = "Configurações de Destaques",
+		ColorCustomization = "Personalização de Cor",
+		OutlineCustomization = "Personalização do Contorno",
+		Computer = "Computador", Capsule = "Cápsula", Exit = "Saída", Door = "Porta",
+		Fill = "Preencher", Outline = "Contorno",
+		Charms = "Amuletos", Square = "Quadrado", TraceLine = "Linha", BeastGlowUp = "Brilho Fera",
+		BeastFillColor = "Preencher Fera",
+		SurvivorFillColor = "Preencher Sobreviv.",
+		ComputerFillColor = "Preencher Computador",
+		DoorFillColor = "Preencher Porta",
+		FreezepodFillColor = "Preencher Freezepod",
+		BeastOutline = "Contorno Fera",
+		SurvivorOutline = "Contorno Sobreviv.",
+		ComputerOutline = "Contorno Computador",
+		FreezepodOutline = "Contorno Freezepod",
+		DoorOutline = "Contorno Porta",
+		CharmsSurvivor = "Amuletos Sobreviv.",
+		CharmsBeast = "Amuletos Fera",
+		ResetAllOutline = "Resetar Contorno",
+		ResetAllFill = "Resetar Preencher",
+		Survivor = "Sobrevivente", Beast = "Fera",
+		BeastUntiePlayer = "Desamarrar Jogador",
+		AntiRagdoll = "Anti Ragdoll",
+		SlowBeast = "Lentidão Fera",
+		SlowBeastRunner = "Lentidão Corredor",
+		BeastAbility = "Habilidade Fera",
+		BeastPowerNotify = "Aviso Poder Fera",
+		TouchFling = "Toque Arremesso",
+		MacroWallHop = "Macro WallHop",
+		CameraMode = "Modo Câmera",
+		Noclip = "Atravessar",
+		AutoHitBeast = "Auto Hit Fera",
+		AutoHitRange = "Alcance Hit",
+		AutoHitDelay = "Delay Hit",
+		CrawlBeast = "Rastejar Fera",
+		AutoTieAura = "Auto Amarrar Aura",
+		AutoTieAfterHit = "Amarrar Após Hit",
+		Transparency = "Transparência",
+		PlayerSpoof = "Falsificar Jogador", HideUsername = "Ocultar Nome",
+		Username = "Nome de Usuário", Level = "Nível", Icon = "Ícone", None = "Nenhum",
+		IconDefault = "Ícone: Padrão", TargetNick = "Apelido Alvo", Nick = "Apelido",
+		Camera = "Câmera", EnableFOV = "Ativar FOV", FieldOfView = "Campo de Visão",
+		Stretch065 = "Alongar 0.65", Stretch07 = "Alongar 0.7",
+		Sensitivity = "Sensibilidade", SensitivityX = "Sensibilidade X", SensitivityY = "Sensibilidade Y",
+		ResetX = "Resetar X", ResetY = "Resetar Y",
+		ActionTimers = "Temporizadores de Ação",
+		ComputerProgress = "Progresso Computador",
+		ExitDoorTimer = "Timer Porta Saída",
+		DoorTimer = "Timer Porta",
+		LifeTimer = "Timer de Vida",
+		Walkspeed = "Velocidade",
+		TimerColors = "Cores do Timer",
+		ComputerColor = "Cor Computador",
+		ExitDoorColor = "Cor Porta Saída",
+		DoorTimerColor = "Cor Timer Porta",
+		LifeTimerColor = "Cor Timer Vida",
+		WalkspeedColor = "Cor Velocidade",
+		ResetTimerColors = "Resetar Cores Timer",
+		BeastIndicators = "Indicadores da Fera",
+		GetUpTimer = "Timer Levantar",
+		BeastPower = "Poder da Fera",
+		BeastPowerV2 = "Poder da Fera V2",
+		BeastSpawnTimer = "Timer Spawn Fera",
+		IndicatorsColors = "Cores Indicadores",
+		GetUpColor = "Cor Levantar",
+		BeastPowerColor = "Cor Poder Fera",
+		BeastPowerV2Color = "Cor Poder Fera V2",
+		BeastSpawnColor = "Cor Spawn Fera",
+		ResetIndicatorsColors = "Resetar Cores Indicadores",
+		MapTextures = "Texturas do Mapa",
+		WhiteBricks = "Tijolos Brancos",
+		SnowMap = "Mapa de Neve",
+		RemoveTextures = "Remover Texturas",
+		MinecraftTexture = "Textura Minecraft",
+		DoubleJumpEffect = "Efeito Pulo Duplo",
+		EnterTextureID = "Digite o ID da Textura...",
+		Apply = "Aplicar",
+		FPSSetting = "Config. de FPS",
+		FPSBoost = "Boost de FPS",
+		GrayCharacter = "Personagem Cinza",
+		Crosshair = "Mira",
+		ButtonJump = "Botão de Pulo",
+		Default = "Padrão",
+		Calibration = "Calibração",
+		EnableCalibration = "Ativar Calibração",
+		Brightness = "Brilho",
+		Contrast = "Contraste",
+		Saturation = "Saturação",
+		Exposure = "Exposição",
+		Temperature = "Temperatura",
+		Blur = "Desfoque",
+		ResetAll = "Resetar Tudo",
+		Shaders = "Shaders",
+		EnableShaders = "Ativar Shaders",
+		Preset = "Predefinição",
+		ResetShaders = "Resetar Shaders",
+		Morning = "Manhã", Midday = "Meio-dia", Afternoon = "Tarde",
+		Evening = "Entardecer", Night = "Noite", Midnight = "Meia-noite",
+		FogSettings = "Config. de Névoa",
+		BlackFog = "Névoa Preta", GrayFog = "Névoa Cinza", NoFog = "Sem Névoa",
+		EnableFogMode = "Ativar Modo Névoa",
+		FogColor = "Cor da Névoa",
+		Flashlight = "Lanterna",
+		FlashlightIntensity = "Intensidade Lanterna",
+		Character = "Personagem",
+		EnableWalkSpeed = "Ativar Velocidade",
+		EnableFatigue = "Ativar Cansaço",
+		FatigueDelay = "Delay do Cansaço",
+		FatigueDuration = "Duração do Cansaço",
+		FatigueSpeed = "Velocidade Cansaço",
+		EnableHighJump = "Ativar Pulo Alto",
+		JumpPower = "Força do Pulo",
+		EnableCrawl = "Ativar Rastejar",
+		CrawlSpeed = "Velocidade Rastejar",
+		JumpClassic = "Pulo & Clássico",
+		EnableClassicThumbstick = "Ativar Thumbstick Clássico",
+		ThumbstickX = "Thumbstick X", ThumbstickY = "Thumbstick Y",
+		EnableJumpButton = "Ativar Botão Pulo",
+		JumpX = "Pulo X", JumpY = "Pulo Y", JumpScale = "Escala do Pulo",
+		AutoTieRange = "Alcance Auto Amarrar",
+		HitAura = "Aura de Hit", HitAuraRange = "Alcance Aura Hit",
+		EnableHitbox = "Ativar Hitbox", HideHitbox = "Ocultar Hitbox",
+		HitboxX = "Hitbox X", HitboxY = "Hitbox Y", HitboxZ = "Hitbox Z",
+		ButtonEButtonC = "Botão E & Botão C",
+		EnableEButton = "Ativar Botão E",
+		EX = "E X", EY = "E Y", ESize = "Tamanho E",
+		EnableCButton = "Ativar Botão C",
+		CX = "C X", CY = "C Y", CSize = "Tamanho C",
+		Volume = "Volume", FootSteps = "Passos",
+		Jump = "Pulo", Fall = "Queda",
+		ResetVolumes = "Resetar Volumes", ResetSounds = "Resetar Sons",
+		MuteSystem = "Silenciar Sistema",
+		MuteYourFootsteps = "Silenciar Seus Passos",
+		MuteYourJump = "Silenciar Seu Pulo",
+		MuteYourFall = "Silenciar Sua Queda",
+		MuteHitSound = "Silenciar Som de Hit",
+		StepDistance = "Distância de Passos",
+		MinDistance = "Min Distância", MaxDistance = "Max Distância",
+		RollOff = "RollOff", ResetDistance = "Reset Distância",
+		MusicPlayer = "Tocador de Música", MusicVolume = "Volume da Música",
+		Select = "Selecionar", Play = "Tocar",
+		SkinChanger = "Trocador de Skin",
+		UsernamePlaceholder = "Nome de usuário...",
+		MapObjects = "Objetos do Mapa",
+		TPComputer = "TP Computador",
+		TPExitdoor = "TP Porta Saída",
+		TPFreezepods = "TP Freezepods",
+		TPCrystalCove = "TP Crystal Cove",
+		TPBeastCave = "TP Caverna da Fera",
+		TPMap = "TP Mapa",
+		Extras = "Extras",
+		TeleportToBeast = "Teleportar p/ Fera",
+		ResetCharacter = "Resetar Personagem",
+		ServerRejoin = "Reentrar no Servidor",
+		RandomServers = "Servidores Aleatórios",
+		PlayersTeleport = "Teleporte de Jogadores",
+		Update = "Atualizar",
+		Appearance = "Aparência",
+		UIBackground = "Fundo da UI",
+		CustomBackgroundID = "ID de Fundo Personalizado",
+		UIFont = "Fonte da UI",
+		ShineColor = "Cor do Brilho",
+		TouchScreenInterface = "Interface Tela Touch",
+		ShowFPS = "Mostrar FPS",
+		Configuration = "Configuração",
+		ShowPing = "Mostrar Ping",
+		ShowCPU = "Mostrar CPU",
+		TextBoxLabel = "Caixa de Texto",
+		ThanksFooter = "FTF Eclipse V2.9 Mobile | Obrigado por usar FTF Eclipse.",
 	}
 }
 
+local TextToKey = {
+	["Search..."] = "Search", ["Pesquisar..."] = "Search",
+	["Highlights"] = "Highlights", ["Visual"] = "Visual", ["Progress"] = "Progress",
+	["Textures"] = "Textures", ["Fog"] = "Fog",
+	["Farm Automático"] = "AutoFarm", ["Auto Farm"] = "AutoFarm",
+	["Advanced"] = "Advanced", ["Sounds"] = "Sounds", ["Visual Skins"] = "VisualSkins",
+	["Teleport"] = "Teleport", ["Teleporte"] = "Teleport",
+	["Setting"] = "Setting", ["Settings"] = "Settings",
+	["Objects Features"] = "ObjectsFeatures", ["Recursos dos Objetos"] = "ObjectsFeatures", ["Objetos"] = "ObjectsFeatures",
+	["ESPs Features"] = "ESPsFeatures", ["Recursos de ESP"] = "ESPsFeatures", ["ESPs"] = "ESPsFeatures",
+	["Settings Highlights"] = "SettingsHighlights", ["Configurações de Destaques"] = "SettingsHighlights", ["Config. Destaques"] = "SettingsHighlights",
+	["Color Customization"] = "ColorCustomization", ["Personalização de Cor"] = "ColorCustomization", ["Cores"] = "ColorCustomization",
+	["Outline Customization"] = "OutlineCustomization", ["Personalização do Contorno"] = "OutlineCustomization", ["Contorno"] = "OutlineCustomization",
+	["Computer"] = "Computer", ["Capsule"] = "Capsule",
+	["Exit"] = "Exit", ["Door"] = "Door",
+	["Fill"] = "Fill", ["Preenchimento"] = "Fill", ["Preencher"] = "Fill",
+	["Outline"] = "Outline",
+	["Charms"] = "Charms", ["Square"] = "Square",
+	["Trace Line"] = "TraceLine", ["Beast GlowUp"] = "BeastGlowUp",
+	["Beast Fill Color"] = "BeastFillColor", ["Cor de Preencher da Fera"] = "BeastFillColor",
+	["Survivor Fill Color"] = "SurvivorFillColor", ["Cor de Preencher do Sobrevivente"] = "SurvivorFillColor",
+	["Computer Fill Color"] = "ComputerFillColor", ["Cor de Preencher do Computador"] = "ComputerFillColor",
+	["Door Fill Color"] = "DoorFillColor", ["Cor de Preencher da Porta"] = "DoorFillColor",
+	["Freezepod Fill Color"] = "FreezepodFillColor", ["Cor de Preencher do Freezepod"] = "FreezepodFillColor",
+	["Beast Outline"] = "BeastOutline", ["Contorno da Fera"] = "BeastOutline",
+	["Survivor Outline"] = "SurvivorOutline", ["Contorno do Sobrevivente"] = "SurvivorOutline",
+	["Computer Outline"] = "ComputerOutline", ["Contorno do Computador"] = "ComputerOutline",
+	["Freezepod Outline"] = "FreezepodOutline", ["Contorno do Freezepod"] = "FreezepodOutline",
+	["Door Outline"] = "DoorOutline", ["Contorno da Porta"] = "DoorOutline",
+	["Charms Survivor"] = "CharmsSurvivor", ["Amuletos do Sobrevivente"] = "CharmsSurvivor",
+	["Charms Beast"] = "CharmsBeast", ["Amuletos da Fera"] = "CharmsBeast",
+	["Reset All Outline"] = "ResetAllOutline", ["Reset All Fill"] = "ResetAllFill",
+	["Survivor"] = "Survivor", ["Sobrevivente"] = "Survivor",
+	["Beast"] = "Beast", ["Fera"] = "Beast",
+	["Beast Untie Player"] = "BeastUntiePlayer",
+	["Anti Ragdoll"] = "AntiRagdoll",
+	["Slow Beast"] = "SlowBeast", ["Slow Beast Runner"] = "SlowBeastRunner",
+	["Beast Ability"] = "BeastAbility", ["Beast Power Notify"] = "BeastPowerNotify",
+	["Touch Fling"] = "TouchFling", ["Macro WallHop"] = "MacroWallHop",
+	["Camera Mode"] = "CameraMode", ["Noclip"] = "Noclip",
+	["Auto Hit Beast"] = "AutoHitBeast", ["Auto Hit Range"] = "AutoHitRange",
+	["Auto Hit Delay"] = "AutoHitDelay", ["Crawl Beast"] = "CrawlBeast",
+	["Auto Tie aura"] = "AutoTieAura", ["Auto Tie After Hit"] = "AutoTieAfterHit",
+	["Transparency"] = "Transparency", ["Transparência"] = "Transparency",
+	["Player Spoof"] = "PlayerSpoof", ["Falsificar Jogador"] = "PlayerSpoof",
+	["Hide Username"] = "HideUsername", ["Ocultar Nome"] = "HideUsername",
+	["Username"] = "Username", ["Nome de Usuário"] = "Username",
+	["Level"] = "Level", ["Nível"] = "Level",
+	["Icon"] = "Icon", ["Ícone"] = "Icon",
+	["None"] = "None", ["Nenhum"] = "None",
+	["Icon: Default"] = "IconDefault", ["Ícone: Padrão"] = "IconDefault",
+	["Target Nick"] = "TargetNick", ["Apelido Alvo"] = "TargetNick",
+	["Nick"] = "Nick", ["Apelido"] = "Nick",
+	["Camera"] = "Camera", ["Câmera"] = "Camera",
+	["Enable FOV"] = "EnableFOV", ["Ativar FOV"] = "EnableFOV",
+	["Field Of View"] = "FieldOfView", ["Campo de Visão"] = "FieldOfView",
+	["Stretch 0.65"] = "Stretch065", ["Alongar 0.65"] = "Stretch065",
+	["Stretch 0.7"] = "Stretch07", ["Alongar 0.7"] = "Stretch07",
+	["Sensitivity"] = "Sensitivity", ["Sensibilidade"] = "Sensitivity",
+	["Sensitivity X"] = "SensitivityX", ["Sensibilidade X"] = "SensitivityX",
+	["Sensitivity Y"] = "SensitivityY", ["Sensibilidade Y"] = "SensitivityY",
+	["Reset X"] = "ResetX", ["Resetar X"] = "ResetX",
+	["Reset Y"] = "ResetY", ["Resetar Y"] = "ResetY",
+	["Action Timers"] = "ActionTimers", ["Temporizadores de Ação"] = "ActionTimers",
+	["Computer Progress"] = "ComputerProgress", ["Progresso Computador"] = "ComputerProgress",
+	["Exit Door Timer"] = "ExitDoorTimer", ["Timer Porta Saída"] = "ExitDoorTimer",
+	["Door Timer"] = "DoorTimer", ["Timer Porta"] = "DoorTimer",
+	["Life Timer"] = "LifeTimer", ["Timer de Vida"] = "LifeTimer",
+	["Walkspeed"] = "Walkspeed", ["Velocidade"] = "Walkspeed",
+	["Timer Colors"] = "TimerColors", ["Cores do Timer"] = "TimerColors",
+	["Computer Color"] = "ComputerColor", ["Cor Computador"] = "ComputerColor",
+	["Exit Door Color"] = "ExitDoorColor", ["Cor Porta Saída"] = "ExitDoorColor",
+	["Door Timer Color"] = "DoorTimerColor", ["Cor Timer Porta"] = "DoorTimerColor",
+	["Life Timer Color"] = "LifeTimerColor", ["Cor Timer Vida"] = "LifeTimerColor",
+	["Walkspeed Color"] = "WalkspeedColor", ["Cor Velocidade"] = "WalkspeedColor",
+	["Reset Timer Colors"] = "ResetTimerColors", ["Resetar Cores Timer"] = "ResetTimerColors",
+	["Beast Indicators"] = "BeastIndicators", ["Indicadores da Fera"] = "BeastIndicators",
+	["GetUp Timer"] = "GetUpTimer", ["Timer Levantar"] = "GetUpTimer",
+	["Beast Power"] = "BeastPower", ["Poder da Fera"] = "BeastPower",
+	["Beast Power V2"] = "BeastPowerV2", ["Poder da Fera V2"] = "BeastPowerV2",
+	["Beast Spawn Timer"] = "BeastSpawnTimer", ["Timer Spawn Fera"] = "BeastSpawnTimer",
+	["Indicators Colors"] = "IndicatorsColors", ["Cores Indicadores"] = "IndicatorsColors",
+	["GetUp Color"] = "GetUpColor", ["Cor Levantar"] = "GetUpColor",
+	["Beast Power Color"] = "BeastPowerColor", ["Cor Poder Fera"] = "BeastPowerColor",
+	["Beast Power V2 Color"] = "BeastPowerV2Color", ["Cor Poder Fera V2"] = "BeastPowerV2Color",
+	["Beast Spawn Color"] = "BeastSpawnColor", ["Cor Spawn Fera"] = "BeastSpawnColor",
+	["Reset Indicators Colors"] = "ResetIndicatorsColors", ["Resetar Cores Indicadores"] = "ResetIndicatorsColors",
+	["Map Textures"] = "MapTextures", ["Texturas do Mapa"] = "MapTextures",
+	["White Bricks"] = "WhiteBricks", ["Tijolos Brancos"] = "WhiteBricks",
+	["Snow Map"] = "SnowMap", ["Mapa de Neve"] = "SnowMap",
+	["Remove Textures"] = "RemoveTextures", ["Remover Texturas"] = "RemoveTextures",
+	["Minecraft Texture"] = "MinecraftTexture", ["Textura Minecraft"] = "MinecraftTexture",
+	["Double Jump Effect"] = "DoubleJumpEffect", ["Efeito Pulo Duplo"] = "DoubleJumpEffect",
+	["Enter Texture ID..."] = "EnterTextureID", ["Digite o ID da Textura..."] = "EnterTextureID",
+	["Apply"] = "Apply", ["Aplicar"] = "Apply",
+	["FPS Setting"] = "FPSSetting", ["Config. de FPS"] = "FPSSetting",
+	["FPS Boost"] = "FPSBoost", ["Boost de FPS"] = "FPSBoost",
+	["Gray Character"] = "GrayCharacter", ["Personagem Cinza"] = "GrayCharacter",
+	["Crosshair"] = "Crosshair", ["Mira"] = "Crosshair",
+	["Button Jump"] = "ButtonJump", ["Botão de Pulo"] = "ButtonJump",
+	["Padrão"] = "Default",
+	["Calibration"] = "Calibration", ["Calibração"] = "Calibration",
+	["Enable Calibration"] = "EnableCalibration", ["Ativar Calibração"] = "EnableCalibration",
+	["Brightness"] = "Brightness", ["Brilho"] = "Brightness",
+	["Contrast"] = "Contrast", ["Contraste"] = "Contrast",
+	["Saturation"] = "Saturation", ["Saturação"] = "Saturation",
+	["Exposure"] = "Exposure", ["Exposição"] = "Exposure",
+	["Temperature"] = "Temperature", ["Temperatura"] = "Temperature",
+	["Blur"] = "Blur", ["Desfoque"] = "Blur",
+	["Reset All"] = "ResetAll", ["Resetar Tudo"] = "ResetAll",
+	["Shaders"] = "Shaders",
+	["Enable Shaders"] = "EnableShaders", ["Ativar Shaders"] = "EnableShaders",
+	["Preset"] = "Preset", ["Predefinição"] = "Preset",
+	["Reset Shaders"] = "ResetShaders", ["Resetar Shaders"] = "ResetShaders",
+	["Morning"] = "Morning", ["Manhã"] = "Morning",
+	["Midday"] = "Midday", ["Meio-dia"] = "Midday",
+	["Afternoon"] = "Afternoon", ["Tarde"] = "Afternoon",
+	["Evening"] = "Evening", ["Entardecer"] = "Evening",
+	["Night"] = "Night", ["Noite"] = "Night",
+	["Midnight"] = "Midnight", ["Meia-noite"] = "Midnight",
+	["Fog Settings"] = "FogSettings", ["Config. de Névoa"] = "FogSettings",
+	["Black Fog"] = "BlackFog", ["Névoa Preta"] = "BlackFog",
+	["Gray Fog"] = "GrayFog", ["Névoa Cinza"] = "GrayFog",
+	["No Fog"] = "NoFog", ["Sem Névoa"] = "NoFog",
+	["Enable Fog Mode"] = "EnableFogMode", ["Ativar Modo Névoa"] = "EnableFogMode",
+	["Fog Color"] = "FogColor", ["Cor da Névoa"] = "FogColor",
+	["Flashlight"] = "Flashlight", ["Lanterna"] = "Flashlight",
+	["Flashlight Intensity"] = "FlashlightIntensity", ["Intensidade Lanterna"] = "FlashlightIntensity",
+	["Character"] = "Character", ["Personagem"] = "Character",
+	["Enable WalkSpeed"] = "EnableWalkSpeed", ["Ativar Velocidade"] = "EnableWalkSpeed",
+	["Enable Fatigue"] = "EnableFatigue", ["Ativar Cansaço"] = "EnableFatigue",
+	["Fatigue Delay"] = "FatigueDelay", ["Delay do Cansaço"] = "FatigueDelay",
+	["Fatigue Duration"] = "FatigueDuration", ["Duração do Cansaço"] = "FatigueDuration",
+	["Fatigue Speed"] = "FatigueSpeed", ["Velocidade Cansaço"] = "FatigueSpeed",
+	["Enable High Jump"] = "EnableHighJump", ["Ativar Pulo Alto"] = "EnableHighJump",
+	["Jump Power"] = "JumpPower", ["Força do Pulo"] = "JumpPower",
+	["Enable Crawl"] = "EnableCrawl", ["Ativar Rastejar"] = "EnableCrawl",
+	["Crawl Speed"] = "CrawlSpeed", ["Velocidade Rastejar"] = "CrawlSpeed",
+	["Jump & Classic"] = "JumpClassic", ["Pulo & Clássico"] = "JumpClassic",
+	["Enable Classic Thumbstick"] = "EnableClassicThumbstick", ["Ativar Thumbstick Clássico"] = "EnableClassicThumbstick",
+	["Enable Classic Thumb..."] = "EnableClassicThumbstick",
+	["Thumbstick X"] = "ThumbstickX", ["Thumbstick Y"] = "ThumbstickY",
+	["Enable Jump Button"] = "EnableJumpButton", ["Ativar Botão Pulo"] = "EnableJumpButton",
+	["Jump X"] = "JumpX", ["Pulo X"] = "JumpX",
+	["Jump Y"] = "JumpY", ["Pulo Y"] = "JumpY",
+	["Jump Scale"] = "JumpScale", ["Escala do Pulo"] = "JumpScale",
+	["Auto Tie Range"] = "AutoTieRange", ["Alcance Auto Amarrar"] = "AutoTieRange",
+	["Hit Aura"] = "HitAura", ["Aura de Hit"] = "HitAura",
+	["Hit Aura Range"] = "HitAuraRange", ["Alcance Aura Hit"] = "HitAuraRange",
+	["Enable Hitbox"] = "EnableHitbox", ["Ativar Hitbox"] = "EnableHitbox",
+	["Hide Hitbox"] = "HideHitbox", ["Ocultar Hitbox"] = "HideHitbox",
+	["Hitbox X"] = "HitboxX", ["Hitbox Y"] = "HitboxY", ["Hitbox Z"] = "HitboxZ",
+	["Button E & Button C"] = "ButtonEButtonC", ["Botão E & Botão C"] = "ButtonEButtonC",
+	["Enable E Button"] = "EnableEButton", ["Ativar Botão E"] = "EnableEButton",
+	["E X"] = "EX", ["E Y"] = "EY", ["E Size"] = "ESize",
+	["Tamanho E"] = "ESize",
+	["Enable C Button"] = "EnableCButton", ["Ativar Botão C"] = "EnableCButton",
+	["C X"] = "CX", ["C Y"] = "CY", ["C Size"] = "CSize",
+	["Tamanho C"] = "CSize",
+	["Volume"] = "Volume",
+	["FootSteps"] = "FootSteps", ["Passos"] = "FootSteps",
+	["Jump"] = "Jump", ["Pulo"] = "Jump",
+	["Fall"] = "Fall", ["Queda"] = "Fall",
+	["Reset Volumes"] = "ResetVolumes", ["Resetar Volumes"] = "ResetVolumes",
+	["Reset Sounds"] = "ResetSounds", ["Resetar Sons"] = "ResetSounds",
+	["Mute System"] = "MuteSystem", ["Silenciar Sistema"] = "MuteSystem",
+	["Mute Your Footsteps"] = "MuteYourFootsteps", ["Silenciar Seus Passos"] = "MuteYourFootsteps",
+	["Mute Your Jump"] = "MuteYourJump", ["Silenciar Seu Pulo"] = "MuteYourJump",
+	["Mute Your Fall"] = "MuteYourFall", ["Silenciar Sua Queda"] = "MuteYourFall",
+	["Mute Hit Sound"] = "MuteHitSound", ["Silenciar Som de Hit"] = "MuteHitSound",
+	["Step Distance"] = "StepDistance", ["Distância de Passos"] = "StepDistance",
+	["Min Distance"] = "MinDistance", ["Min Distância"] = "MinDistance",
+	["Max Distance"] = "MaxDistance", ["Max Distância"] = "MaxDistance",
+	["RollOff"] = "RollOff",
+	["Reset Distance"] = "ResetDistance", ["Reset Distância"] = "ResetDistance",
+	["Music Player"] = "MusicPlayer", ["Tocador de Música"] = "MusicPlayer",
+	["Music Volume"] = "MusicVolume", ["Volume da Música"] = "MusicVolume",
+	["Select"] = "Select", ["Selecionar"] = "Select",
+	["Play"] = "Play", ["Tocar"] = "Play",
+	["Skin Changer"] = "SkinChanger", ["Trocador de Skin"] = "SkinChanger",
+	["Username..."] = "UsernamePlaceholder", ["Nome de usuário..."] = "UsernamePlaceholder",
+	["Map Objects"] = "MapObjects", ["Objetos do Mapa"] = "MapObjects",
+	["TP Computer"] = "TPComputer", ["TP Computador"] = "TPComputer",
+	["TP Exitdoor"] = "TPExitdoor", ["TP Porta Saída"] = "TPExitdoor",
+	["TP Freezepods"] = "TPFreezepods",
+	["TP Crystal Cove"] = "TPCrystalCove",
+	["TP Beast Cave"] = "TPBeastCave", ["TP Caverna da Fera"] = "TPBeastCave",
+	["TP Map"] = "TPMap", ["TP Mapa"] = "TPMap",
+	["Extras"] = "Extras",
+	["Teleport to Beast"] = "TeleportToBeast", ["Teleportar p/ Fera"] = "TeleportToBeast",
+	["Reset Character"] = "ResetCharacter", ["Resetar Personagem"] = "ResetCharacter",
+	["Server Rejoin"] = "ServerRejoin", ["Reentrar no Servidor"] = "ServerRejoin",
+	["Random Servers"] = "RandomServers", ["Servidores Aleatórios"] = "RandomServers",
+	["Players Teleport"] = "PlayersTeleport", ["Teleporte de Jogadores"] = "PlayersTeleport",
+	["Atualizar"] = "Update",
+	["Appearance"] = "Appearance", ["Aparência"] = "Appearance",
+	["UI Background: Style 3"] = "UIBackground", ["Fundo da UI: Estilo 3"] = "UIBackground",
+	["UI Background"] = "UIBackground", ["Fundo da UI"] = "UIBackground",
+	["Custom Background ID"] = "CustomBackgroundID", ["ID de Fundo Personalizado"] = "CustomBackgroundID",
+	["UI Font: Arial"] = "UIFont", ["Fonte da UI: Arial"] = "UIFont",
+	["UI Font"] = "UIFont", ["Fonte da UI"] = "UIFont",
+	["Shine Color"] = "ShineColor", ["Cor do Brilho"] = "ShineColor",
+	["Touch Screen Interface"] = "TouchScreenInterface", ["Interface Tela Touch"] = "TouchScreenInterface",
+	["Show FPS"] = "ShowFPS", ["Mostrar FPS"] = "ShowFPS",
+	["Configuration"] = "Configuration", ["Configuração"] = "Configuration",
+	["Show Ping"] = "ShowPing", ["Mostrar Ping"] = "ShowPing",
+	["Show CPU"] = "ShowCPU", ["Mostrar CPU"] = "ShowCPU",
+	["TextBox"] = "TextBoxLabel", ["Caixa de Texto"] = "TextBoxLabel",
+	["FTF Eclipse V2.9 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V2.9 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
+}
+
+local Translatable = {}
 local TranslatableElements = {}
 local AllSearchable = {}
 
-local function AddTranslatable(element, key)
-	TranslatableElements[element] = key
+local function AddTranslatable(el, key)
+	if el and key then TranslatableElements[el] = key end
+end
+local function AddToSearch(el, name)
+	if el and name then AllSearchable[el] = name:lower() end
 end
 
-local function AddToSearch(element, name)
-	if element then
-		AllSearchable[element] = name:lower()
+local function T(key)
+	return Translation[currentLanguage][key] or key
+end
+_G.T = T
+
+local PlayerNames = {}
+for _, p in ipairs(Players:GetPlayers()) do
+	PlayerNames[p.Name] = true
+	PlayerNames[p.DisplayName] = true
+end
+Players.PlayerAdded:Connect(function(p)
+	PlayerNames[p.Name] = true
+	PlayerNames[p.DisplayName] = true
+end)
+
+local function DeveIgnorar(el, text)
+	if not el or not text or text == "" then return true end
+	if text == "Exit Eclipse" or text == "Sair do Eclipse" then return true end
+	if text:find("Are you sure you want to close") then return true end
+	if text:find("Tem certeza que quer fechar") then return true end
+	if text == "Cancel" or text == "Cancelar" then return true end
+	if text == "Yes, Exit" or text == "Sim, Sair" then return true end
+	if text == "Close" or text == "Fechar" then return true end
+	if text == "INFO" or text == "INFORMAÇÕES" then return true end
+	if text == "Thank you for using Eclipse." or text == "Obrigado por usar Eclipse." then return true end
+	if text:sub(1, 1) == "@" then return true end
+	if PlayerNames[text] then return true end
+	if text:find("^FPS:") or text:find("^Ping:") then return true end
+	if text:find("^Players:") or text:find("^Max Players:") then return true end
+	if text:find("^Executor:") or text:find("^Region:") or text:find("^Região:") then return true end
+	return false
+end
+
+local function IsInExitOrInfo(el)
+	local cur = el
+	while cur do
+		if cur:GetAttribute("NoTranslate") then return true end
+		local n = cur.Name:lower()
+		if n:find("exit") or n:find("info") then
+			if n:find("exitpopup") or n:find("exitframe") or n:find("infoframe") or n:find("infopanel") or n == "info" or n == "exit" then
+				return true
+			end
+		end
+		cur = cur.Parent
+		if not cur or cur:IsA("PlayerGui") then break end
+	end
+	return false
+end
+
+local function TryTranslate(el)
+	if not el or not el.Parent then return end
+	if IsInExitOrInfo(el) then return end
+	if el:GetAttribute("NoTranslate") then return end
+	if el:IsA("TextBox") then
+		local ph = el.PlaceholderText
+		if ph and ph ~= "" and not DeveIgnorar(el, ph) then
+			local k = TextToKey[ph]
+			if k then
+				Translatable[el] = k
+				el.PlaceholderText = Translation[currentLanguage][k]
+			end
+		end
+		return
+	end
+	local clean = el.Text:gsub("^%s+", ""):gsub("%s+$", "")
+	if DeveIgnorar(el, clean) then return end
+	if Translatable[el] then
+		local suffix = el:GetAttribute("TransSuffix")
+		if suffix then
+			el.Text = Translation[currentLanguage][Translatable[el]] .. ": " .. suffix
+		else
+			el.Text = Translation[currentLanguage][Translatable[el]]
+		end
+		return
+	end
+	local prefix, rest = clean:match("^(.-):%s*(.+)$")
+	if prefix and TextToKey[prefix] then
+		if TextToKey[clean] then
+			local k2 = TextToKey[clean]
+			Translatable[el] = k2
+			el:SetAttribute("TransSuffix", nil)
+			el.Text = Translation[currentLanguage][k2]
+			return
+		end
+		if DeveIgnorar(el, rest) then return end
+		local key = TextToKey[prefix]
+		Translatable[el] = key
+		el:SetAttribute("TransSuffix", rest)
+		el.Text = Translation[currentLanguage][key] .. ": " .. rest
+		return
+	end
+	local key = TextToKey[clean]
+	if key then
+		Translatable[el] = key
+		el.Text = Translation[currentLanguage][key]
 	end
 end
 
-local function UpdateLanguage()
-	langBtn.Text = currentLanguage
-	searchInput.PlaceholderText = Translation[currentLanguage].Search
-	
-	for element, key in pairs(TranslatableElements) do
-		if element and element.Parent then
-			element.Text = Translation[currentLanguage][key] or key
+local function TranslateAllOnce(gui)
+	if not gui then return end
+	for _, el in ipairs(gui:GetDescendants()) do
+		if el:IsA("TextLabel") or el:IsA("TextButton") or el:IsA("TextBox") then
+			TryTranslate(el)
 		end
 	end
 end
 
-langBtn.MouseButton1Click:Connect(function()
-	currentLanguage = currentLanguage == "EN" and "PT" or "EN"
+local function UpdateLanguage()
+	for el, key in pairs(Translatable) do
+		if el and el.Parent then
+			if el:IsA("TextBox") then
+				el.PlaceholderText = Translation[currentLanguage][key] or el.PlaceholderText
+			else
+				local suffix = el:GetAttribute("TransSuffix")
+				if suffix then
+					el.Text = Translation[currentLanguage][key] .. ": " .. suffix
+				else
+					el.Text = Translation[currentLanguage][key] or key
+				end
+			end
+		end
+	end
+	for el, key in pairs(TranslatableElements) do
+		if el and el.Parent then
+			el.Text = Translation[currentLanguage][key] or key
+		end
+	end
+	if langBtn and langBtn.Parent then langBtn.Text = currentLanguage end
+	if searchInput and searchInput.Parent then
+		searchInput.PlaceholderText = Translation[currentLanguage].Search
+	end
+end
+_G.UpdateLanguage = UpdateLanguage
+
+if langBtn and not langBtn:GetAttribute("IsLangBtn") then
+	langBtn:SetAttribute("IsLangBtn", true)
+	langBtn.MouseButton1Click:Connect(function()
+		currentLanguage = (currentLanguage == "EN") and "PT" or "EN"
+		UpdateLanguage()
+	end)
+end
+
+task.spawn(function()
+	local gui2 = PlayerGui:WaitForChild("EclipseUI", 15)
+	if not gui2 then return end
+	task.wait(0.2)
+	TranslateAllOnce(gui2)
 	UpdateLanguage()
+	gui2.DescendantAdded:Connect(function(el)
+		if el:IsA("TextLabel") or el:IsA("TextButton") or el:IsA("TextBox") then
+			task.wait(0.05)
+			TryTranslate(el)
+		end
+	end)
 end)
 
 local function FilterSearch(text)
@@ -9365,8 +10802,7 @@ local function FilterSearch(text)
 	end
 	for element, name in pairs(AllSearchable) do
 		if element and element.Parent then
-			local visible = string.find(name, text, 1, true) ~= nil
-			element.Visible = visible
+			element.Visible = string.find(name, text, 1, true) ~= nil
 		end
 	end
 end
@@ -9383,16 +10819,13 @@ local function CreateGroupbox(parent, titleKey)
 	groupbox.BackgroundTransparency = 0.7
 	groupbox.Parent = parent
 	Instance.new("UICorner", groupbox).CornerRadius = UDim.new(0, 8)
-	
 	local groupboxStroke = Instance.new("UIStroke", groupbox)
 	groupboxStroke.Color = Color3.fromRGB(80, 80, 80)
 	groupboxStroke.Thickness = 1
 	groupboxStroke.Transparency = 0.4
-	
 	local header = Instance.new("Frame", groupbox)
 	header.Size = UDim2.new(1, 0, 0, 35)
 	header.BackgroundTransparency = 1
-	
 	local titleLabel = Instance.new("TextLabel", header)
 	titleLabel.Size = UDim2.new(1, -30, 1, 0)
 	titleLabel.Position = UDim2.new(0, 22, 0, 0)
@@ -9403,14 +10836,12 @@ local function CreateGroupbox(parent, titleKey)
 	titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	AddTranslatable(titleLabel, titleKey)
-	
 	local divider = Instance.new("Frame", groupbox)
 	divider.Size = UDim2.new(1, -24, 0, 1)
 	divider.Position = UDim2.new(0, 12, 0, 35)
 	divider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 	divider.BackgroundTransparency = 0.3
 	divider.BorderSizePixel = 0
-	
 	local contentFrame = Instance.new("Frame", groupbox)
 	contentFrame.Size = UDim2.new(1, -24, 0, 0)
 	contentFrame.Position = UDim2.new(0, 12, 0, 45)
@@ -9418,378 +10849,360 @@ local function CreateGroupbox(parent, titleKey)
 	contentFrame.AutomaticSize = Enum.AutomaticSize.Y
 	Instance.new("UIListLayout", contentFrame).Padding = UDim.new(0, 8)
 	Instance.new("UIPadding", contentFrame).PaddingBottom = UDim.new(0, 12)
-	
 	AddToSearch(groupbox, titleKey:lower())
 	return groupbox, contentFrame
 end
 
 do
-    Players = game:GetService("Players")
-    RunService = game:GetService("RunService")
-    TweenService = game:GetService("TweenService")
-    Stats = game:GetService("Stats")
-
-    getgenv().EclipseInfo = getgenv().EclipseInfo or {}
-    E = getgenv().EclipseInfo
-
-    if E.frame then E.frame:Destroy() end
-    if E.conns then
-        for _,v in pairs(E.conns) do
-            if typeof(v) == "RBXScriptConnection" then v:Disconnect()
-            elseif typeof(v) == "thread" then task.cancel(v) end
-        end
-    end
-
-    E.frame = Instance.new("Frame")
-    E.frame.Size = UDim2.new(0, 300, 0, 340)
-    E.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    E.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    E.frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    E.frame.BackgroundTransparency = 1
-    E.frame.Visible = false
-    E.frame.ZIndex = 15
-    E.frame.Parent = frame
-    Instance.new("UICorner", E.frame).CornerRadius = UDim.new(0, 8)
-
-    E.stroke = Instance.new("UIStroke", E.frame)
-    E.stroke.Color = Color3.fromRGB(50, 50, 50)
-    E.stroke.Thickness = 1
-    E.stroke.Transparency = 1
-
-    E.title = Instance.new("TextLabel", E.frame)
-    E.title.Size = UDim2.new(1, 0, 0, 35)
-    E.title.BackgroundTransparency = 1
-    E.title.Text = "INFO"
-    E.title.Font = Enum.Font.GothamBold
-    E.title.TextSize = 14
-    E.title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    E.title.TextTransparency = 1
-    AddTranslatable(E.title, "Info")
-
-    E.scroll = Instance.new("ScrollingFrame", E.frame)
-    E.scroll.Size = UDim2.new(1, -20, 1, -95)
-    E.scroll.Position = UDim2.new(0, 10, 0, 40)
-    E.scroll.BackgroundTransparency = 1
-    E.scroll.ScrollBarThickness = 4
-    E.scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    E.scroll.ScrollBarImageTransparency = 1
-    Instance.new("UIListLayout", E.scroll).Padding = UDim.new(0, 8)
-
-    function MakeLabel(p, t, b, key)
-        local l = Instance.new("TextLabel", p)
-        l.Size = UDim2.new(1, 0, 0, 18)
-        l.BackgroundTransparency = 1
-        l.Text = t
-        l.Font = b and Enum.Font.GothamBold or Enum.Font.Gotham
-        l.TextSize = 12
-        l.TextColor3 = Color3.fromRGB(180, 180, 180)
-        l.TextXAlignment = Enum.TextXAlignment.Left
-        l.TextTransparency = 1
-        if key then AddTranslatable(l, key) end
-        return l
-    end
-
-    local g = {}
-    g.cb, g.cc = CreateGroupbox(E.scroll, "Credits")
-    g.tb, g.tc = CreateGroupbox(E.scroll, "Testers")
-    g.pb, g.pc = CreateGroupbox(E.scroll, "PlayerInfo")
-    g.sb, g.sc = CreateGroupbox(E.scroll, "ServerInfo")
-
-    MakeLabel(g.cc, "Eclipse the Creator", true)
-    MakeLabel(g.cc, "Owner: @Kayque", false, "Owner")
-    MakeLabel(g.cc, "Co-owner: @gustavo_bawnana & @x67j", false, "CoOwner")
-    MakeLabel(g.cc, "Administrator: Teste", false, "Administrator: @skztv157")
-    MakeLabel(g.tc, "Testers: Luan, Vitor & Mz", false, "TestersList")
-
-    E.fps = MakeLabel(g.pc, "FPS: 60", true)
-    E.ping = MakeLabel(g.pc, "Ping: 0 ms", true)
-    MakeLabel(g.pc, "Executor: ".. (identifyexecutor and identifyexecutor() or "Unknown"), true)
-
-    MakeLabel(g.sc, "Region: BR", true, "Region")
-    MakeLabel(g.sc, "Players: ".. #Players:GetPlayers(), true)
-    MakeLabel(g.sc, "Max Players: ".. Players.MaxPlayers, true)
-
-    E.thanks = Instance.new("TextLabel", E.frame)
-    E.thanks.Size = UDim2.new(1, -40, 0, 40)
-    E.thanks.Position = UDim2.new(0, 20, 1, -75)
-    E.thanks.BackgroundTransparency = 1
-    E.thanks.Text = "Thank you for using Eclipse."
-    E.thanks.Font = Enum.Font.Gotham
-    E.thanks.TextSize = 11
-    E.thanks.TextColor3 = Color3.fromRGB(150, 150, 150)
-    E.thanks.TextTransparency = 1
-    E.thanks.TextWrapped = true
-    AddTranslatable(E.thanks, "Thanks")
-
-    E.closeBtn = Instance.new("TextButton", E.frame)
-    E.closeBtn.Size = UDim2.new(0, 100, 0, 30)
-    E.closeBtn.Position = UDim2.new(0.5, -50, 1, -40)
-    E.closeBtn.Text = "Close"
-    E.closeBtn.Font = Enum.Font.GothamBold
-    E.closeBtn.TextSize = 13
-    E.closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    E.closeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    E.closeBtn.BackgroundTransparency = 1
-    E.closeBtn.TextTransparency = 1
-    E.closeBtn.AutoButtonColor = false
-    Instance.new("UICorner", E.closeBtn).CornerRadius = UDim.new(0, 6)
-
-    local stroke = Instance.new("UIStroke", E.closeBtn)
-    stroke.Color = Color3.fromRGB(0, 0, 0)
-    stroke.Thickness = 1.5
-    stroke.Transparency = 0.2
-
-    AddTranslatable(E.closeBtn, "Close")
-
-    E.conns = {}
-
-    function E.Start()
-        E.lastTime = tick()
-        E.conns.hb = RunService.Heartbeat:Connect(function()
-            local now = tick()
-            local fps = 1 / (now - E.lastTime)
-            E.lastTime = now
-            if E.frame.Visible then
-                E.fps.Text = "FPS: ".. math.floor(fps)
-            end
-        end)
-
-        E.conns.ping = task.spawn(function()
-            while E.frame.Visible do
-                pcall(function()
-                    local v = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-                    E.ping.Text = "Ping: ".. math.floor(v).. " ms"
-                end)
-                task.wait(0.5)
-            end
-        end)
-    end
-
-    function E.Stop()
-        if E.conns.hb then E.conns.hb:Disconnect() E.conns.hb = nil end
-        if E.conns.ping then task.cancel(E.conns.ping) E.conns.ping = nil end
-    end
-
-    function E.Open()
-        E.frame.Visible = true
-        E.Start()
-        local t = TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-        TweenService:Create(E.frame, t, {BackgroundTransparency = 0.1}):Play()
-        TweenService:Create(E.stroke, t, {Transparency = 0.2}):Play()
-        TweenService:Create(E.title, t, {TextTransparency = 0}):Play()
-        TweenService:Create(E.scroll, t, {ScrollBarImageTransparency = 0}):Play()
-        TweenService:Create(E.closeBtn, t, {BackgroundTransparency = 0, TextTransparency = 0}):Play()
-        TweenService:Create(E.thanks, t, {TextTransparency = 0}):Play()
-        for _, o in pairs(E.scroll:GetDescendants()) do
-            if o:IsA("TextLabel") then
-                TweenService:Create(o, t, {TextTransparency = 0}):Play()
-            end
-        end
-    end
-
-    function E.Close()
-        E.Stop()
-        local t = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        TweenService:Create(E.frame, t, {BackgroundTransparency = 1}):Play()
-        TweenService:Create(E.stroke, t, {Transparency = 1}):Play()
-        TweenService:Create(E.title, t, {TextTransparency = 1}):Play()
-        TweenService:Create(E.scroll, t, {ScrollBarImageTransparency = 1}):Play()
-        TweenService:Create(E.closeBtn, t, {BackgroundTransparency = 1, TextTransparency = 1}):Play()
-        TweenService:Create(E.thanks, t, {TextTransparency = 1}):Play()
-        for _, o in pairs(E.scroll:GetDescendants()) do
-            if o:IsA("TextLabel") then
-                TweenService:Create(o, t, {TextTransparency = 1}):Play()
-            end
-        end
-        task.wait(0.25)
-        E.frame.Visible = false
-    end
-
-    infoBtn.MouseButton1Click:Connect(E.Open)
-    E.closeBtn.MouseButton1Click:Connect(E.Close)
-
-    E.closeBtn.MouseEnter:Connect(function()
-        TweenService:Create(E.closeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
-    end)
-    E.closeBtn.MouseLeave:Connect(function()
-        TweenService:Create(E.closeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)}):Play()
-    end)
+	Players = game:GetService("Players")
+	RunService = game:GetService("RunService")
+	TweenService = game:GetService("TweenService")
+	Stats = game:GetService("Stats")
+	getgenv().EclipseInfo = getgenv().EclipseInfo or {}
+	E = getgenv().EclipseInfo
+	if E.frame then E.frame:Destroy() end
+	if E.conns then
+		for _, v in pairs(E.conns) do
+			if typeof(v) == "RBXScriptConnection" then v:Disconnect()
+			elseif typeof(v) == "thread" then task.cancel(v) end
+		end
+	end
+	E.frame = Instance.new("Frame")
+	E.frame.Name = "InfoFrame"
+	E.frame.Size = UDim2.new(0, 300, 0, 340)
+	E.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	E.frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	E.frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	E.frame.BackgroundTransparency = 1
+	E.frame.Visible = false
+	E.frame.ZIndex = 15
+	E.frame.Parent = frame
+	Instance.new("UICorner", E.frame).CornerRadius = UDim.new(0, 8)
+	E.stroke = Instance.new("UIStroke", E.frame)
+	E.stroke.Color = Color3.fromRGB(50, 50, 50)
+	E.stroke.Thickness = 1
+	E.stroke.Transparency = 1
+	E.title = Instance.new("TextLabel", E.frame)
+	E.title.Size = UDim2.new(1, 0, 0, 35)
+	E.title.BackgroundTransparency = 1
+	E.title.Text = "INFO"
+	E.title.Font = Enum.Font.GothamBold
+	E.title.TextSize = 14
+	E.title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	E.title.TextTransparency = 1
+	AddTranslatable(E.title, "Info")
+	E.scroll = Instance.new("ScrollingFrame", E.frame)
+	E.scroll.Size = UDim2.new(1, -20, 1, -95)
+	E.scroll.Position = UDim2.new(0, 10, 0, 40)
+	E.scroll.BackgroundTransparency = 1
+	E.scroll.ScrollBarThickness = 4
+	E.scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	E.scroll.ScrollBarImageTransparency = 1
+	Instance.new("UIListLayout", E.scroll).Padding = UDim.new(0, 8)
+	function MakeLabel(p, t, b, key)
+		local l = Instance.new("TextLabel", p)
+		l.Size = UDim2.new(1, 0, 0, 18)
+		l.BackgroundTransparency = 1
+		l.Text = t
+		l.Font = b and Enum.Font.GothamBold or Enum.Font.Gotham
+		l.TextSize = 12
+		l.TextColor3 = Color3.fromRGB(180, 180, 180)
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.TextTransparency = 1
+		if key then AddTranslatable(l, key) end
+		return l
+	end
+	local g = {}
+	g.cb, g.cc = CreateGroupbox(E.scroll, "Credits")
+	g.tb, g.tc = CreateGroupbox(E.scroll, "Testers")
+	g.pb, g.pc = CreateGroupbox(E.scroll, "PlayerInfo")
+	g.sb, g.sc = CreateGroupbox(E.scroll, "ServerInfo")
+	MakeLabel(g.cc, "Eclipse the Creator", true)
+	MakeLabel(g.cc, "Owner: @kayquet", false)
+	MakeLabel(g.cc, "Co-owner: @gustavo_bawnana & @x67j", false)
+	MakeLabel(g.cc, "Administrator: @skztv157", false)
+	MakeLabel(g.tc, "Testers: Luan, Vitor & Mz", false)
+	E.fps = MakeLabel(g.pc, "FPS: 60", true)
+	E.ping = MakeLabel(g.pc, "Ping: 0 ms", true)
+	MakeLabel(g.pc, "Executor: " .. (identifyexecutor and identifyexecutor() or "Unknown"), true)
+	MakeLabel(g.sc, "Region: BR", true, "Region")
+	MakeLabel(g.sc, "Players: " .. #Players:GetPlayers(), true)
+	MakeLabel(g.sc, "Max Players: " .. Players.MaxPlayers, true)
+	E.thanks = Instance.new("TextLabel", E.frame)
+	E.thanks.Size = UDim2.new(1, -40, 0, 40)
+	E.thanks.Position = UDim2.new(0, 20, 1, -75)
+	E.thanks.BackgroundTransparency = 1
+	E.thanks.Text = "Thank you for using Eclipse."
+	E.thanks.Font = Enum.Font.Gotham
+	E.thanks.TextSize = 11
+	E.thanks.TextColor3 = Color3.fromRGB(150, 150, 150)
+	E.thanks.TextTransparency = 1
+	E.thanks.TextWrapped = true
+	AddTranslatable(E.thanks, "Thank you for using Eclipse")
+	E.closeBtn = Instance.new("TextButton", E.frame)
+	E.closeBtn.Size = UDim2.new(0, 100, 0, 30)
+	E.closeBtn.Position = UDim2.new(0.5, -50, 1, -40)
+	E.closeBtn.Text = "Close"
+	E.closeBtn.Font = Enum.Font.GothamBold
+	E.closeBtn.TextSize = 13
+	E.closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	E.closeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	E.closeBtn.BackgroundTransparency = 1
+	E.closeBtn.TextTransparency = 1
+	E.closeBtn.AutoButtonColor = false
+	Instance.new("UICorner", E.closeBtn).CornerRadius = UDim.new(0, 6)
+	local stroke = Instance.new("UIStroke", E.closeBtn)
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.2
+	AddTranslatable(E.closeBtn, "Close")
+	E.conns = {}
+	function E.Start()
+		if E.conns.hb then return end
+		E.lastTime = tick()
+		E.conns.hb = RunService.Heartbeat:Connect(function()
+			local now = tick()
+			local dt = now - E.lastTime
+			E.lastTime = now
+			if dt > 0 and E.frame.Visible then
+				E.fps.Text = "FPS: " .. math.floor(1 / dt)
+			end
+		end)
+		if not E.conns.ping then
+			E.conns.ping = task.spawn(function()
+				while E.frame and E.frame.Visible do
+					pcall(function()
+						local v = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+						E.ping.Text = "Ping: " .. math.floor(v) .. " ms"
+					end)
+					task.wait(0.5)
+				end
+				E.conns.ping = nil
+			end)
+		end
+	end
+	function E.Stop()
+		if E.conns.hb then E.conns.hb:Disconnect() E.conns.hb = nil end
+		if E.conns.ping then task.cancel(E.conns.ping) E.conns.ping = nil end
+	end
+	function E.Open()
+		E.Stop()
+		E.frame.Visible = true
+		E.Start()
+		local t = TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		TweenService:Create(E.frame, t, {BackgroundTransparency = 0.1}):Play()
+		TweenService:Create(E.stroke, t, {Transparency = 0.2}):Play()
+		TweenService:Create(E.title, t, {TextTransparency = 0}):Play()
+		TweenService:Create(E.scroll, t, {ScrollBarImageTransparency = 0}):Play()
+		TweenService:Create(E.closeBtn, t, {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+		TweenService:Create(E.thanks, t, {TextTransparency = 0}):Play()
+		for _, o in pairs(E.scroll:GetDescendants()) do
+			if o:IsA("TextLabel") then
+				TweenService:Create(o, t, {TextTransparency = 0}):Play()
+			end
+		end
+	end
+	function E.Close()
+		E.Stop()
+		local t = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		TweenService:Create(E.frame, t, {BackgroundTransparency = 1}):Play()
+		TweenService:Create(E.stroke, t, {Transparency = 1}):Play()
+		TweenService:Create(E.title, t, {TextTransparency = 1}):Play()
+		TweenService:Create(E.scroll, t, {ScrollBarImageTransparency = 1}):Play()
+		TweenService:Create(E.closeBtn, t, {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		TweenService:Create(E.thanks, t, {TextTransparency = 1}):Play()
+		for _, o in pairs(E.scroll:GetDescendants()) do
+			if o:IsA("TextLabel") then
+				TweenService:Create(o, t, {TextTransparency = 1}):Play()
+			end
+		end
+		task.wait(0.25)
+		E.frame.Visible = false
+	end
+	infoBtn.MouseButton1Click:Connect(E.Open)
+	E.closeBtn.MouseButton1Click:Connect(E.Close)
+	E.closeBtn.MouseEnter:Connect(function()
+		TweenService:Create(E.closeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
+	end)
+	E.closeBtn.MouseLeave:Connect(function()
+		TweenService:Create(E.closeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)}):Play()
+	end)
 end
 
 do
-    TweenService = game:GetService("TweenService")
-    getgenv().EclipseExit = getgenv().EclipseExit or {}
-    local C = getgenv().EclipseExit
+	TweenService = game:GetService("TweenService")
+	getgenv().EclipseExit = getgenv().EclipseExit or {}
+	local C = getgenv().EclipseExit
+	if C.frame then C.frame:Destroy() end
 
-    if C.frame then C.frame:Destroy() end
+	local function GetExitTexts()
+		if currentLanguage == "PT" then
+			return "Sair do Eclipse", "Tem certeza que quer fechar o script? Você vai\nprecisar executar de novo para abrir novamente.", "Cancelar", "Sim, Sair"
+		else
+			return "Exit Eclipse", "Are you sure you want to close the script? You will\nneed to re-execute to open it again.", "Cancel", "Yes, Exit"
+		end
+	end
 
-    C.frame = Instance.new("Frame")
-    C.frame.Size = UDim2.new(0, 340, 0, 170)
-    C.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    C.frame.AnchorPoint = Vector2.new(0.5, 0.5)
-    C.frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    C.frame.BackgroundTransparency = 0
-    C.frame.Visible = false
-    C.frame.ZIndex = 10
-    C.frame.Parent = gui
-    Instance.new("UICorner", C.frame).CornerRadius = UDim.new(0, 8)
+	C.frame = Instance.new("Frame")
+	C.frame.Name = "ExitFrame"
+	C.frame:SetAttribute("NoTranslate", true)
+	C.frame.Size = UDim2.new(0, 340, 0, 170)
+	C.frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	C.frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	C.frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	C.frame.BackgroundTransparency = 0
+	C.frame.Visible = false
+	C.frame.ZIndex = 10
+	C.frame.Parent = gui
+	Instance.new("UICorner", C.frame).CornerRadius = UDim.new(0, 8)
+	C.stroke = Instance.new("UIStroke", C.frame)
+	C.stroke.Color = Color3.fromRGB(0, 0, 0)
+	C.stroke.Thickness = 0
+	C.stroke.Transparency = 1
+	C.redLine = Instance.new("Frame", C.frame)
+	C.redLine.Size = UDim2.new(1, 0, 0, 2)
+	C.redLine.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+	C.redLine.BackgroundTransparency = 0
+	C.redLine.BorderSizePixel = 0
+	C.redLine.ZIndex = 11
+	Instance.new("UICorner", C.redLine).CornerRadius = UDim.new(0, 8)
 
-    C.stroke = Instance.new("UIStroke", C.frame)
-    C.stroke.Color = Color3.fromRGB(0, 0, 0)
-    C.stroke.Thickness = 0
-    C.stroke.Transparency = 1
+	local t1, t2, t3, t4 = GetExitTexts()
 
-    C.redLine = Instance.new("Frame", C.frame)
-    C.redLine.Size = UDim2.new(1, 0, 0, 2)
-    C.redLine.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    C.redLine.BackgroundTransparency = 0
-    C.redLine.BorderSizePixel = 0
-    C.redLine.ZIndex = 11
-    Instance.new("UICorner", C.redLine).CornerRadius = UDim.new(0, 8)
+	C.title = Instance.new("TextLabel", C.frame)
+	C.title.Size = UDim2.new(1, 0, 0, 50)
+	C.title.Position = UDim2.new(0, 0, 0, 10)
+	C.title.BackgroundTransparency = 1
+	C.title.Text = t1
+	C.title.Font = Enum.Font.GothamBold
+	C.title.TextSize = 18
+	C.title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	C.title.TextTransparency = 1
+	C.title.ZIndex = 11
 
-    C.title = Instance.new("TextLabel", C.frame)
-    C.title.Size = UDim2.new(1, 0, 0, 50)
-    C.title.Position = UDim2.new(0, 0, 0, 10)
-    C.title.BackgroundTransparency = 1
-    C.title.Text = "Exit Eclipse"
-    C.title.Font = Enum.Font.GothamBold
-    C.title.TextSize = 18
-    C.title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    C.title.TextTransparency = 1
-    C.title.ZIndex = 11
-    AddTranslatable(C.title, "Exit")
+	C.text = Instance.new("TextLabel", C.frame)
+	C.text.Size = UDim2.new(1, -40, 0, 50)
+	C.text.Position = UDim2.new(0, 20, 0, 50)
+	C.text.BackgroundTransparency = 1
+	C.text.Text = t2
+	C.text.TextWrapped = true
+	C.text.Font = Enum.Font.Gotham
+	C.text.TextSize = 13
+	C.text.TextColor3 = Color3.fromRGB(180, 180, 180)
+	C.text.TextTransparency = 1
+	C.text.ZIndex = 11
 
-    C.text = Instance.new("TextLabel", C.frame)
-    C.text.Size = UDim2.new(1, -40, 0, 50)
-    C.text.Position = UDim2.new(0, 20, 0, 50)
-    C.text.BackgroundTransparency = 1
-    C.text.Text = "Are you sure you want to close the script? You will\nneed to re-execute to open it again."
-    C.text.TextWrapped = true
-    C.text.Font = Enum.Font.Gotham
-    C.text.TextSize = 13
-    C.text.TextColor3 = Color3.fromRGB(180, 180, 180)
-    C.text.TextTransparency = 1
-    C.text.ZIndex = 11
-    AddTranslatable(C.text, "ExitText")
+	C.cancelBtn = Instance.new("TextButton", C.frame)
+	C.cancelBtn.Size = UDim2.new(0, 120, 0, 35)
+	C.cancelBtn.Position = UDim2.new(0, 35, 1, -50)
+	C.cancelBtn.Text = t3
+	C.cancelBtn.Font = Enum.Font.GothamBold
+	C.cancelBtn.TextSize = 14
+	C.cancelBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	C.cancelBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	C.cancelBtn.BackgroundTransparency = 1
+	C.cancelBtn.TextTransparency = 1
+	C.cancelBtn.ZIndex = 11
+	Instance.new("UICorner", C.cancelBtn).CornerRadius = UDim.new(0, 6)
 
-    C.cancelBtn = Instance.new("TextButton", C.frame)
-    C.cancelBtn.Size = UDim2.new(0, 120, 0, 35)
-    C.cancelBtn.Position = UDim2.new(0, 35, 1, -50)
-    C.cancelBtn.Text = "Cancel"
-    C.cancelBtn.Font = Enum.Font.GothamBold
-    C.cancelBtn.TextSize = 14
-    C.cancelBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    C.cancelBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    C.cancelBtn.BackgroundTransparency = 1
-    C.cancelBtn.TextTransparency = 1
-    C.cancelBtn.ZIndex = 11
-    Instance.new("UICorner", C.cancelBtn).CornerRadius = UDim.new(0, 6)
-    AddTranslatable(C.cancelBtn, "Cancel")
+	C.exitBtn = Instance.new("TextButton", C.frame)
+	C.exitBtn.Size = UDim2.new(0, 120, 0, 35)
+	C.exitBtn.Position = UDim2.new(1, -155, 1, -50)
+	C.exitBtn.Text = t4
+	C.exitBtn.Font = Enum.Font.GothamBold
+	C.exitBtn.TextSize = 14
+	C.exitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	C.exitBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+	C.exitBtn.BackgroundTransparency = 1
+	C.exitBtn.TextTransparency = 1
+	C.exitBtn.ZIndex = 11
+	Instance.new("UICorner", C.exitBtn).CornerRadius = UDim.new(0, 6)
 
-    C.exitBtn = Instance.new("TextButton", C.frame)
-    C.exitBtn.Size = UDim2.new(0, 120, 0, 35)
-    C.exitBtn.Position = UDim2.new(1, -155, 1, -50)
-    C.exitBtn.Text = "Yes, Exit"
-    C.exitBtn.Font = Enum.Font.GothamBold
-    C.exitBtn.TextSize = 14
-    C.exitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    C.exitBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
-    C.exitBtn.BackgroundTransparency = 1
-    C.exitBtn.TextTransparency = 1
-    C.exitBtn.ZIndex = 11
-    Instance.new("UICorner", C.exitBtn).CornerRadius = UDim.new(0, 6)
-    AddTranslatable(C.exitBtn, "YesExit")
+	local exitGradient = Instance.new("UIGradient", C.exitBtn)
+	exitGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 30, 30))
+	}
+	exitGradient.Rotation = 90
 
-    local exitGradient = Instance.new("UIGradient", C.exitBtn)
-    exitGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 30, 30))
-    }
-    exitGradient.Rotation = 90
-
-    function C.Open()
-        C.frame.Visible = true
-        C.frame.Size = UDim2.new(0, 280, 0, 130)
-        local t = TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-        TweenService:Create(C.frame, t, {Size = UDim2.new(0, 340, 0, 170), BackgroundTransparency = 0.1}):Play()
-        TweenService:Create(C.stroke, t, {Transparency = 0.2}):Play()
-        TweenService:Create(C.redLine, t, {BackgroundTransparency = 0}):Play()
-        TweenService:Create(C.title, t, {TextTransparency = 0}):Play()
-        TweenService:Create(C.text, t, {TextTransparency = 0}):Play()
-        TweenService:Create(C.cancelBtn, t, {BackgroundTransparency = 0, TextTransparency = 0}):Play()
-        TweenService:Create(C.exitBtn, t, {BackgroundTransparency = 0, TextTransparency = 0}):Play()
-    end
-
-    function C.Close()
-        local t = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        TweenService:Create(C.frame, t, {Size = UDim2.new(0, 280, 0, 130), BackgroundTransparency = 1}):Play()
-        TweenService:Create(C.stroke, t, {Transparency = 1}):Play()
-        TweenService:Create(C.redLine, t, {BackgroundTransparency = 1}):Play()
-        TweenService:Create(C.title, t, {TextTransparency = 1}):Play()
-        TweenService:Create(C.text, t, {TextTransparency = 1}):Play()
-        TweenService:Create(C.cancelBtn, t, {BackgroundTransparency = 1, TextTransparency = 1}):Play()
-        TweenService:Create(C.exitBtn, t, {BackgroundTransparency = 1, TextTransparency = 1}):Play()
-        task.wait(0.25)
-        C.frame.Visible = false
-    end
-
-    closeBtn.MouseButton1Click:Connect(C.Open)
-    C.cancelBtn.MouseButton1Click:Connect(C.Close)
-    C.exitBtn.MouseButton1Click:Connect(function()
-        C.Close()
-        if getgenv().EclipseInfo and getgenv().EclipseInfo.Stop then
-            getgenv().EclipseInfo.Stop()
-        end
-        task.wait(0.25)
-        if blur then blur:Destroy() end
-        if gui then gui:Destroy() end
-    end)
-
-    C.cancelBtn.MouseEnter:Connect(function()
-        TweenService:Create(C.cancelBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
-    end)
-    C.cancelBtn.MouseLeave:Connect(function()
-        TweenService:Create(C.cancelBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)}):Play()
-    end)
-
-    C.exitBtn.MouseEnter:Connect(function()
-        TweenService:Create(C.exitBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
-    end)
-    C.exitBtn.MouseLeave:Connect(function()
-        TweenService:Create(C.exitBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 40, 40)}):Play()
-    end)
+	function C.Open()
+		local a, b, c, d = GetExitTexts()
+		C.title.Text = a
+		C.text.Text = b
+		C.cancelBtn.Text = c
+		C.exitBtn.Text = d
+		C.frame.Visible = true
+		C.frame.Size = UDim2.new(0, 280, 0, 130)
+		local t = TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		TweenService:Create(C.frame, t, {Size = UDim2.new(0, 340, 0, 170), BackgroundTransparency = 0.1}):Play()
+		TweenService:Create(C.stroke, t, {Transparency = 0.2}):Play()
+		TweenService:Create(C.redLine, t, {BackgroundTransparency = 0}):Play()
+		TweenService:Create(C.title, t, {TextTransparency = 0}):Play()
+		TweenService:Create(C.text, t, {TextTransparency = 0}):Play()
+		TweenService:Create(C.cancelBtn, t, {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+		TweenService:Create(C.exitBtn, t, {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+	end
+	function C.Close()
+		local t = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		TweenService:Create(C.frame, t, {Size = UDim2.new(0, 280, 0, 130), BackgroundTransparency = 1}):Play()
+		TweenService:Create(C.stroke, t, {Transparency = 1}):Play()
+		TweenService:Create(C.redLine, t, {BackgroundTransparency = 1}):Play()
+		TweenService:Create(C.title, t, {TextTransparency = 1}):Play()
+		TweenService:Create(C.text, t, {TextTransparency = 1}):Play()
+		TweenService:Create(C.cancelBtn, t, {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		TweenService:Create(C.exitBtn, t, {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		task.wait(0.25)
+		C.frame.Visible = false
+	end
+	closeBtn.MouseButton1Click:Connect(C.Open)
+	C.cancelBtn.MouseButton1Click:Connect(C.Close)
+	C.exitBtn.MouseButton1Click:Connect(function()
+		C.Close()
+		if getgenv().EclipseInfo and getgenv().EclipseInfo.Stop then
+			getgenv().EclipseInfo.Stop()
+		end
+		task.wait(0.25)
+		if blur then blur:Destroy() end
+		if gui then gui:Destroy() end
+	end)
+	C.cancelBtn.MouseEnter:Connect(function()
+		TweenService:Create(C.cancelBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
+	end)
+	C.cancelBtn.MouseLeave:Connect(function()
+		TweenService:Create(C.cancelBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)}):Play()
+	end)
+	C.exitBtn.MouseEnter:Connect(function()
+		TweenService:Create(C.exitBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
+	end)
+	C.exitBtn.MouseLeave:Connect(function()
+		TweenService:Create(C.exitBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 40, 40)}):Play()
+	end)
 end
 
 do
-    UserInputService = game:GetService("UserInputService")
-    local isPC = UserInputService.KeyboardEnabled
-
-    if isPC and openButton then
-        openButton.Visible = false
-    end
-
-    UserInputService.InputBegan:Connect(function(input, gp)
-        if gp or not isPC then return end
-        if input.KeyCode == Enum.KeyCode.K then
-            frame.Visible = not frame.Visible
-            if blur then blur.Size = frame.Visible and 0 or 0 end
-            if isPC and openButton then openButton.Visible = false end
-        end
-    end)
-
-    miniBtn.MouseButton1Click:Connect(function()
-        frame.Visible = false
-        if not isPC and openButton then openButton.Visible = true end
-        if blur then blur.Size = 0 end
-    end)
-
-    openButton.MouseButton1Click:Connect(function()
-        if not isPC then
-            frame.Visible = true
-            openButton.Visible = false
-            if blur then blur.Size = 0 end
-        end
-    end)
+	UserInputService = game:GetService("UserInputService")
+	local isPC = UserInputService.KeyboardEnabled
+	if isPC and openButton then openButton.Visible = false end
+	UserInputService.InputBegan:Connect(function(input, gp)
+		if gp or not isPC then return end
+		if input.KeyCode == Enum.KeyCode.K then
+			frame.Visible = not frame.Visible
+			if blur then blur.Size = 0 end
+			if isPC and openButton then openButton.Visible = false end
+		end
+	end)
+	miniBtn.MouseButton1Click:Connect(function()
+		frame.Visible = false
+		if not isPC and openButton then openButton.Visible = true end
+		if blur then blur.Size = 0 end
+	end)
+	openButton.MouseButton1Click:Connect(function()
+		if not isPC then
+			frame.Visible = true
+			openButton.Visible = false
+			if blur then blur.Size = 0 end
+		end
+	end)
 end
 
 UpdateLanguage()
