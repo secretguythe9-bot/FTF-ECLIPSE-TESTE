@@ -1631,9 +1631,15 @@ do
         playerSquare = state
         local lplr = Players.LocalPlayer
         local camera = workspace.CurrentCamera
-        local function clearSquare(plr) if playerSquareCache[plr] then playerSquareCache[plr].Visible = false playerSquareCache[plr] = nil end end
+        local function clearSquare(plr)
+            if playerSquareCache[plr] then
+                pcall(function() playerSquareCache[plr]:Remove() end)
+                playerSquareCache[plr] = nil
+            end
+        end
         local function createSquare(plr)
             if plr == lplr then return end
+            if playerSquareCache[plr] then pcall(function() playerSquareCache[plr]:Remove() end) end
             local sq = Drawing.new("Square") sq.Visible = false sq.Color = Color3.new(0, 255, 0) sq.Thickness = 1 sq.Transparency = 1 sq.Filled = false
             playerSquareCache[plr] = sq
         end
@@ -1641,7 +1647,12 @@ do
             for _, plr in ipairs(Players:GetPlayers()) do createSquare(plr) end
             playerSquareConnections.added = Players.PlayerAdded:Connect(createSquare)
             playerSquareConnections.removing = Players.PlayerRemoving:Connect(function(plr) clearSquare(plr) end)
-            playerSquareConnections.loop = RunService.RenderStepped:Connect(function()
+            local acc = 0
+            playerSquareConnections.loop = RunService.RenderStepped:Connect(function(dt)
+                acc += dt
+                if acc < 0.05 then return end
+                acc = 0
+                local beast = getBeast()
                 for _, plr in ipairs(Players:GetPlayers()) do
                     local sq = playerSquareCache[plr]
                     if sq and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
@@ -1653,14 +1664,14 @@ do
                             local size = Vector2.new(1000 / RootPos.Z, HeadPos.Y - LegPos.Y)
                             sq.Size = size
                             sq.Position = Vector2.new(RootPos.X - size.X / 2, RootPos.Y - size.Y / 2)
-                            sq.Color = (getBeast and plr == getBeast()) and ESPColors.SquareBeast or ESPColors.SquareSurvivor
+                            sq.Color = (beast and plr == beast) and ESPColors.SquareBeast or ESPColors.SquareSurvivor
                             sq.Visible = true
                         else sq.Visible = false end
                     elseif sq then sq.Visible = false end
                 end
             end)
         else
-            for plr, sq in pairs(playerSquareCache) do sq.Visible = false playerSquareCache[plr] = nil end
+            for plr, sq in pairs(playerSquareCache) do pcall(function() sq:Remove() end) playerSquareCache[plr] = nil end
             if playerSquareConnections.loop then playerSquareConnections.loop:Disconnect() playerSquareConnections.loop = nil end
             if playerSquareConnections.added then playerSquareConnections.added:Disconnect() playerSquareConnections.added = nil end
             if playerSquareConnections.removing then playerSquareConnections.removing:Disconnect() playerSquareConnections.removing = nil end
@@ -1674,9 +1685,15 @@ do
         playerLine = state
         local lplr = Players.LocalPlayer
         local camera = workspace.CurrentCamera
-        local function clearLine(plr) if playerLineCache[plr] then playerLineCache[plr].Visible = false playerLineCache[plr] = nil end end
+        local function clearLine(plr)
+            if playerLineCache[plr] then
+                pcall(function() playerLineCache[plr]:Remove() end)
+                playerLineCache[plr] = nil
+            end
+        end
         local function createLine(plr)
             if plr == lplr then return end
+            if playerLineCache[plr] then pcall(function() playerLineCache[plr]:Remove() end) end
             local ln = Drawing.new("Line") ln.Visible = false ln.Color = Color3.new(0, 255, 0) ln.Thickness = 1 ln.Transparency = 1
             playerLineCache[plr] = ln
         end
@@ -1684,7 +1701,12 @@ do
             for _, plr in ipairs(Players:GetPlayers()) do createLine(plr) end
             playerLineConnections.added = Players.PlayerAdded:Connect(createLine)
             playerLineConnections.removing = Players.PlayerRemoving:Connect(function(plr) clearLine(plr) end)
-            playerLineConnections.loop = RunService.RenderStepped:Connect(function()
+            local acc = 0
+            playerLineConnections.loop = RunService.RenderStepped:Connect(function(dt)
+                acc += dt
+                if acc < 0.05 then return end
+                acc = 0
+                local beast = getBeast()
                 for _, plr in ipairs(Players:GetPlayers()) do
                     local ln = playerLineCache[plr]
                     if ln and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
@@ -1692,14 +1714,14 @@ do
                         if onScreen then
                             ln.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
                             ln.To = Vector2.new(vec.X, vec.Y)
-                            ln.Color = (getBeast and plr == getBeast()) and ESPColors.LineBeast or ESPColors.LineSurvivor
+                            ln.Color = (beast and plr == beast) and ESPColors.LineBeast or ESPColors.LineSurvivor
                             ln.Visible = true
                         else ln.Visible = false end
                     elseif ln then ln.Visible = false end
                 end
             end)
         else
-            for plr, ln in pairs(playerLineCache) do ln.Visible = false playerLineCache[plr] = nil end
+            for plr, ln in pairs(playerLineCache) do pcall(function() ln:Remove() end) playerLineCache[plr] = nil end
             if playerLineConnections.loop then playerLineConnections.loop:Disconnect() playerLineConnections.loop = nil end
             if playerLineConnections.added then playerLineConnections.added:Disconnect() playerLineConnections.added = nil end
             if playerLineConnections.removing then playerLineConnections.removing:Disconnect() playerLineConnections.removing = nil end
@@ -6100,18 +6122,18 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         if not char then return end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
+        local light = hrp:FindFirstChild("Light")
         if state then
-            local old = hrp:FindFirstChild("Light")
-            if old then old:Destroy() end
-            local light = Instance.new("PointLight")
-            light.Name = "Light"
-            light.Range = 120
-            light.Shadows = false
+            if not light then
+                light = Instance.new("PointLight")
+                light.Name = "Light"
+                light.Range = 120
+                light.Shadows = false
+                light.Parent = hrp
+            end
             light.Brightness = Brightness2
-            light.Parent = hrp
         else
-            local old = hrp:FindFirstChild("Light")
-            if old then old:Destroy() end
+            if light then light:Destroy() end
         end
     end
 
@@ -6141,38 +6163,53 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
 
     local presets = {
         ["Default"] = function()
-            Atmosphere.Color = OriginalFog.Color
-            Atmosphere.Haze = OriginalFog.Haze
-            Atmosphere.Glare = OriginalFog.Glare
-            Atmosphere.Decay = OriginalFog.Decay
-            Atmosphere.Density = OriginalFog.Density
-            Sky.MoonAngularSize = OriginalFog.MoonSize
-            Sky.StarCount = OriginalFog.Stars
+            if not Atmosphere or not Sky then return end
+            pcall(function()
+                Atmosphere.Color = OriginalFog.Color
+                Atmosphere.Haze = OriginalFog.Haze
+                Atmosphere.Glare = OriginalFog.Glare
+                Atmosphere.Decay = OriginalFog.Decay
+                Atmosphere.Density = OriginalFog.Density
+                Sky.MoonAngularSize = OriginalFog.MoonSize
+                Sky.StarCount = OriginalFog.Stars
+            end)
         end,
         ["Black Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(0,0,0) Atmosphere.Haze = 2.46 Atmosphere.Density = 0.76 Atmosphere.Glare = 0 Atmosphere.Decay = Color3.fromRGB(0,0,0) Sky.MoonAngularSize = 10 Sky.StarCount = 0
+            if not Atmosphere or not Sky then return end
+            pcall(function()
+                Atmosphere.Color = Color3.fromRGB(0,0,0) Atmosphere.Haze = 2.46 Atmosphere.Density = 0.76 Atmosphere.Glare = 0 Atmosphere.Decay = Color3.fromRGB(0,0,0) Sky.MoonAngularSize = 10 Sky.StarCount = 0
+            end)
         end,
         ["Gray Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(128,128,128) Atmosphere.Haze = 2 Atmosphere.Density = 0.55 Atmosphere.Glare = 0 Atmosphere.Decay = Color3.fromRGB(100,100,100) Sky.MoonAngularSize = 10 Sky.StarCount = 0
+            if not Atmosphere or not Sky then return end
+            pcall(function()
+                Atmosphere.Color = Color3.fromRGB(128,128,128) Atmosphere.Haze = 2 Atmosphere.Density = 0.55 Atmosphere.Glare = 0 Atmosphere.Decay = Color3.fromRGB(100,100,100) Sky.MoonAngularSize = 10 Sky.StarCount = 0
+            end)
         end,
         ["No Fog"] = function()
-            Atmosphere.Color = Color3.fromRGB(0,0,0)
-            Atmosphere.Glare = 0
-            Atmosphere.Haze = 0
-            Atmosphere.Decay = Color3.fromRGB(0,0,0)
-            Atmosphere.Density = 0
-            Sky.MoonAngularSize = 10
-            Sky.StarCount = 0
+            if not Atmosphere or not Sky then return end
+            pcall(function()
+                Atmosphere.Color = Color3.fromRGB(0,0,0)
+                Atmosphere.Glare = 0
+                Atmosphere.Haze = 0
+                Atmosphere.Decay = Color3.fromRGB(0,0,0)
+                Atmosphere.Density = 0
+                Sky.MoonAngularSize = 10
+                Sky.StarCount = 0
+            end)
         end,
         ["Custom"] = function()
-            local r, g, b = FogColor.R, FogColor.G, FogColor.B
-            Atmosphere.Color = FogColor
-            Atmosphere.Haze = 1.7
-            Atmosphere.Density = 0.6
-            Atmosphere.Glare = 0
-            Atmosphere.Decay = Color3.new(r * 0.4, g * 0.4, b * 0.4)
-            Sky.MoonAngularSize = 10
-            Sky.StarCount = 0
+            if not Atmosphere or not Sky then return end
+            pcall(function()
+                local r, g, b = FogColor.R, FogColor.G, FogColor.B
+                Atmosphere.Color = FogColor
+                Atmosphere.Haze = 1.7
+                Atmosphere.Density = 0.6
+                Atmosphere.Glare = 0
+                Atmosphere.Decay = Color3.new(r * 0.4, g * 0.4, b * 0.4)
+                Sky.MoonAngularSize = 10
+                Sky.StarCount = 0
+            end)
         end,
     }
 
@@ -6187,12 +6224,13 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
         RefreshLighting()
         if not Atmosphere or not Sky then return end
         ApplyMode()
-        if FogConnection then FogConnection:Disconnect() end
+        if FogConnection then FogConnection:Disconnect() FogConnection = nil end
         local lastUpdate = 0
         FogConnection = RunService.RenderStepped:Connect(function()
+            if not FogEnabled then return end
             if tick() - lastUpdate >= 6 then
                 lastUpdate = tick()
-                if FogEnabled then ApplyMode() end
+                ApplyMode()
             end
         end)
     end
@@ -6609,7 +6647,7 @@ end, 5)
         if FlashEnabled then UpdateFlashlight(true) end
     end)
 end
-    
+
 do
     local settingsPageH = pages["Auto Farm"]
 
@@ -8112,12 +8150,22 @@ task.spawn(function()
         end)
     end
 
+    local updateDebounce = false
+    local function DebouncedUpdate()
+        if updateDebounce then return end
+        updateDebounce = true
+        task.delay(0.2, function()
+            updateDebounce = false
+            UpdateAllSounds()
+        end)
+    end
+
     local function WatchCharacter(char)
         if not char then return end
         char.DescendantAdded:Connect(function(desc)
             if desc:IsA("Sound") then
                 task.wait()
-                UpdateAllSounds()
+                DebouncedUpdate()
                 local t = GetType(desc.Name)
                 if t and SelectedSounds[t] then
                     local newId = "rbxassetid://".. SelectedSounds[t]
@@ -8127,19 +8175,33 @@ task.spawn(function()
         end)
     end
 
-    Players.PlayerAdded:Connect(function(plr)
-        plr.CharacterAdded:Connect(function(char)
-            task.wait(1)
-            ApplySoundIdGlobally("Footsteps", SelectedSounds.Footsteps)
-            ApplySoundIdGlobally("Jump", SelectedSounds.Jump)
-            ApplySoundIdGlobally("Fall", SelectedSounds.Fall)
-            UpdateAllSounds()
-            WatchCharacter(char)
+    local watchedChars = {}
+    local function WatchCharacterSafe(char)
+        if not char or watchedChars[char] then return end
+        watchedChars[char] = true
+        WatchCharacter(char)
+        char.AncestryChanged:Connect(function()
+            if not char:IsDescendantOf(workspace) then
+                watchedChars[char] = nil
+            end
         end)
+    end
+
+    local function OnCharAdded(char)
+        task.wait(1)
+        ApplySoundIdGlobally("Footsteps", SelectedSounds.Footsteps)
+        ApplySoundIdGlobally("Jump", SelectedSounds.Jump)
+        ApplySoundIdGlobally("Fall", SelectedSounds.Fall)
+        UpdateAllSounds()
+        WatchCharacterSafe(char)
+    end
+
+    Players.PlayerAdded:Connect(function(plr)
+        plr.CharacterAdded:Connect(OnCharAdded)
     end)
     for _, plr in pairs(Players:GetPlayers()) do
-        if plr.Character then WatchCharacter(plr.Character) end
-        plr.CharacterAdded:Connect(function(char) task.wait(1) UpdateAllSounds() WatchCharacter(char) end)
+        if plr.Character then WatchCharacterSafe(plr.Character) end
+        plr.CharacterAdded:Connect(OnCharAdded)
     end
 
     local function MuteHitSounds(obj)
@@ -8151,8 +8213,7 @@ task.spawn(function()
     end
     workspace.DescendantAdded:Connect(MuteHitSounds)
     ReplicatedStorage.DescendantAdded:Connect(MuteHitSounds)
-    player.CharacterAdded:Connect(function(char) task.wait(1) UpdateAllSounds() WatchCharacter(char) end)
-    if player.Character then UpdateAllSounds() WatchCharacter(player.Character) end
+    if player.Character then UpdateAllSounds() WatchCharacterSafe(player.Character) end
 
     local function CreateVolumeSlider(parent, text, min, max, default, callback)
         local holder = Instance.new("Frame", parent)
@@ -9031,6 +9092,8 @@ do
         {name = "aniiltw", id = 2029152623},
         {name = "dimeyuri", id = 1023942107},
         {name = "Surimiva", id = 10380062125},
+        {name = "Krizzenxdev1ce", id = 10726477156},
+        {name = "y_avriix", id = 10288333128},
         {name = "nyviima", id = 9264913030},
         {name = "Luufyzinho0", id = 3386809191},
         {name = "Frecxy_Angels", id = 3923504748},
