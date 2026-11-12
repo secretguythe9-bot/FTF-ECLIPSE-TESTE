@@ -181,7 +181,7 @@ title.Size = UDim2.new(0, 200, 1, 0)
 title.Position = UDim2.new(0, 46, 0, 0)
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "Eclipse V2.9"
+title.Text = "Eclipse V3.0"
 title.TextSize = 16
 title.Font = Enum.Font.GothamBold
 title.TextColor3 = Color3.fromRGB(140, 140, 140)
@@ -402,7 +402,7 @@ end
 
 task.spawn(function()
     task.wait(2)
-    Notify("FTF Eclipse V2.9", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
+    Notify("FTF Eclipse V3.0", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
 end)
 
 local CROSSHAIR_SIZE = 26
@@ -513,68 +513,99 @@ local versionText = Instance.new("TextLabel", bottomBar)
 versionText.Size = UDim2.new(0.5, -10, 1, 0)
 versionText.Position = UDim2.new(0.5, 0, 0, 0)
 versionText.BackgroundTransparency = 1
-versionText.Text = "FTF Eclipse V2.9 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
+versionText.Text = "FTF Eclipse V3.0 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
 versionText.Font = Enum.Font.GothamBold
 versionText.TextSize = 10
 versionText.TextColor3 = Color3.fromRGB(255, 255, 255)
 versionText.TextXAlignment = Enum.TextXAlignment.Right
 
 local function CreateToggle(parent, text, default, callback)
-	local toggleFrame = Instance.new("Frame", parent)
-	toggleFrame.Size = UDim2.new(1, 0, 0, 22)
-	toggleFrame.BackgroundTransparency = 1
-	
-	local label = Instance.new("TextLabel", toggleFrame)
-	label.Size = UDim2.new(1, -50, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 13
-	label.TextColor3 = Color3.fromRGB(180, 180, 180)
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	
-	local toggle = Instance.new("TextButton", toggleFrame)
-	toggle.Size = UDim2.new(0, 38, 0, 17)
-	toggle.Position = UDim2.new(1, -40, 0.5, -9)
-	toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	toggle.BackgroundTransparency = default and 0 or 1
-	toggle.Text = ""
-	toggle.AutoButtonColor = false
-	Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
-	
-	local stroke = Instance.new("UIStroke", toggle)
-	stroke.Color = default and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
-	stroke.Thickness = 1.5
-	
-	local circle = Instance.new("Frame", toggle)
-	circle.Size = UDim2.new(0, 14, 0, 14)
-	circle.Position = default and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
-	circle.BackgroundColor3 = default and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
-	circle.BorderSizePixel = 0
-	Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
-	
-	local enabled = default
-	toggle.MouseButton1Click:Connect(function()
-		enabled = not enabled
-		
-		TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-			Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7),
-			BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
-		}):Play()
-		
-		TweenService:Create(toggle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-			BackgroundTransparency = enabled and 0 or 1,
-			BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		}):Play()
-		
-		TweenService:Create(stroke, TweenInfo.new(0.15), {
-			Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
-		}):Play()
-		
-		if callback then callback(enabled) end
-	end)
-	
-	return toggleFrame
+    local key = "Toggle_" .. text:gsub("[^%w_]", "_")
+    if getgenv().Eclipse_ToggleRegistry == nil then getgenv().Eclipse_ToggleRegistry = {} end
+
+    local initial = default
+    if getgenv()[key] ~= nil then
+        initial = getgenv()[key]
+    else
+        getgenv()[key] = default
+    end
+
+    local toggleFrame = Instance.new("Frame", parent)
+    toggleFrame.Size = UDim2.new(1, 0, 0, 22)
+    toggleFrame.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel", toggleFrame)
+    label.Size = UDim2.new(1, -50, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 13
+    label.TextColor3 = Color3.fromRGB(180, 180, 180)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local toggle = Instance.new("TextButton", toggleFrame)
+    toggle.Size = UDim2.new(0, 38, 0, 17)
+    toggle.Position = UDim2.new(1, -40, 0.5, -9)
+    toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.BackgroundTransparency = initial and 0 or 1
+    toggle.Text = ""
+    toggle.AutoButtonColor = false
+    Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+
+    local stroke = Instance.new("UIStroke", toggle)
+    stroke.Color = initial and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+    stroke.Thickness = 1.5
+
+    local circle = Instance.new("Frame", toggle)
+    circle.Size = UDim2.new(0, 14, 0, 14)
+    circle.Position = initial and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+    circle.BackgroundColor3 = initial and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
+    circle.BorderSizePixel = 0
+    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+
+    local enabled = initial
+
+    local function SetState(state, callCallback)
+        enabled = state
+        getgenv()[key] = state
+
+        TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+            Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7),
+            BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
+        }):Play()
+
+        TweenService:Create(toggle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+            BackgroundTransparency = enabled and 0 or 1,
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        }):Play()
+
+        TweenService:Create(stroke, TweenInfo.new(0.15), {
+            Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+        }):Play()
+
+        if callCallback and callback then
+            pcall(callback, enabled)
+        end
+    end
+
+    getgenv().Eclipse_ToggleRegistry[key] = SetState
+    getgenv()["Eclipse_Apply_" .. key] = function()
+        SetState(getgenv()[key], true)
+    end
+
+    toggle.MouseButton1Click:Connect(function()
+        SetState(not enabled, true)
+        if DoSave then pcall(DoSave) end
+    end)
+
+    if initial == true then
+        task.spawn(function()
+            task.wait(0.5)
+            pcall(callback, true)
+        end)
+    end
+
+    return toggleFrame
 end
 
 local tabs = {
@@ -5067,7 +5098,8 @@ do
     end
 
     do
-        local CINZA = Color3.fromRGB(105,105,105)
+        local SkinColor = Color3.fromRGB(105,105,105)
+        local skinEnabled = false
         local skinOriginal = {}
         local skinConnections = {}
 
@@ -5099,12 +5131,13 @@ do
             salvarSkin(character)
             local data = skinOriginal[character]
             if not data then return end
+            local vColor = Vector3.new(SkinColor.R, SkinColor.G, SkinColor.B)
             for obj, _ in pairs(data) do
                 if obj and obj.Parent and not estaEmPastaIgnorada(obj) then
-                    if obj:IsA("BasePart") then obj.Color = CINZA obj.Material = Enum.Material.SmoothPlastic obj.Reflectance = 0 end
+                    if obj:IsA("BasePart") then obj.Color = SkinColor obj.Material = Enum.Material.SmoothPlastic obj.Reflectance = 0 end
                     if obj:IsA("Decal") or obj:IsA("Texture") then obj.Texture = "" end
-                    if obj:IsA("MeshPart") then obj.TextureID = "" obj.Color = CINZA obj.Material = Enum.Material.SmoothPlastic end
-                    if obj:IsA("SpecialMesh") then obj.TextureId = "" obj.VertexColor = Vector3.new(0.63,0.63) end
+                    if obj:IsA("MeshPart") then obj.TextureID = "" obj.Color = SkinColor obj.Material = Enum.Material.SmoothPlastic end
+                    if obj:IsA("SpecialMesh") then obj.TextureId = "" obj.VertexColor = vColor end
                     if obj:IsA("Shirt") then obj.ShirtTemplate = "" end
                     if obj:IsA("Pants") then obj.PantsTemplate = "" end
                     if obj:IsA("ShirtGraphic") then obj.Graphic = "" end
@@ -5128,20 +5161,39 @@ do
             end
         end
 
-        local function onCharacterSkin(char) aplicarSkin(char) end
+        local function reaplicarTudo()
+            for char, _ in pairs(skinOriginal) do
+                aplicarSkin(char)
+            end
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Character and not skinOriginal[plr.Character] then
+                    aplicarSkin(plr.Character)
+                end
+            end
+        end
+
+        local function onCharacterSkin(char) 
+            if skinEnabled then aplicarSkin(char) end
+        end
 
         local function startSkin()
+            skinEnabled = true
+            for _, c in ipairs(skinConnections) do pcall(function() c:Disconnect() end) end
+            table.clear(skinConnections)
             for _, plr in ipairs(Players:GetPlayers()) do
-                if plr.Character then onCharacterSkin(plr.Character) end
+                if plr.Character then aplicarSkin(plr.Character) end
                 table.insert(skinConnections, plr.CharacterAdded:Connect(onCharacterSkin))
             end
-            table.insert(skinConnections, Players.PlayerAdded:Connect(function(plr) plr.CharacterAdded:Connect(onCharacterSkin) end))
+            table.insert(skinConnections, Players.PlayerAdded:Connect(function(plr)
+                table.insert(skinConnections, plr.CharacterAdded:Connect(onCharacterSkin))
+            end))
         end
 
         local function stopSkin()
+            skinEnabled = false
             for char, _ in pairs(skinOriginal) do restaurarSkin(char) end
             table.clear(skinOriginal)
-            for _, c in ipairs(skinConnections) do c:Disconnect() end
+            for _, c in ipairs(skinConnections) do pcall(function() c:Disconnect() end) end
             table.clear(skinConnections)
         end
 
@@ -5152,6 +5204,197 @@ do
                 stopSkin()
             end
         end)
+
+        do
+            local h, s, v = SkinColor:ToHSV()
+            local holder = Instance.new("Frame")
+            holder.Name = "SkinColor_Holder"
+            holder.BackgroundTransparency = 1
+            holder.Size = UDim2.new(1, 0, 0, 0)
+            holder.AutomaticSize = Enum.AutomaticSize.Y
+            holder.ClipsDescendants = false
+            holder.ZIndex = 5
+            holder.Parent = contentFPS
+            local holderLayout = Instance.new("UIListLayout", holder)
+            holderLayout.FillDirection = Enum.FillDirection.Vertical
+            holderLayout.Padding = UDim.new(0, 6)
+            holderLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+            local row = Instance.new("Frame")
+            row.Name = "Skin Color"
+            row.BackgroundTransparency = 1
+            row.Size = UDim2.new(1, 0, 0, 28)
+            row.LayoutOrder = 1
+            row.Parent = holder
+
+            local label = Instance.new("TextLabel")
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(1, -40, 1, 0)
+            label.Font = Enum.Font.GothamBold
+            label.TextSize = 13
+            label.TextColor3 = Color3.fromRGB(180, 180, 180)
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Text = "Skin Color"
+            label.Parent = row
+
+            local preview = Instance.new("TextButton")
+            preview.BackgroundColor3 = SkinColor
+            preview.Size = UDim2.new(0, 26, 0, 22)
+            preview.Position = UDim2.new(1, -26, 0, 3)
+            preview.Text = ""
+            preview.AutoButtonColor = false
+            preview.ZIndex = 5
+            preview.Parent = row
+            Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 4)
+            Instance.new("UIStroke", preview).Color = Color3.fromRGB(70, 70, 70)
+
+            local picker = Instance.new("Frame")
+            picker.Name = "Picker"
+            picker.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            picker.Size = UDim2.new(1, 0, 0, 130)
+            picker.Visible = false
+            picker.LayoutOrder = 2
+            picker.ZIndex = 5
+            picker.Parent = holder
+            Instance.new("UICorner", picker).CornerRadius = UDim.new(0, 8)
+            Instance.new("UIStroke", picker).Color = Color3.fromRGB(70, 70, 70)
+
+            local svBox = Instance.new("ImageButton")
+            svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+            svBox.Position = UDim2.new(0, 10, 0, 10)
+            svBox.Size = UDim2.new(1, -42, 0, 110)
+            svBox.AutoButtonColor = false
+            svBox.Parent = picker
+            Instance.new("UICorner", svBox).CornerRadius = UDim.new(0, 6)
+
+            local whiteOverlay = Instance.new("Frame")
+            whiteOverlay.BackgroundColor3 = Color3.new(1, 1, 1)
+            whiteOverlay.BorderSizePixel = 0
+            whiteOverlay.Size = UDim2.new(1, 0, 1, 0)
+            whiteOverlay.ZIndex = 7
+            whiteOverlay.Active = false
+            whiteOverlay.Parent = svBox
+            Instance.new("UICorner", whiteOverlay).CornerRadius = UDim.new(0, 6)
+            local satGrad = Instance.new("UIGradient")
+            satGrad.Rotation = 0
+            satGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+            satGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+            satGrad.Parent = whiteOverlay
+
+            local valFrame = Instance.new("Frame")
+            valFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+            valFrame.BorderSizePixel = 0
+            valFrame.Size = UDim2.new(1, 0, 1, 0)
+            valFrame.ZIndex = 8
+            valFrame.Active = false
+            valFrame.Parent = svBox
+            Instance.new("UICorner", valFrame).CornerRadius = UDim.new(0, 6)
+            local valGrad = Instance.new("UIGradient")
+            valGrad.Rotation = 90
+            valGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)})
+            valGrad.Parent = valFrame
+
+            local svCursor = Instance.new("Frame")
+            svCursor.Size = UDim2.new(0, 14, 0, 14)
+            svCursor.BackgroundTransparency = 1
+            svCursor.ZIndex = 9
+            svCursor.Parent = svBox
+            local svInner = Instance.new("Frame")
+            svInner.Size = UDim2.new(1, -4, 1, -4)
+            svInner.Position = UDim2.new(0, 2, 0, 2)
+            svInner.BackgroundTransparency = 1
+            svInner.Parent = svCursor
+            Instance.new("UICorner", svInner).CornerRadius = UDim.new(1, 0)
+            local svStroke = Instance.new("UIStroke", svInner)
+            svStroke.Color = Color3.fromRGB(255, 255, 255)
+            svStroke.Thickness = 2
+
+            local hueBar = Instance.new("ImageButton")
+            hueBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            hueBar.Position = UDim2.new(1, -22, 0, 10)
+            hueBar.Size = UDim2.new(0, 12, 0, 110)
+            hueBar.AutoButtonColor = false
+            hueBar.Parent = picker
+            Instance.new("UICorner", hueBar).CornerRadius = UDim.new(1, 0)
+            local hueGrad = Instance.new("UIGradient")
+            hueGrad.Rotation = 90
+            hueGrad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+                ColorSequenceKeypoint.new(0.16, Color3.fromHSV(0.16, 1, 1)),
+                ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromHSV(0.5, 1, 1)),
+                ColorSequenceKeypoint.new(0.66, Color3.fromHSV(0.66, 1, 1)),
+                ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+                ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1)),
+            })
+            hueGrad.Parent = hueBar
+
+            local hueCursor = Instance.new("Frame")
+            hueCursor.AnchorPoint = Vector2.new(0, 0.5)
+            hueCursor.Size = UDim2.new(1, 6, 0, 6)
+            hueCursor.Position = UDim2.new(0, -3, 0, 0)
+            hueCursor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            hueCursor.BorderSizePixel = 0
+            hueCursor.ZIndex = 10
+            hueCursor.Active = false
+            hueCursor.Parent = hueBar
+            Instance.new("UICorner", hueCursor).CornerRadius = UDim.new(0, 2)
+            Instance.new("UIStroke", hueCursor).Color = Color3.fromRGB(0, 0, 0)
+
+            local colorDebounce = false
+            local function updateVisual()
+                local color = Color3.fromHSV(h, s, v)
+                preview.BackgroundColor3 = color
+                svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+                svCursor.Position = UDim2.new(s, -7, 1 - v, -7)
+                hueCursor.Position = UDim2.new(0, -4, math.clamp(h, 0.03, 0.97), 0)
+                SkinColor = color
+                if skinEnabled and not colorDebounce then
+                    colorDebounce = true
+                    task.delay(0.1, function()
+                        colorDebounce = false
+                        reaplicarTudo()
+                    end)
+                end
+            end
+
+            local draggingSV = false
+            local draggingHue = false
+
+            local function updateSV(input)
+                local pos = svBox.AbsolutePosition
+                local size = svBox.AbsoluteSize
+                s = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+                v = 1 - math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+                updateVisual()
+            end
+            local function updateHue(input)
+                local pos = hueBar.AbsolutePosition
+                local size = hueBar.AbsoluteSize
+                h = math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+                updateVisual()
+            end
+
+            svBox.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSV = true updateSV(input) end
+            end)
+            hueBar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingHue = true updateHue(input) end
+            end)
+            UIS.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    if draggingSV then updateSV(input) end
+                    if draggingHue then updateHue(input) end
+                end
+            end)
+            UIS.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSV = false draggingHue = false end
+            end)
+            preview.MouseButton1Click:Connect(function()
+                picker.Visible = not picker.Visible
+            end)
+            updateVisual()
+        end
     end
 
 if not getgenv().CrosshairState then
@@ -5541,11 +5784,17 @@ local defaultData = {
     Blur = 0
 }
 
+getgenv().FTF_Calibration = getgenv().FTF_Calibration or table.clone(defaultData)
+for k, v in pairs(defaultData) do
+    if getgenv().FTF_Calibration[k] == nil then getgenv().FTF_Calibration[k] = v end
+end
+
 local function canUseFile()
     return writefile and readfile and isfile
 end
 
 local function loadData()
+    if getgenv().FTF_Calibration then return getgenv().FTF_Calibration end
     if canUseFile() and isfile(FILE_NAME) then
         local success, loaded = pcall(function()
             return HttpService:JSONDecode(readfile(FILE_NAME))
@@ -5567,9 +5816,12 @@ local function saveData(data)
     if not success or newJSON == lastSavedJSON then return end
     lastSavedJSON = newJSON
     pcall(function() writefile(FILE_NAME, newJSON) end)
+    getgenv().FTF_Calibration = data
+    if DoSave then pcall(DoSave) end
 end
 
 local data = loadData()
+getgenv().FTF_Calibration = data
 lastSavedJSON = HttpService:JSONEncode(data)
 local filtro, blurEffect
 
@@ -5660,15 +5912,10 @@ circleCal.BackgroundColor3 = Color3.fromRGB(255,255,255)
 circleCal.BorderSizePixel = 0
 Instance.new("UICorner", circleCal).CornerRadius = UDim.new(1,0)
 
-if data.Enabled then
-    btnCal.BackgroundColor3 = Color3.fromRGB(65,65,65)
-    btnCal.BackgroundTransparency = 0.15
-    circleCal.Position = UDim2.new(1,-18,0.5,-8)
-end
-
-btnCal.MouseButton1Click:Connect(function()
-    data.Enabled = not data.Enabled
-    if data.Enabled then
+local function SetCalState(state)
+    data.Enabled = state
+    getgenv().FTF_Calibration.Enabled = state
+    if state then
         TweenService:Create(btnCal,TweenInfo.new(0.15),{BackgroundColor3 = Color3.fromRGB(65,65,65), BackgroundTransparency = 0.15}):Play()
         TweenService:Create(circleCal,TweenInfo.new(0.15),{Position = UDim2.new(1,-18,0.5,-8)}):Play()
         applyFilter()
@@ -5677,41 +5924,57 @@ btnCal.MouseButton1Click:Connect(function()
         TweenService:Create(circleCal,TweenInfo.new(0.15),{Position = UDim2.new(0,2,0.5,-8)}):Play()
         destroyFilter()
     end
+end
+
+if data.Enabled then
+    btnCal.BackgroundColor3 = Color3.fromRGB(65,65,65)
+    btnCal.BackgroundTransparency = 0.15
+    circleCal.Position = UDim2.new(1,-18,0.5,-8)
+end
+
+btnCal.MouseButton1Click:Connect(function()
+    SetCalState(not data.Enabled)
     saveData(data)
 end)
 
 CreateSlider(contentColor, "Brightness", -1, 1, data.Brightness, function(Value)
     data.Brightness = Value
+    getgenv().FTF_Calibration.Brightness = Value
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
 
 CreateSlider(contentColor, "Contrast", -1, 1, data.Contrast, function(Value)
     data.Contrast = Value
+    getgenv().FTF_Calibration.Contrast = Value
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
 
 CreateSlider(contentColor, "Saturation", -1, 1, data.Saturation, function(Value)
     data.Saturation = Value
+    getgenv().FTF_Calibration.Saturation = Value
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
 
 CreateSlider(contentColor, "Exposure", -1, 1, data.Exposure, function(Value)
     data.Exposure = Value
+    getgenv().FTF_Calibration.Exposure = Value
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
 
 CreateSlider(contentColor, "Temperature", -1, 1, data.Temperature, function(Value)
     data.Temperature = Value
+    getgenv().FTF_Calibration.Temperature = Value
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
 
 CreateSlider(contentColor, "Blur", 0, 24, data.Blur, function(Value)
     data.Blur = Value
+    getgenv().FTF_Calibration.Blur = Value
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
@@ -5748,6 +6011,7 @@ resetBtn.MouseButton1Click:Connect(function()
     data.Exposure = defaultData.Exposure
     data.Temperature = defaultData.Temperature
     data.Blur = defaultData.Blur
+    getgenv().FTF_Calibration = data
 
     resetSlider("Brightness", data.Brightness)
     task.wait(0.025)
@@ -5764,6 +6028,20 @@ resetBtn.MouseButton1Click:Connect(function()
     if data.Enabled then applyFilter() end
     saveData(data)
 end)
+
+getgenv().Eclipse_ApplyCalibration = function()
+    local nd = getgenv().FTF_Calibration
+    if not nd then return end
+    data = nd
+    getgenv().FTF_Calibration = nd
+    pcall(function() resetSlider("Brightness", nd.Brightness or 0) end)
+    pcall(function() resetSlider("Contrast", nd.Contrast or 0) end)
+    pcall(function() resetSlider("Saturation", nd.Saturation or 0) end)
+    pcall(function() resetSlider("Exposure", nd.Exposure or 0) end)
+    pcall(function() resetSlider("Temperature", nd.Temperature or 0) end)
+    pcall(function() resetSlider("Blur", nd.Blur or 0) end)
+    SetCalState(nd.Enabled == true)
+end
 
 if data.Enabled then applyFilter() end
 
@@ -5828,6 +6106,7 @@ do
     local loop
     local dropdownBtn
     local dropdownHolder
+    local shaderToggleSet = nil
 
     function update()
         if not active then return end
@@ -5899,6 +6178,18 @@ do
         L.GeographicLatitude = backup.Lat
     end
 
+    local function ApplyPreset(name)
+        if not presets[name] then return end
+        for k, v in pairs(presets[name]) do
+            shaderlight[k] = v
+        end
+        getgenv().FTF_Shaders.Current = name
+        if dropdownBtn then
+            dropdownBtn.Text = "Preset: "..name:sub(1,1):upper()..name:sub(2)
+        end
+        if active then update() end
+    end
+
     local function CreateToggle(parent, text, default, callback)
         local toggleFrame = Instance.new("Frame", parent)
         toggleFrame.Size = UDim2.new(1, 0, 0, 22)
@@ -5934,8 +6225,9 @@ do
         Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
 
         local enabled = default
-        toggle.MouseButton1Click:Connect(function()
-            enabled = not enabled
+
+        local function SetState(state, fromLoad)
+            enabled = state
             TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
                 Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7),
                 BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
@@ -5947,8 +6239,13 @@ do
                 Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
             }):Play()
             if callback then callback(enabled) end
+        end
+
+        toggle.MouseButton1Click:Connect(function()
+            SetState(not enabled, false)
+            if DoSave then pcall(DoSave) end
         end)
-        return toggleFrame
+        return toggleFrame, SetState
     end
 
     local function CreateDropdown(parent, label, list, default, callback)
@@ -6026,9 +6323,10 @@ do
             end
 
             item.MouseButton1Click:Connect(function()
-                getgenv().FTF_Shaders.Current = v
+                ApplyPreset(v)
                 callback(v)
                 closeDropdown()
+                if DoSave then pcall(DoSave) end
             end)
         end
 
@@ -6046,21 +6344,22 @@ do
         return dropdownHolder
     end
 
-    CreateToggle(contentShader, "Enable Shaders", getgenv().FTF_Shaders.Enabled, function(state)
+    local _, setShaderToggle = CreateToggle(contentShader, "Enable Shaders", getgenv().FTF_Shaders.Enabled, function(state)
         getgenv().FTF_Shaders.Enabled = state
         if state then
             active = true
+            if loop then loop:Disconnect() end
             loop = R.Heartbeat:Connect(update)
+            ApplyPreset(getgenv().FTF_Shaders.Current)
         else
             destroyShaders()
         end
     end)
+    shaderToggleSet = setShaderToggle
 
     local presetList = {"morning", "midday", "afternoon", "evening", "night", "midnight"}
     CreateDropdown(contentShader, "Preset", presetList, getgenv().FTF_Shaders.Current, function(value)
-        for k, v in pairs(presets[value]) do
-            shaderlight[k] = v
-        end
+        ApplyPreset(value)
     end)
 
     local holderReset = Instance.new("Frame", contentShader)
@@ -6084,13 +6383,36 @@ do
 
         getgenv().FTF_Shaders.Current = "midday"
         getgenv().FTF_Shaders.Enabled = false
-
+        if shaderToggleSet then shaderToggleSet(false, false) end
         dropdownBtn.Text = "Preset: Midday"
-        for k, v in pairs(presets["midday"]) do
-            shaderlight[k] = v
-        end
+        ApplyPreset("midday")
         destroyShaders()
+        if DoSave then pcall(DoSave) end
     end)
+
+    getgenv().Eclipse_ApplyShaders = function()
+        local s = getgenv().FTF_Shaders
+        if not s then return end
+        ApplyPreset(s.Current or "midday")
+        if shaderToggleSet then
+            pcall(shaderToggleSet, s.Enabled == true, true)
+        else
+            if s.Enabled then
+                active = true
+                if loop then loop:Disconnect() end
+                loop = R.Heartbeat:Connect(update)
+            else
+                destroyShaders()
+            end
+        end
+    end
+
+    if getgenv().FTF_Shaders.Enabled then
+        task.spawn(function()
+            task.wait(0.5)
+            pcall(getgenv().Eclipse_ApplyShaders)
+        end)
+    end
 end
 
 local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
@@ -6114,8 +6436,13 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
     if contentLayoutFog then contentLayoutFog.Padding = UDim.new(0, 8) contentLayoutFog.SortOrder = Enum.SortOrder.LayoutOrder end
 
     local UIS = game:GetService("UserInputService")
-    local FlashEnabled = false
-    local Brightness2 = 5
+    if getgenv().Fog_Active == nil then getgenv().Fog_Active = nil end
+    if getgenv().Fog_FlashEnabled == nil then getgenv().Fog_FlashEnabled = false end
+    if getgenv().Fog_Brightness == nil then getgenv().Fog_Brightness = 5 end
+    if getgenv().Fog_Color == nil then getgenv().Fog_Color = Color3.fromRGB(0,0,0) end
+
+    local FlashEnabled = getgenv().Fog_FlashEnabled
+    local Brightness2 = getgenv().Fog_Brightness
 
     local function UpdateFlashlight(state)
         local char = LocalPlayer.Character
@@ -6143,8 +6470,8 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
     local FogMode = "Default"
     local FogConnection = nil
     local FogEnabled = false
-    local Active = nil
-    local FogColor = Color3.fromRGB(0, 0, 0)
+    local Active = getgenv().Fog_Active
+    local FogColor = getgenv().Fog_Color
 
     local OriginalFog = {
         Color = Atmosphere and Atmosphere.Color or Color3.fromRGB(192,192,192),
@@ -6292,59 +6619,64 @@ local boxFog, contentFog = CreateGroupbox(rightColH, "Fog Settings")
     local btnNoFog, circleNoFog = CreateToggle("No Fog", 3)
     local btnToggle, circleToggle = CreateToggle("Enable Fog Mode", 4)
 
-    local function TurnOffAll()
+    local function TurnOffAll(save)
         Active = nil
+        getgenv().Fog_Active = nil
         ToggleVisual(btnBlack, circleBlack, false)
         ToggleVisual(btnGray, circleGray, false)
         ToggleVisual(btnNoFog, circleNoFog, false)
         ToggleVisual(btnToggle, circleToggle, false)
         StopFog()
+        if save ~= false and DoSave then pcall(DoSave) end
     end
 
-    btnBlack.MouseButton1Click:Connect(function()
-        if Active == "Black" then TurnOffAll()
+    local function SetFogMode(mode)
+        if Active == mode then TurnOffAll() return end
+        Active = mode
+        getgenv().Fog_Active = mode
+        ToggleVisual(btnBlack, circleBlack, mode == "Black")
+        ToggleVisual(btnGray, circleGray, mode == "Gray")
+        ToggleVisual(btnNoFog, circleNoFog, mode == "NoFog")
+        ToggleVisual(btnToggle, circleToggle, mode == "Enable")
+        if mode == "Black" then FogMode = "Black Fog"
+        elseif mode == "Gray" then FogMode = "Gray Fog"
+        elseif mode == "NoFog" then FogMode = "No Fog"
+        elseif mode == "Enable" then FogMode = "Custom" end
+        StartFog()
+        if DoSave then pcall(DoSave) end
+    end
+
+    btnBlack.MouseButton1Click:Connect(function() SetFogMode("Black") end)
+    btnGray.MouseButton1Click:Connect(function() SetFogMode("Gray") end)
+    btnNoFog.MouseButton1Click:Connect(function() SetFogMode("NoFog") end)
+    btnToggle.MouseButton1Click:Connect(function() SetFogMode("Enable") end)
+
+    local function ApplyFogState()
+        Active = getgenv().Fog_Active
+        FlashEnabled = getgenv().Fog_FlashEnabled
+        Brightness2 = getgenv().Fog_Brightness
+        FogColor = getgenv().Fog_Color
+        ToggleVisual(btnBlack, circleBlack, Active == "Black")
+        ToggleVisual(btnGray, circleGray, Active == "Gray")
+        ToggleVisual(btnNoFog, circleNoFog, Active == "NoFog")
+        ToggleVisual(btnToggle, circleToggle, Active == "Enable")
+        if Active == "Black" then FogMode = "Black Fog" StartFog()
+        elseif Active == "Gray" then FogMode = "Gray Fog" StartFog()
+        elseif Active == "NoFog" then FogMode = "No Fog" StartFog()
+        elseif Active == "Enable" then FogMode = "Custom" StartFog()
+        else StopFog() end
+        if FlashEnabled then
+            TweenService:Create(btnFlash,TweenInfo.new(0.15),{BackgroundColor3 = Color3.fromRGB(65,65,65), BackgroundTransparency = 0.15}):Play()
+            TweenService:Create(circleFlash,TweenInfo.new(0.15),{Position = UDim2.new(1,-18,0.5,-8)}):Play()
         else
-            Active = "Black"
-            ToggleVisual(btnBlack, circleBlack, true)
-            ToggleVisual(btnGray, circleGray, false)
-            ToggleVisual(btnNoFog, circleNoFog, false)
-            ToggleVisual(btnToggle, circleToggle, false)
-            FogMode = "Black Fog" StartFog()
+            TweenService:Create(btnFlash,TweenInfo.new(0.15),{BackgroundColor3 = Color3.fromRGB(45,45,45), BackgroundTransparency = 0.25}):Play()
+            TweenService:Create(circleFlash,TweenInfo.new(0.15),{Position = UDim2.new(0,2,0.5,-8)}):Play()
         end
-    end)
-    btnGray.MouseButton1Click:Connect(function()
-        if Active == "Gray" then TurnOffAll()
-        else
-            Active = "Gray"
-            ToggleVisual(btnBlack, circleBlack, false)
-            ToggleVisual(btnGray, circleGray, true)
-            ToggleVisual(btnNoFog, circleNoFog, false)
-            ToggleVisual(btnToggle, circleToggle, false)
-            FogMode = "Gray Fog" StartFog()
-        end
-    end)
-    btnNoFog.MouseButton1Click:Connect(function()
-        if Active == "NoFog" then TurnOffAll()
-        else
-            Active = "NoFog"
-            ToggleVisual(btnBlack, circleBlack, false)
-            ToggleVisual(btnGray, circleGray, false)
-            ToggleVisual(btnNoFog, circleNoFog, true)
-            ToggleVisual(btnToggle, circleToggle, false)
-            FogMode = "No Fog" StartFog()
-        end
-    end)
-    btnToggle.MouseButton1Click:Connect(function()
-        if Active == "Enable" then TurnOffAll()
-        else
-            Active = "Enable"
-            ToggleVisual(btnBlack, circleBlack, false)
-            ToggleVisual(btnGray, circleGray, false)
-            ToggleVisual(btnNoFog, circleNoFog, false)
-            ToggleVisual(btnToggle, circleToggle, true)
-            FogMode = "Custom" StartFog()
-        end
-    end)
+        UpdateFlashlight(FlashEnabled)
+        if valueLabel then valueLabel.Text = string.format("%.2f", Brightness2) end
+        if fill then fill.Size = UDim2.new((Brightness2 - 1) / 9, 0, 1, 0) end
+    end
+    getgenv().Eclipse_ApplyFog = ApplyFogState
 
 local UIS = game:GetService("UserInputService")
 
@@ -6534,7 +6866,9 @@ end
 
 CreateFogColorPicker(contentFog, "Fog Color", FogColor, function(c)
     FogColor = c
+    getgenv().Fog_Color = c
     if FogEnabled and FogMode == "Custom" then ApplyMode() end
+    if DoSave then pcall(DoSave) end
 end, 5)
 
     local holderFlash = Instance.new("Frame", contentFog)
@@ -6569,6 +6903,7 @@ end, 5)
     Instance.new("UICorner", circleFlash).CornerRadius = UDim.new(1,0)
     btnFlash.MouseButton1Click:Connect(function()
         FlashEnabled = not FlashEnabled
+        getgenv().Fog_FlashEnabled = FlashEnabled
         if FlashEnabled then
             TweenService:Create(btnFlash,TweenInfo.new(0.15),{BackgroundColor3 = Color3.fromRGB(65,65,65), BackgroundTransparency = 0.15}):Play()
             TweenService:Create(circleFlash,TweenInfo.new(0.15),{Position = UDim2.new(1,-18,0.5,-8)}):Play()
@@ -6577,6 +6912,7 @@ end, 5)
             TweenService:Create(circleFlash,TweenInfo.new(0.15),{Position = UDim2.new(0,2,0.5,-8)}):Play()
         end
         UpdateFlashlight(FlashEnabled)
+        if DoSave then pcall(DoSave) end
     end)
 
     do
@@ -6629,7 +6965,9 @@ end, 5)
             TweenService:Create(fill, TweenInfo.new(0.08), {Size = UDim2.new(scale, 0, 1, 0)}):Play()
             valueLabel.Text = string.format("%.2f", value)
             Brightness2 = value
+            getgenv().Fog_Brightness = value
             if FlashEnabled then UpdateFlashlight(true) end
+            if DoSave then pcall(DoSave) end
         end
         bar.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true update(input.Position.X) end
@@ -6645,6 +6983,11 @@ end, 5)
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         if FlashEnabled then UpdateFlashlight(true) end
+    end)
+
+    task.spawn(function()
+        task.wait(0.5)
+        pcall(ApplyFogState)
     end)
 end
 
@@ -7770,13 +8113,24 @@ boxJump.LayoutOrder = 3
 
 local player = game.Players.LocalPlayer
 
+
 local originals = {}
+
 local function GetOriginal(btn)
     if not btn then return nil, nil end
-    local o = originals[btn]
-    if o then return o.Pos, o.Size end
-    originals[btn] = {Pos = btn.Position, Size = btn.Size}
-    return btn.Position, btn.Size
+
+    local original = originals[btn]
+
+    if not original then
+        original = {
+            Pos = btn.Position,
+            Size = btn.Size
+        }
+
+        originals[btn] = original
+    end
+
+    return original.Pos, original.Size
 end
 
 local function GetTouchFrame()
@@ -7907,23 +8261,32 @@ local CY = SaveData.CY
 local CSize = SaveData.CSize
 local CSliders = {}
 
-local function GetButtonByText(Text)
-    local Found
-    pcall(function()
-        local Frame = player.PlayerGui:FindFirstChild("ContextActionGui") and player.PlayerGui.ContextActionGui:FindFirstChild("ContextButtonFrame")
-        if not Frame then return end
-        for _, Object in Frame:GetDescendants() do
-            if Object:IsA("TextLabel") and Object.Name == "ActionTitle" and Object.Text == Text then
-                local Parent = Object.Parent
-                while Parent and Parent ~= Frame do
-                    if Parent.Name == "ContextActionButton" then Found = Parent break end
-                    Parent = Parent.Parent
+
+local function GetButtonByText(text)
+    local playerGui = player:FindFirstChildOfClass("PlayerGui")
+    if not playerGui then return nil end
+
+    local contextGui = playerGui:FindFirstChild("ContextActionGui")
+    if not contextGui then return nil end
+
+    local frame = contextGui:FindFirstChild("ContextButtonFrame")
+    if not frame then return nil end
+
+    for _, button in ipairs(frame:GetChildren()) do
+        if button.Name == "ContextActionButton" then
+            local title = button:FindFirstChild("ActionTitle", true)
+
+            if title and title:IsA("TextLabel") then
+                if title.Text:match("^%s*" .. text .. "%s*$") then
+                    return button
                 end
             end
         end
-    end)
-    return Found
+    end
+
+    return nil
 end
+
 
 local function ApplyEButton()
     local Button = GetButtonByText("E")
@@ -8047,19 +8410,55 @@ task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local player = Players.LocalPlayer
 
-    local FootstepVolume = 15
-    local JumpVolume = 10
-    local FallVolume = 10
-    local MuteFootsteps = false
-    local MuteJump = false
-    local MuteFall = false
-    local MuteHit = false
-    local FootstepMinDist = 0
-    local FootstepMaxDist = 150
-    local FootstepRollOff = 1
+    getgenv().FTF_Sounds = getgenv().FTF_Sounds or {
+        FootstepVolume = 15,
+        JumpVolume = 10,
+        FallVolume = 10,
+        MuteFootsteps = false,
+        MuteJump = false,
+        MuteFall = false,
+        MuteHit = false,
+        FootstepMinDist = 0,
+        FootstepMaxDist = 150,
+        FootstepRollOff = 1,
+        SelectedFootsteps = "79392671800290",
+        SelectedJump = "80853972291847",
+        SelectedFall = "88947883822456",
+        MusicVolume = 0.5,
+        MusicId = "",
+    }
+    local S = getgenv().FTF_Sounds
+
+    local FootstepVolume = S.FootstepVolume
+    local JumpVolume = S.JumpVolume
+    local FallVolume = S.FallVolume
+    local MuteFootsteps = S.MuteFootsteps
+    local MuteJump = S.MuteJump
+    local MuteFall = S.MuteFall
+    local MuteHit = S.MuteHit
+    local FootstepMinDist = S.FootstepMinDist
+    local FootstepMaxDist = S.FootstepMaxDist
+    local FootstepRollOff = S.FootstepRollOff
 
     local DefaultSounds = { Footsteps = "79392671800290", Jump = "80853972291847", Fall = "88947883822456" }
-    local SelectedSounds = { Footsteps = "79392671800290", Jump = "80853972291847", Fall = "88947883822456" }
+    local SelectedSounds = { Footsteps = S.SelectedFootsteps, Jump = S.SelectedJump, Fall = S.SelectedFall }
+
+    local function SyncGet()
+        S.FootstepVolume = FootstepVolume
+        S.JumpVolume = JumpVolume
+        S.FallVolume = FallVolume
+        S.MuteFootsteps = MuteFootsteps
+        S.MuteJump = MuteJump
+        S.MuteFall = MuteFall
+        S.MuteHit = MuteHit
+        S.FootstepMinDist = FootstepMinDist
+        S.FootstepMaxDist = FootstepMaxDist
+        S.FootstepRollOff = FootstepRollOff
+        S.SelectedFootsteps = SelectedSounds.Footsteps
+        S.SelectedJump = SelectedSounds.Jump
+        S.SelectedFall = SelectedSounds.Fall
+        if DoSave then pcall(DoSave) end
+    end
 
     local settingsPageH = pages["Sounds"]
     for _,v in pairs(settingsPageH:GetChildren()) do
@@ -8215,6 +8614,9 @@ task.spawn(function()
     ReplicatedStorage.DescendantAdded:Connect(MuteHitSounds)
     if player.Character then UpdateAllSounds() WatchCharacterSafe(player.Character) end
 
+    local sliders = {}
+    local toggleSetters = {}
+
     local function CreateVolumeSlider(parent, text, min, max, default, callback)
         local holder = Instance.new("Frame", parent)
         holder.Size = UDim2.new(1,0,0,40)
@@ -8268,6 +8670,7 @@ task.spawn(function()
             TweenService:Create(fill, TweenInfo.new(0.08), {Size = UDim2.new(scale, 0, 1, 0)}):Play()
             valueLabel.Text = tostring(value)
             callback(value)
+            SyncGet()
         end
         bar.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true update(input.Position.X) end
@@ -8278,12 +8681,15 @@ task.spawn(function()
         UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
         end)
-        return {SetValue = function(val)
+        local api = {SetValue = function(val)
             local scale = math.clamp((val - min) / (max - min), 0, 1)
             valueLabel.Text = tostring(val)
             fill.Size = UDim2.new(scale, 0, 1, 0)
             callback(val)
+            SyncGet()
         end}
+        sliders[text] = api
+        return api
     end
 
     local ActiveButtons = {Footsteps = {}, Jump = {}, Fall = {}}
@@ -8325,6 +8731,7 @@ task.spawn(function()
             ApplySoundIdGlobally(soundType, soundId)
             UpdateAllSounds()
             for _, button in ipairs(ActiveButtons[soundType]) do button.UpdateVisual() end
+            SyncGet()
         end)
         UpdateVisual()
         table.insert(ActiveButtons[soundType], {UpdateVisual = UpdateVisual})
@@ -8347,6 +8754,7 @@ task.spawn(function()
             task.wait(0.15)
             TweenService:Create(btn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(180,180,180)}):Play()
             if callback then callback() end
+            SyncGet()
         end)
         return btn
     end
@@ -8381,21 +8789,26 @@ task.spawn(function()
         circle.BorderSizePixel = 0
         Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
         local enabled = default
-        toggle.MouseButton1Click:Connect(function()
-            enabled = not enabled
+        local function SetState(state)
+            enabled = state
             TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7), BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220) }):Play()
             TweenService:Create(toggle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { BackgroundTransparency = enabled and 0 or 1, BackgroundColor3 = Color3.fromRGB(255, 255, 255) }):Play()
             TweenService:Create(stroke, TweenInfo.new(0.15), { Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100) }):Play()
             if callback then callback(enabled) end
+        end
+        toggle.MouseButton1Click:Connect(function()
+            SetState(not enabled)
+            SyncGet()
         end)
-        return toggleFrame
+        toggleSetters[text] = SetState
+        return toggleFrame, SetState
     end
 
     local volumeBox, volumeContent = CreateGroupbox(leftColH, "Volume")
     volumeBox.LayoutOrder = 1
-    local footstepSlider = CreateVolumeSlider(volumeContent, "FootSteps", 0, 100, 15, function(v) FootstepVolume = v UpdateAllSounds() end)
-    local jumpSlider = CreateVolumeSlider(volumeContent, "Jump", 0, 100, 10, function(v) JumpVolume = v UpdateAllSounds() end)
-    local fallSlider = CreateVolumeSlider(volumeContent, "Fall", 0, 100, 10, function(v) FallVolume = v UpdateAllSounds() end)
+    local footstepSlider = CreateVolumeSlider(volumeContent, "FootSteps", 0, 100, FootstepVolume, function(v) FootstepVolume = v UpdateAllSounds() end)
+    local jumpSlider = CreateVolumeSlider(volumeContent, "Jump", 0, 100, JumpVolume, function(v) JumpVolume = v UpdateAllSounds() end)
+    local fallSlider = CreateVolumeSlider(volumeContent, "Fall", 0, 100, FallVolume, function(v) FallVolume = v UpdateAllSounds() end)
     CreateResetButton(volumeContent, "Reset Volumes", function()
         FootstepVolume = 15 JumpVolume = 10 FallVolume = 10
         footstepSlider.SetValue(15) jumpSlider.SetValue(10) fallSlider.SetValue(10) UpdateAllSounds()
@@ -8413,10 +8826,10 @@ task.spawn(function()
 
     local muteBox, muteContent = CreateGroupbox(leftColH, "Mute System")
     muteBox.LayoutOrder = 2
-    CreateToggle(muteContent, "Mute Your Footsteps", false, function(s) MuteFootsteps = s UpdateAllSounds() end)
-    CreateToggle(muteContent, "Mute Your Jump", false, function(s) MuteJump = s UpdateAllSounds() end)
-    CreateToggle(muteContent, "Mute Your Fall", false, function(s) MuteFall = s UpdateAllSounds() end)
-    CreateToggle(muteContent, "Mute Hit Sound", false, function(s) MuteHit = s end)
+    CreateToggle(muteContent, "Mute Your Footsteps", MuteFootsteps, function(s) MuteFootsteps = s UpdateAllSounds() end)
+    CreateToggle(muteContent, "Mute Your Jump", MuteJump, function(s) MuteJump = s UpdateAllSounds() end)
+    CreateToggle(muteContent, "Mute Your Fall", MuteFall, function(s) MuteFall = s UpdateAllSounds() end)
+    CreateToggle(muteContent, "Mute Hit Sound", MuteHit, function(s) MuteHit = s end)
 
     local facilityCat, facilityContent = CreateGroupbox(leftColH, "Facility Gamer")
     facilityCat.LayoutOrder = 3
@@ -8438,9 +8851,9 @@ task.spawn(function()
 
     local distBox, distContent = CreateGroupbox(rightColH, "Distância de Passos")
     distBox.LayoutOrder = 1
-    local minDistSlider = CreateVolumeSlider(distContent, "Min Distância", 0, 20, 0, function(v) FootstepMinDist = v UpdateAllSounds() end)
-    local maxDistSlider = CreateVolumeSlider(distContent, "Max Distância", 10, 500, 150, function(v) FootstepMaxDist = v UpdateAllSounds() end)
-    local rollOffSlider = CreateVolumeSlider(distContent, "RollOff", 0, 5, 1, function(v) FootstepRollOff = v UpdateAllSounds() end)
+    local minDistSlider = CreateVolumeSlider(distContent, "Min Distância", 0, 20, FootstepMinDist, function(v) FootstepMinDist = v UpdateAllSounds() end)
+    local maxDistSlider = CreateVolumeSlider(distContent, "Max Distância", 10, 500, FootstepMaxDist, function(v) FootstepMaxDist = v UpdateAllSounds() end)
+    local rollOffSlider = CreateVolumeSlider(distContent, "RollOff", 0, 5, FootstepRollOff, function(v) FootstepRollOff = v UpdateAllSounds() end)
     CreateResetButton(distContent, "Reset Distância", function()
         FootstepMinDist = 0 FootstepMaxDist = 150 FootstepRollOff = 1
         minDistSlider.SetValue(0) maxDistSlider.SetValue(150) rollOffSlider.SetValue(1) UpdateAllSounds()
@@ -8451,8 +8864,11 @@ task.spawn(function()
     local musicSound = Instance.new("Sound", workspace)
     musicSound.Name = "MusicPlayerSound"
     musicSound.Looped = true
-    musicSound.Volume = 0.5
+    musicSound.Volume = S.MusicVolume
     local musicPlaying = false
+    local musicIdBox = nil
+    local musicVolFill = nil
+    local musicVolPercent = nil
 
     do
         local holder = Instance.new("Frame", musicContent)
@@ -8472,10 +8888,11 @@ task.spawn(function()
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.ZIndex = 2
         local volPercent = Instance.new("TextLabel", holder)
+        musicVolPercent = volPercent
         volPercent.Size = UDim2.new(0,40,0,20)
         volPercent.Position = UDim2.new(1,-45,0,5)
         volPercent.BackgroundTransparency = 1
-        volPercent.Text = "50%"
+        volPercent.Text = math.floor(S.MusicVolume * 100).."%"
         volPercent.Font = Enum.Font.GothamBold
         volPercent.TextSize = 13
         volPercent.TextColor3 = Color3.fromRGB(235,235,235)
@@ -8489,7 +8906,8 @@ task.spawn(function()
         volBar.ZIndex = 2
         Instance.new("UICorner", volBar).CornerRadius = UDim.new(0,3)
         local volFill = Instance.new("Frame", volBar)
-        volFill.Size = UDim2.new(0.5, 0, 1, 0)
+        musicVolFill = volFill
+        volFill.Size = UDim2.new(S.MusicVolume, 0, 1, 0)
         volFill.BackgroundColor3 = Color3.fromRGB(255,255,255)
         volFill.BorderSizePixel = 0
         volFill.ZIndex = 3
@@ -8500,6 +8918,8 @@ task.spawn(function()
             TweenService:Create(volFill, TweenInfo.new(0.08), {Size = UDim2.new(scale, 0, 1, 0)}):Play()
             musicSound.Volume = scale
             volPercent.Text = math.floor(scale * 100).. "%"
+            S.MusicVolume = scale
+            if DoSave then pcall(DoSave) end
         end
         local isDragging = false
         local moveConnection, endConnection
@@ -8531,9 +8951,10 @@ task.spawn(function()
         layout.FillDirection = Enum.FillDirection.Horizontal
         layout.Padding = UDim.new(0, 8)
         local idBox = Instance.new("TextBox", holder)
+        musicIdBox = idBox
         idBox.Size = UDim2.new(0.33, -5, 1, 0)
         idBox.PlaceholderText = "ID..."
-        idBox.Text = ""
+        idBox.Text = S.MusicId or ""
         idBox.Font = Enum.Font.GothamBold
         idBox.TextSize = 12
         idBox.TextColor3 = Color3.fromRGB(255,255,255)
@@ -8547,6 +8968,10 @@ task.spawn(function()
         local strokeId = Instance.new("UIStroke", idBox)
         strokeId.Color = Color3.fromRGB(80,80,85)
         strokeId.Thickness = 1
+        idBox.FocusLost:Connect(function()
+            S.MusicId = idBox.Text
+            if DoSave then pcall(DoSave) end
+        end)
         local dropdown = Instance.new("TextButton", holder)
         dropdown.Size = UDim2.new(0.33, -5, 1, 0)
         dropdown.Text = "Select"
@@ -8605,6 +9030,8 @@ task.spawn(function()
             option.MouseButton1Click:Connect(function()
                 dropdown.Text = song[1]
                 idBox.Text = song[2]
+                S.MusicId = song[2]
+                if DoSave then pcall(DoSave) end
                 TweenService:Create(dropdownList, TweenInfo.new(0.12), {Size = UDim2.new(1,0,0,0)}):Play()
                 task.wait(0.12)
                 dropdownList.Visible = false
@@ -8681,6 +9108,43 @@ task.spawn(function()
     CreateSoundButton(fkpsContent, "FootSteps", "Footsteps", "97733831736820")
     CreateSoundButton(fkpsContent, "Jump", "Jump", "86031664547378")
     CreateSoundButton(fkpsContent, "Fall", "Fall", "78180192109919")
+
+    getgenv().Eclipse_ApplySounds = function()
+        local ns = getgenv().FTF_Sounds
+        if not ns then return end
+        FootstepVolume = ns.FootstepVolume
+        JumpVolume = ns.JumpVolume
+        FallVolume = ns.FallVolume
+        MuteFootsteps = ns.MuteFootsteps
+        MuteJump = ns.MuteJump
+        MuteFall = ns.MuteFall
+        MuteHit = ns.MuteHit
+        FootstepMinDist = ns.FootstepMinDist
+        FootstepMaxDist = ns.FootstepMaxDist
+        FootstepRollOff = ns.FootstepRollOff
+        SelectedSounds = { Footsteps = ns.SelectedFootsteps, Jump = ns.SelectedJump, Fall = ns.SelectedFall }
+        if sliders["FootSteps"] then sliders["FootSteps"].SetValue(FootstepVolume) end
+        if sliders["Jump"] then sliders["Jump"].SetValue(JumpVolume) end
+        if sliders["Fall"] then sliders["Fall"].SetValue(FallVolume) end
+        if sliders["Min Distância"] then sliders["Min Distância"].SetValue(FootstepMinDist) end
+        if sliders["Max Distância"] then sliders["Max Distância"].SetValue(FootstepMaxDist) end
+        if sliders["RollOff"] then sliders["RollOff"].SetValue(FootstepRollOff) end
+        if toggleSetters["Mute Your Footsteps"] then toggleSetters["Mute Your Footsteps"](MuteFootsteps) end
+        if toggleSetters["Mute Your Jump"] then toggleSetters["Mute Your Jump"](MuteJump) end
+        if toggleSetters["Mute Your Fall"] then toggleSetters["Mute Your Fall"](MuteFall) end
+        if toggleSetters["Mute Hit Sound"] then toggleSetters["Mute Hit Sound"](MuteHit) end
+        for _, t in pairs({"Footsteps", "Jump", "Fall"}) do
+            for _, b in ipairs(ActiveButtons[t]) do b.UpdateVisual() end
+        end
+        if musicSound then musicSound.Volume = ns.MusicVolume or 0.5 end
+        if musicVolFill then musicVolFill.Size = UDim2.new(ns.MusicVolume or 0.5, 0, 1, 0) end
+        if musicVolPercent then musicVolPercent.Text = math.floor((ns.MusicVolume or 0.5) * 100).. "%" end
+        if musicIdBox then musicIdBox.Text = ns.MusicId or "" end
+        ApplySoundIdGlobally("Footsteps", SelectedSounds.Footsteps)
+        ApplySoundIdGlobally("Jump", SelectedSounds.Jump)
+        ApplySoundIdGlobally("Fall", SelectedSounds.Fall)
+        UpdateAllSounds()
+    end
 
     task.wait(1)
     ApplySoundIdGlobally("Footsteps", SelectedSounds.Footsteps)
@@ -9469,39 +9933,41 @@ do
     if not isfolder("FTF_Eclipse") then makefolder("FTF_Eclipse") end
 
     local backgrounds = {
-        {"Style 1", "92787928900360"},
-        {"Style 2", "109143338870022"},
-        {"Style 3", "78186972924904"},
-        {"Style 4", "105066440016571"},
-        {"Style 5", "110215769551010"},
-        {"Style 6", "115541469321190"},
-        {"Style 7", "97984932480755"},
-        {"Style 8", "86192845180549"},
-        {"Style 9", "85784609294289"},
-        {"Style 10", "140636010520663"},
-        {"Style 11", "124240486073107"},
-        {"Style 12", "85635291549219"},
-        {"Style 13", "117512819334968"},
-        {"Style 14", "111750153717391"},
-        {"Style 15", "98791036867631"},
-        {"Style 16", "131737959610359"},
-        {"Style 17", "81997082602790"},
-        {"Style 18", "117151748213203"},
-        {"Style 19", "112483283923855"},
-        {"Style 20", "109490272700736"},
-        {"Style 21", "125661929366351"},
-        {"Style 22", "74184537251110"},
-        {"Style 23", "124786302962772"},
-        {"Style 24", "125474858681812"},
-        {"Style 25", "99142368271124"},
-        {"Style 26", "94865353552525"},
-        {"Style 27", "120484401704545"},
+        {"Style 1", "96152990832798"},
+        {"Style 2", "92787928900360"},
+        {"Style 3", "109143338870022"},
+        {"Style 4", "78186972924904"},
+        {"Style 5", "105066440016571"},
+        {"Style 6", "110215769551010"},
+        {"Style 7", "115541469321190"},
+        {"Style 8", "97984932480755"},
+        {"Style 9", "86192845180549"},
+        {"Style 10", "85784609294289"},
+        {"Style 11", "140636010520663"},
+        {"Style 12", "124240486073107"},
+        {"Style 13", "85635291549219"},
+        {"Style 14", "117512819334968"},
+        {"Style 15", "111750153717391"},
+        {"Style 16", "98791036867631"},
+        {"Style 17", "131737959610359"},
+        {"Style 18", "81997082602790"},
+        {"Style 19", "117151748213203"},
+        {"Style 20", "112483283923855"},
+        {"Style 21", "109490272700736"},
+        {"Style 22", "125661929366351"},
+        {"Style 23", "74184537251110"},
+        {"Style 24", "124786302962772"},
+        {"Style 25", "125474858681812"},
+        {"Style 26", "99142368271124"},
+        {"Style 27", "94865353552525"},
+        {"Style 28", "120484401704545"},
     }
 
     getgenv().BackgroundLocked = getgenv().BackgroundLocked or false
     getgenv().ShowFPS = getgenv().ShowFPS or false
     getgenv().ShowPing = getgenv().ShowPing or false
     getgenv().ShowCPU = getgenv().ShowCPU or false
+    if getgenv().TouchScreen == nil then getgenv().TouchScreen = true end
 
     local function SaveConfig()
         local data = {
@@ -9509,7 +9975,9 @@ do
             UIBackground = getgenv().UIBackground or "Style 1",
             Font = getgenv().UIFont or "Gotham",
             BackgroundLocked = getgenv().BackgroundLocked,
-            ShowFPS = getgenv().ShowFPS, ShowPing = getgenv().ShowPing, ShowCPU = getgenv().ShowCPU
+            ShowFPS = getgenv().ShowFPS, ShowPing = getgenv().ShowPing, ShowCPU = getgenv().ShowCPU,
+            TouchScreen = getgenv().TouchScreen,
+            ShineColor = getgenv().ShineColor and {R = getgenv().ShineColor.R, G = getgenv().ShineColor.G, B = getgenv().ShineColor.B} or nil,
         }
         pcall(function()
             writefile("FTF_Eclipse/config.json", HttpService:JSONEncode(data))
@@ -9529,6 +9997,14 @@ do
                 getgenv().ShowFPS = data.ShowFPS or false
                 getgenv().ShowPing = data.ShowPing or false
                 getgenv().ShowCPU = data.ShowCPU or false
+                if data.TouchScreen == nil then
+                    getgenv().TouchScreen = true
+                else
+                    getgenv().TouchScreen = data.TouchScreen
+                end
+                if data.ShineColor then
+                    getgenv().ShineColor = Color3.new(data.ShineColor.R, data.ShineColor.G, data.ShineColor.B)
+                end
                 return data
             end
         end
@@ -9536,6 +10012,7 @@ do
         getgenv().UIFont = "Gotham"
         getgenv().CustomBackgroundID = backgrounds[1][2]
         getgenv().BackgroundLocked = false
+        if getgenv().TouchScreen == nil then getgenv().TouchScreen = true end
         SaveConfig()
         return nil
     end
@@ -9560,6 +10037,13 @@ do
     end
 
     LoadConfig()
+
+    task.spawn(function()
+        task.wait(0.5)
+        pcall(function()
+            if CrosshairLayer then CrosshairLayer.Visible = getgenv().TouchScreen end
+        end)
+    end)
 
     task.spawn(function()
         for i = 1, 20 do
@@ -9901,7 +10385,7 @@ do
             local ok, col = pcall(function() return Color3.fromHex(hex) end)
             if ok and col then
                 ApplyShineColor(col)
-                Notify("FTF Eclipse V2.9", "Shine color aplicado!", 3)
+                Notify("FTF Eclipse V3.0", "Shine color aplicado!", 3)
             end
         end
     end)
@@ -9964,9 +10448,12 @@ end
         return toggleFrame
     end
 
-CreateToggle(contentStats, "Touch Screen Interface", true, function(enabled)
-    CrosshairLayer.Visible = enabled
-end)
+    CreateToggle(contentStats, "Touch Screen Interface", getgenv().TouchScreen, function(enabled)
+        getgenv().TouchScreen = enabled
+        pcall(function()
+            if CrosshairLayer then CrosshairLayer.Visible = enabled end
+        end)
+    end)
 
     local fpsGui, fpsLabel
     local fpsConnection
@@ -10085,10 +10572,465 @@ end)
         elseif not state and cpuLabel then cpuLabel.Parent:Destroy() cpuLabel = nil end
     end)
 
-    task.spawn(function()
-        task.wait(0.5)
-        UpdateBackground(getgenv().CustomBackgroundID, true)
+local boxSave, contentSave = CreateGroupbox(container, "Save System")
+
+if not isfolder("FTF_Eclipse/configs") then makefolder("FTF_Eclipse/configs") end
+
+local saveLayout = contentSave:FindFirstChildOfClass("UIListLayout")
+if not saveLayout then saveLayout = Instance.new("UIListLayout", contentSave) end
+saveLayout.FillDirection = Enum.FillDirection.Vertical
+saveLayout.SortOrder = Enum.SortOrder.LayoutOrder
+saveLayout.Padding = UDim.new(0, 6)
+
+local SelectedConfig = nil
+local ConfigList = {}
+
+local function EncodeValue(v)
+    if typeof(v) == "Color3" then
+        return {__type = "Color3", R = v.R, G = v.G, B = v.B}
+    elseif type(v) == "table" then
+        local t = {}
+        for k2, v2 in pairs(v) do
+            t[k2] = EncodeValue(v2)
+        end
+        return t
+    else
+        return v
+    end
+end
+
+local function GatherAll()
+    local data = {}
+    for k, v in pairs(getgenv()) do
+        local t = typeof(v)
+        if t == "boolean" or t == "number" or t == "string" then
+            if k ~= "BackgroundLocked" then data[k] = v end
+        elseif t == "Color3" then
+            data[k] = {__type = "Color3", R = v.R, G = v.G, B = v.B}
+        end
+    end
+    if getgenv().FTF_Sounds then
+        data.FTF_Sounds = EncodeValue(getgenv().FTF_Sounds)
+    end
+    if getgenv().FTF_Shaders then
+        data.FTF_Shaders = EncodeValue(getgenv().FTF_Shaders)
+    end
+    if getgenv().FTF_Calibration then
+        data.FTF_Calibration = EncodeValue(getgenv().FTF_Calibration)
+    end
+    if getgenv().FTF_Textures then
+        local texCopy = {}
+        for k, v in pairs(getgenv().FTF_Textures) do
+            if typeof(v) ~= "Instance" then
+                texCopy[k] = v
+            end
+        end
+        data.FTF_Textures = EncodeValue(texCopy)
+    end
+    if getgenv().FTF_JumpSkinID then
+        data.FTF_JumpSkinID = getgenv().FTF_JumpSkinID
+    end
+    if getgenv().Eclipse_JumpData then
+        data.Eclipse_JumpData = getgenv().Eclipse_JumpData
+    end
+    if getgenv().Eclipse_JumpSave then
+        data.Eclipse_JumpData = getgenv().Eclipse_JumpSave
+    end
+    data.TouchScreen = getgenv().TouchScreen
+    data.ShowFPS = getgenv().ShowFPS
+    data.ShowPing = getgenv().ShowPing
+    data.ShowCPU = getgenv().ShowCPU
+    data.UIBackground = getgenv().UIBackground
+    data.CustomBackgroundID = getgenv().CustomBackgroundID
+    data.UIFont = getgenv().UIFont
+    return data
+end
+
+local function DecodeValue(v)
+    if type(v) == "table" and v.__type == "Color3" then
+        return Color3.new(v.R, v.G, v.B)
+    elseif type(v) == "table" then
+        local t = {}
+        for k2, v2 in pairs(v) do
+            t[k2] = DecodeValue(v2)
+        end
+        return t
+    end
+    return v
+end
+
+local function ApplyAllLoaded(data)
+    if not data then return end
+
+    for k, v in pairs(data) do
+        if k ~= "Eclipse_JumpData" then
+            getgenv()[k] = DecodeValue(v)
+        end
+    end
+
+    if data.Eclipse_JumpData and typeof(data.Eclipse_JumpData) == "table" then
+        getgenv().Eclipse_JumpData = data.Eclipse_JumpData
+        getgenv().Eclipse_JumpSave = data.Eclipse_JumpData
+        pcall(function()
+            if writefile then writefile("Eclipse_JumpButtons_Save.json", HttpService:JSONEncode(data.Eclipse_JumpData)) end
+        end)
+        if getgenv().Eclipse_ApplyJumpButtons then
+            task.spawn(function()
+                task.wait(0.5)
+                pcall(getgenv().Eclipse_ApplyJumpButtons)
+            end)
+        end
+    end
+
+    if getgenv().Eclipse_ToggleRegistry then
+        for key, setState in pairs(getgenv().Eclipse_ToggleRegistry) do
+            task.spawn(function()
+                task.wait(0.3)
+                if getgenv()[key] ~= nil then
+                    pcall(setState, getgenv()[key], true)
+                end
+            end)
+        end
+    end
+
+    if getgenv().Eclipse_ApplyFog then
+        task.spawn(function()
+            task.wait(0.4)
+            pcall(getgenv().Eclipse_ApplyFog)
+        end)
+    end
+    if getgenv().Eclipse_ApplySounds then
+        task.spawn(function()
+            task.wait(0.4)
+            pcall(getgenv().Eclipse_ApplySounds)
+        end)
+    end
+    if getgenv().Eclipse_ApplyShaders then
+        task.spawn(function()
+            task.wait(0.4)
+            pcall(getgenv().Eclipse_ApplyShaders)
+        end)
+    end
+    if getgenv().Eclipse_ApplyCalibration then
+        task.spawn(function()
+            task.wait(0.4)
+            pcall(getgenv().Eclipse_ApplyCalibration)
+        end)
+    end
+    if getgenv().Eclipse_ApplyTextures then
+        task.spawn(function()
+            task.wait(0.5)
+            pcall(getgenv().Eclipse_ApplyTextures)
+        end)
+    end
+
+    pcall(function() if CrosshairLayer then CrosshairLayer.Visible = getgenv().TouchScreen end end)
+    pcall(function() if getgenv().CustomBackgroundID then UpdateBackground(getgenv().CustomBackgroundID, true) end end)
+    pcall(function() if getgenv().UIFont then ApplyFont(Enum.Font[getgenv().UIFont] or Enum.Font.Gotham) end end)
+    if getgenv().OnConfigLoaded then pcall(getgenv().OnConfigLoaded, data) end
+    SaveConfig()
+end
+
+local function GetConfigFiles()
+    local list = {}
+    pcall(function()
+        for _, path in ipairs(listfiles("FTF_Eclipse/configs")) do
+            local name = path:match("([^/\\]+)%.json$")
+            if name then table.insert(list, name) end
+        end
     end)
+    table.sort(list)
+    return list
+end
+
+local dropHolder = Instance.new("Frame", contentSave)
+dropHolder.LayoutOrder = 1
+dropHolder.Size = UDim2.new(1, -12, 0, 35)
+dropHolder.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+dropHolder.ClipsDescendants = false
+dropHolder.ZIndex = 10
+Instance.new("UICorner", dropHolder).CornerRadius = UDim.new(0, 6)
+
+local dropTop = Instance.new("Frame", dropHolder)
+dropTop.Size = UDim2.new(1, 0, 1, 0)
+dropTop.BackgroundTransparency = 1
+dropTop.ZIndex = 10
+
+local dropLabel = Instance.new("TextLabel", dropTop)
+dropLabel.Size = UDim2.new(1, -40, 1, 0)
+dropLabel.Position = UDim2.new(0, 15, 0, 0)
+dropLabel.BackgroundTransparency = 1
+dropLabel.Text = "Config: ---"
+dropLabel.Font = CurrentFont
+dropLabel.TextSize = 14
+dropLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
+dropLabel.TextXAlignment = Enum.TextXAlignment.Left
+dropLabel.ZIndex = 11
+
+local dropArrow = Instance.new("TextLabel", dropTop)
+dropArrow.Size = UDim2.new(0, 20, 1, 0)
+dropArrow.Position = UDim2.new(1, -25, 0, 0)
+dropArrow.BackgroundTransparency = 1
+dropArrow.Text = "v"
+dropArrow.Font = CurrentFont
+dropArrow.TextSize = 12
+dropArrow.TextColor3 = Color3.fromRGB(180, 180, 180)
+dropArrow.ZIndex = 11
+
+local dropdownFrame = Instance.new("Frame", contentSave)
+dropdownFrame.LayoutOrder = 2
+dropdownFrame.Size = UDim2.new(1, -12, 0, 0)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+dropdownFrame.ClipsDescendants = true
+dropdownFrame.ZIndex = 9
+Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 6)
+Instance.new("UIListLayout", dropdownFrame).Padding = UDim.new(0, 0)
+
+local isOpen = false
+local function RefreshDropdown()
+    for _, c in ipairs(dropdownFrame:GetChildren()) do
+        if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end
+    end
+    ConfigList = GetConfigFiles()
+    local h = 0
+    if #ConfigList == 0 then
+        local empty = Instance.new("TextLabel", dropdownFrame)
+        empty.Size = UDim2.new(1, 0, 0, 34)
+        empty.BackgroundTransparency = 1
+        empty.Text = "Nenhuma config salva"
+        empty.Font = CurrentFont
+        empty.TextSize = 13
+        empty.TextColor3 = Color3.fromRGB(120, 120, 120)
+        empty.ZIndex = 10
+        h = 34
+    else
+        for _, name in ipairs(ConfigList) do
+            local opt = Instance.new("TextButton", dropdownFrame)
+            opt.Size = UDim2.new(1, 0, 0, 34)
+            opt.BackgroundTransparency = 1
+            opt.Text = name
+            opt.Font = CurrentFont
+            opt.TextSize = 14
+            opt.TextColor3 = (name == SelectedConfig) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(170, 170, 170)
+            opt.AutoButtonColor = false
+            opt.ZIndex = 10
+            opt.MouseButton1Click:Connect(function()
+                SelectedConfig = name
+                dropLabel.Text = "Config: "..name
+                isOpen = false
+                dropArrow.Text = "v"
+                TweenService:Create(dropdownFrame, TweenInfo.new(0.25), {Size = UDim2.new(1, -12, 0, 0)}):Play()
+            end)
+            h += 34
+        end
+    end
+    if isOpen then
+        TweenService:Create(dropdownFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, -12, 0, h)}):Play()
+    end
+end
+
+local dropClick = Instance.new("TextButton", dropTop)
+dropClick.Size = UDim2.new(1, 0, 1, 0)
+dropClick.BackgroundTransparency = 1
+dropClick.Text = ""
+dropClick.ZIndex = 12
+dropClick.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    RefreshDropdown()
+    if isOpen then
+        dropArrow.Text = "^"
+        local h = #ConfigList == 0 and 34 or (#ConfigList * 34)
+        TweenService:Create(dropdownFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, -12, 0, h)}):Play()
+    else
+        dropArrow.Text = "v"
+        TweenService:Create(dropdownFrame, TweenInfo.new(0.25), {Size = UDim2.new(1, -12, 0, 0)}):Play()
+    end
+end)
+RefreshDropdown()
+
+local nameHolder = Instance.new("Frame", contentSave)
+nameHolder.LayoutOrder = 3
+nameHolder.Size = UDim2.new(1, -12, 0, 35)
+nameHolder.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+Instance.new("UICorner", nameHolder).CornerRadius = UDim.new(0, 6)
+
+local nameBox = Instance.new("TextBox", nameHolder)
+nameBox.Size = UDim2.new(1, -20, 1, 0)
+nameBox.Position = UDim2.new(0, 10, 0, 0)
+nameBox.BackgroundTransparency = 1
+nameBox.PlaceholderText = "Config name"
+nameBox.Text = ""
+nameBox.Font = CurrentFont
+nameBox.TextSize = 14
+nameBox.TextColor3 = Color3.fromRGB(235, 235, 235)
+nameBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+nameBox.TextXAlignment = Enum.TextXAlignment.Center
+nameBox.ClearTextOnFocus = false
+
+local function ShowConfirm(title, desc, confirmText, onConfirm, showInput, defaultInput)
+    local gui = playerGui:FindFirstChild("EclipseUI")
+    if not gui then return end
+    local old = gui:FindFirstChild("EclipseConfirm")
+    if old then old:Destroy() end
+    local popup = Instance.new("Frame")
+    popup.Name = "EclipseConfirm"
+    popup.Size = UDim2.new(0, 420, 0, showInput and 245 or 195)
+    popup.Position = UDim2.new(0.5, -210, 0.5, showInput and -122 or -97)
+    popup.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+    popup.BorderSizePixel = 0
+    popup.ZIndex = 100
+    popup.Parent = gui
+    Instance.new("UICorner", popup).CornerRadius = UDim.new(0, 10)
+    local t = Instance.new("TextLabel", popup)
+    t.Size = UDim2.new(1, -30, 0, 30) t.Position = UDim2.new(0, 15, 0, 12)
+    t.BackgroundTransparency = 1 t.Text = title t.Font = CurrentFont t.TextSize = 18
+    t.TextColor3 = Color3.fromRGB(255, 255, 255) t.TextXAlignment = Enum.TextXAlignment.Left
+    local d = Instance.new("TextLabel", popup)
+    d.Size = UDim2.new(1, -30, 0, 70) d.Position = UDim2.new(0, 15, 0, 45)
+    d.BackgroundTransparency = 1 d.Text = desc d.Font = CurrentFont d.TextSize = 13
+    d.TextColor3 = Color3.fromRGB(180, 180, 180) d.TextXAlignment = Enum.TextXAlignment.Left
+    d.TextYAlignment = Enum.TextYAlignment.Top d.TextWrapped = true
+
+    local inputBox
+    if showInput then
+        local holder = Instance.new("Frame", popup)
+        holder.Size = UDim2.new(1, -30, 0, 35) holder.Position = UDim2.new(0, 15, 0, 120)
+        holder.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 6)
+        inputBox = Instance.new("TextBox", holder)
+        inputBox.Size = UDim2.new(1, -20, 1, 0) inputBox.Position = UDim2.new(0, 10, 0, 0)
+        inputBox.BackgroundTransparency = 1
+        inputBox.Text = defaultInput or ""
+        inputBox.PlaceholderText = "Config name"
+        inputBox.Font = CurrentFont inputBox.TextSize = 14
+        inputBox.TextColor3 = Color3.fromRGB(235, 235, 235)
+        inputBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+        inputBox.TextXAlignment = Enum.TextXAlignment.Center
+        inputBox.ClearTextOnFocus = false
+    end
+
+    local cancel = Instance.new("TextButton", popup)
+    cancel.Size = UDim2.new(0, 140, 0, 38) cancel.Position = UDim2.new(0.5, -145, 1, -50)
+    cancel.BackgroundColor3 = Color3.fromRGB(20, 20, 20) cancel.Text = "Cancel"
+    cancel.Font = CurrentFont cancel.TextSize = 14 cancel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    cancel.AutoButtonColor = false
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 8)
+    local confirm = Instance.new("TextButton", popup)
+    confirm.Size = UDim2.new(0, 140, 0, 38) confirm.Position = UDim2.new(0.5, 5, 1, -50)
+    confirm.BackgroundColor3 = Color3.fromRGB(255, 0, 0) confirm.Text = confirmText
+    confirm.Font = CurrentFont confirm.TextSize = 14 confirm.TextColor3 = Color3.fromRGB(255, 255, 255)
+    confirm.AutoButtonColor = false
+    Instance.new("UICorner", confirm).CornerRadius = UDim.new(0, 8)
+    cancel.MouseButton1Click:Connect(function() popup:Destroy() end)
+    confirm.MouseButton1Click:Connect(function()
+        local newName = inputBox and inputBox.Text:gsub("^%s+", ""):gsub("%s+$", "") or nil
+        popup:Destroy()
+        if onConfirm then onConfirm(newName) end
+    end)
+end
+
+local function CreateSaveButton(parent, text, size)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = size
+    btn.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.Font = CurrentFont
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(235, 235, 235)
+    btn.AutoButtonColor = false
+    btn.TextWrapped = true
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(18, 18, 18)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(5, 5, 5)}):Play()
+    end)
+    return btn
+end
+
+local row1 = Instance.new("Frame", contentSave)
+row1.LayoutOrder = 4
+row1.Size = UDim2.new(1, -12, 0, 32)
+row1.BackgroundTransparency = 1
+local row1Layout = Instance.new("UIListLayout", row1)
+row1Layout.FillDirection = Enum.FillDirection.Horizontal
+row1Layout.Padding = UDim.new(0, 6)
+local btnCreate = CreateSaveButton(row1, "Create config", UDim2.new(0.5, -3, 1, 0))
+local btnLoad = CreateSaveButton(row1, "Load config", UDim2.new(0.5, -3, 1, 0))
+
+local row2 = Instance.new("Frame", contentSave)
+row2.LayoutOrder = 5
+row2.Size = UDim2.new(1, -12, 0, 32)
+row2.BackgroundTransparency = 1
+local row2Layout = Instance.new("UIListLayout", row2)
+row2Layout.FillDirection = Enum.FillDirection.Horizontal
+row2Layout.Padding = UDim.new(0, 6)
+local btnOver = CreateSaveButton(row2, "Overwrite config", UDim2.new(0.5, -3, 1, 0))
+local btnDel = CreateSaveButton(row2, "Delete config", UDim2.new(0.5, -3, 1, 0))
+
+btnCreate.MouseButton1Click:Connect(function()
+    local name = nameBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
+    if name == "" then pcall(function() Notify("Save System", "Escreva um nome primeiro!", 3) end) return end
+    if isfile("FTF_Eclipse/configs/"..name..".json") then pcall(function() Notify("Save System", "Já existe! Use Overwrite.", 3) end) return end
+    pcall(function() writefile("FTF_Eclipse/configs/"..name..".json", HttpService:JSONEncode(GatherAll())) end)
+    SelectedConfig = name
+    dropLabel.Text = "Config: "..name
+    nameBox.Text = ""
+    RefreshDropdown()
+    pcall(function() Notify("Save System", "Config '"..name.."' criada!", 3) end)
+end)
+
+btnLoad.MouseButton1Click:Connect(function()
+    if not SelectedConfig then pcall(function() Notify("Save System", "Selecione uma config no dropdown!", 3) end) return end
+    ShowConfirm("Load config", 'Are you sure you want to load "'..SelectedConfig..'"? Your current settings will be overwritten.', "Load", function()
+        local ok, data = pcall(function() return HttpService:JSONDecode(readfile("FTF_Eclipse/configs/"..SelectedConfig..".json")) end)
+        if ok and data then ApplyAllLoaded(data) pcall(function() Notify("Save System", "Config '"..SelectedConfig.."' carregada!", 3) end) end
+    end)
+end)
+
+btnOver.MouseButton1Click:Connect(function()
+    if not SelectedConfig then pcall(function() Notify("Save System", "Selecione uma config no dropdown!", 3) end) return end
+    local oldName = SelectedConfig
+    ShowConfirm("Overwrite config", 'Overwrite "'..oldName..'" with your current settings? You can change the name below.', "Overwrite", function(newName)
+        if not newName or newName == "" then
+            pcall(function() Notify("Save System", "Escreva um nome primeiro!", 3) end)
+            return
+        end
+        if newName ~= oldName then
+            if isfile("FTF_Eclipse/configs/"..newName..".json") then
+                pcall(function() Notify("Save System", "Já existe! Use outro nome.", 3) end)
+                return
+            end
+            local ok, content = pcall(function() return readfile("FTF_Eclipse/configs/"..oldName..".json") end)
+            if not ok or not content then
+                pcall(function() Notify("Save System", "Erro ao ler a config antiga!", 3) end)
+                return
+            end
+            pcall(function() writefile("FTF_Eclipse/configs/"..newName..".json", content) end)
+            pcall(function() delfile("FTF_Eclipse/configs/"..oldName..".json") end)
+            SelectedConfig = newName
+            dropLabel.Text = "Config: "..newName
+            RefreshDropdown()
+            pcall(function() Notify("Save System", "Config renomeada para '"..newName.."'!", 3) end)
+        else
+            pcall(function() writefile("FTF_Eclipse/configs/"..oldName..".json", HttpService:JSONEncode(GatherAll())) end)
+            pcall(function() Notify("Save System", "Config '"..oldName.."' atualizada!", 3) end)
+        end
+    end, true, oldName)
+end)
+
+btnDel.MouseButton1Click:Connect(function()
+    if not SelectedConfig then pcall(function() Notify("Save System", "Selecione uma config no dropdown!", 3) end) return end
+    ShowConfirm("Delete config", 'Are you sure to delete "'..SelectedConfig..'"? You won\'t be able to recover it and you will have to create it again.', "Delete", function()
+        pcall(function() delfile("FTF_Eclipse/configs/"..SelectedConfig..".json") end)
+        pcall(function() Notify("Save System", "Config '"..SelectedConfig.."' deletada!", 3) end)
+        SelectedConfig = nil
+        dropLabel.Text = "Config: ---"
+        RefreshDropdown()
+    end)
+end)
 
     local MEU_CODIGO = [[
     loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
@@ -10166,7 +11108,8 @@ end
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local currentLanguage = "EN"
+local currentLanguage = getgenv().FTF_Language or "EN"
+getgenv().FTF_Language = currentLanguage
 
 local Translation = {
 	EN = {
@@ -10225,7 +11168,7 @@ local Translation = {
 		EnterTextureID = "Enter Texture ID...", Apply = "Apply",
 		FPSSetting = "FPS Setting", FPSBoost = "FPS Boost",
 		GrayCharacter = "Gray Character", Crosshair = "Crosshair",
-		ButtonJump = "Button Jump", Default = "Padrão",
+		ButtonJump = "Button Jump", Default = "Default",
 		Calibration = "Calibration", EnableCalibration = "Enable Calibration",
 		Brightness = "Brightness", Contrast = "Contrast", Saturation = "Saturation",
 		Exposure = "Exposure", Temperature = "Temperature", Blur = "Blur",
@@ -10282,7 +11225,7 @@ local Translation = {
 		ServerRejoin = "Server Rejoin",
 		RandomServers = "Random Servers",
 		PlayersTeleport = "Players Teleport",
-		Update = "Atualizar",
+		Update = "Update",
 		Appearance = "Appearance",
 		UIBackground = "UI Background",
 		CustomBackgroundID = "Custom Background ID",
@@ -10294,7 +11237,42 @@ local Translation = {
 		ShowPing = "Show Ping",
 		ShowCPU = "Show CPU",
 		TextBoxLabel = "TextBox",
-		ThanksFooter = "FTF Eclipse V2.9 Mobile | Thank you for using FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.0 Mobile | Thank you for using FTF Eclipse.",
+		SaveSystem = "Save System",
+		Config = "Config",
+		ConfigName = "Config name",
+		NoConfigSaved = "No config saved",
+		CreateConfig = "Create config",
+		LoadConfig = "Load config",
+		OverwriteConfig = "Overwrite config",
+		DeleteConfig = "Delete config",
+		Cancel = "Cancel",
+		Delete = "Delete",
+		Load = "Load",
+		Overwrite = "Overwrite",
+		LoadConfigTitle = "Load config",
+		LoadConfigDesc = "Are you sure you want to load this config? Your current settings will be overwritten.",
+		OverwriteConfigTitle = "Overwrite config",
+		OverwriteConfigDesc = "Overwrite this config with your current settings?",
+		DeleteConfigTitle = "Delete config",
+		DeleteConfigDesc = "Are you sure to delete this config? You won't be able to recover it and you will have to create it again.",
+		SelectConfigFirst = "Select a config in the dropdown!",
+		WriteNameFirst = "Write a name first!",
+		AlreadyExists = "Already exists! Use Overwrite.",
+		ConfigCreated = "Config created!",
+		ConfigLoaded = "Config loaded!",
+		ConfigUpdated = "Config updated!",
+		ConfigDeleted = "Config deleted!",
+		Announcement = "Announcement",
+		WhatsNew = "What's New",
+		GotIt = "Got it",
+		Close = "Close",
+		Dismiss = "Dismiss",
+		OK = "OK", Yes = "Yes", No = "No", Confirm = "Confirm",
+		Back = "Back", Next = "Next", Done = "Done", Save = "Save", Reset = "Reset",
+		Enable = "Enable", Disable = "Disable", Open = "Open",
+		Copy = "Copy", Paste = "Paste", Edit = "Edit",
+		SaveSystem = "Save System",
 	},
 	PT = {
 		Search = "Pesquisar...",
@@ -10472,7 +11450,42 @@ local Translation = {
 		ShowPing = "Mostrar Ping",
 		ShowCPU = "Mostrar CPU",
 		TextBoxLabel = "Caixa de Texto",
-		ThanksFooter = "FTF Eclipse V2.9 Mobile | Obrigado por usar FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.0 Mobile | Obrigado por usar FTF Eclipse.",
+		SaveSystem = "Save System",
+		Config = "Config",
+		ConfigName = "Nome da config",
+		NoConfigSaved = "Nenhuma config salva",
+		CreateConfig = "Criar config",
+		LoadConfig = "Carregar config",
+		OverwriteConfig = "Sobrescrever config",
+		DeleteConfig = "Deletar config",
+		Cancel = "Cancelar",
+		Delete = "Deletar",
+		Load = "Carregar",
+		Overwrite = "Sobrescrever",
+		LoadConfigTitle = "Carregar config",
+		LoadConfigDesc = "Tem certeza que quer carregar essa config? Suas configurações atuais serão substituídas.",
+		OverwriteConfigTitle = "Sobrescrever config",
+		OverwriteConfigDesc = "Sobrescrever essa config com suas configurações atuais?",
+		DeleteConfigTitle = "Deletar config",
+		DeleteConfigDesc = "Tem certeza que quer deletar essa config? Você não vai conseguir recuperar e terá que criar de novo.",
+		SelectConfigFirst = "Selecione uma config no menu!",
+		WriteNameFirst = "Escreva um nome primeiro!",
+		AlreadyExists = "Já existe! Use Sobrescrever.",
+		ConfigCreated = "Config criada!",
+		ConfigLoaded = "Config carregada!",
+		ConfigUpdated = "Config atualizada!",
+		ConfigDeleted = "Config deletada!",
+		Announcement = "Anúncio",
+		WhatsNew = "Novidades",
+		GotIt = "Entendi",
+		Close = "Fechar",
+		Dismiss = "Fechar",
+		OK = "OK", Yes = "Sim", No = "Não", Confirm = "Confirmar",
+		Back = "Voltar", Next = "Próximo", Done = "Pronto", Save = "Salvar", Reset = "Resetar",
+		Enable = "Ativar", Disable = "Desativar", Open = "Abrir",
+		Copy = "Copiar", Paste = "Colar", Edit = "Editar",
+		SaveSystem = "Sistema de Save",
 	}
 }
 
@@ -10576,7 +11589,7 @@ local TextToKey = {
 	["Gray Character"] = "GrayCharacter", ["Personagem Cinza"] = "GrayCharacter",
 	["Crosshair"] = "Crosshair", ["Mira"] = "Crosshair",
 	["Button Jump"] = "ButtonJump", ["Botão de Pulo"] = "ButtonJump",
-	["Padrão"] = "Default",
+	["Padrão"] = "Default", ["Default"] = "Default",
 	["Calibration"] = "Calibration", ["Calibração"] = "Calibration",
 	["Enable Calibration"] = "EnableCalibration", ["Ativar Calibração"] = "EnableCalibration",
 	["Brightness"] = "Brightness", ["Brilho"] = "Brightness",
@@ -10670,7 +11683,7 @@ local TextToKey = {
 	["Server Rejoin"] = "ServerRejoin", ["Reentrar no Servidor"] = "ServerRejoin",
 	["Random Servers"] = "RandomServers", ["Servidores Aleatórios"] = "RandomServers",
 	["Players Teleport"] = "PlayersTeleport", ["Teleporte de Jogadores"] = "PlayersTeleport",
-	["Atualizar"] = "Update",
+	["Atualizar"] = "Update", ["Update"] = "Update",
 	["Appearance"] = "Appearance", ["Aparência"] = "Appearance",
 	["UI Background: Style 3"] = "UIBackground", ["Fundo da UI: Estilo 3"] = "UIBackground",
 	["UI Background"] = "UIBackground", ["Fundo da UI"] = "UIBackground",
@@ -10684,9 +11697,80 @@ local TextToKey = {
 	["Show Ping"] = "ShowPing", ["Mostrar Ping"] = "ShowPing",
 	["Show CPU"] = "ShowCPU", ["Mostrar CPU"] = "ShowCPU",
 	["TextBox"] = "TextBoxLabel", ["Caixa de Texto"] = "TextBoxLabel",
-	["FTF Eclipse V2.9 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
-	["FTF Eclipse V2.9 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.0 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.0 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
+	["Save System"] = "SaveSystem",
+	["Save / Load"] = "SaveSystem",
+	["Config"] = "Config",
+	["Config name"] = "ConfigName", ["Nome da config"] = "ConfigName",
+	["No config saved"] = "NoConfigSaved", ["Nenhuma config salva"] = "NoConfigSaved",
+	["Create config"] = "CreateConfig", ["Criar config"] = "CreateConfig",
+	["Load config"] = "LoadConfig", ["Carregar config"] = "LoadConfig",
+	["Overwrite config"] = "OverwriteConfig", ["Sobrescrever config"] = "OverwriteConfig",
+	["Delete config"] = "DeleteConfig", ["Deletar config"] = "DeleteConfig",
+	["Cancel"] = "Cancel", ["Cancelar"] = "Cancel",
+	["Delete"] = "Delete", ["Deletar"] = "Delete",
+	["Load"] = "Load", ["Carregar"] = "Load",
+	["Overwrite"] = "Overwrite", ["Sobrescrever"] = "Overwrite",
+	["Announcement"] = "Announcement", ["Anúncio"] = "Announcement",
+	["What's New"] = "WhatsNew", ["Novidades"] = "WhatsNew",
+	["Got it"] = "GotIt", ["Entendi"] = "GotIt",
+	["Close"] = "Close", ["Fechar"] = "Close",
+	["Dismiss"] = "Dismiss",
+	["OK"] = "OK",
+	["Yes"] = "Yes", ["Sim"] = "Yes",
+	["No"] = "No", ["Não"] = "No",
+	["Confirm"] = "Confirm", ["Confirmar"] = "Confirm",
+	["Back"] = "Back", ["Voltar"] = "Back",
+	["Next"] = "Next", ["Próximo"] = "Next",
+	["Done"] = "Done", ["Pronto"] = "Done",
+	["Save"] = "Save", ["Salvar"] = "Save",
+	["Reset"] = "Reset", ["Resetar"] = "Reset",
+	["Enable"] = "Enable", ["Ativar"] = "Enable",
+	["Disable"] = "Disable", ["Desativar"] = "Disable",
+	["Open"] = "Open", ["Abrir"] = "Open",
+	["Copy"] = "Copy", ["Copiar"] = "Copy",
+	["Paste"] = "Paste", ["Colar"] = "Paste",
+	["Edit"] = "Edit", ["Editar"] = "Edit",
 }
+
+local function T(key)
+	local tbl = Translation[currentLanguage]
+	if tbl and tbl[key] then return tbl[key] end
+	if Translation.EN[key] then return Translation.EN[key] end
+	return key
+end
+getgenv().Eclipse_T = T
+
+local function ApplyTranslation()
+	local gui = PlayerGui:FindFirstChild("EclipseUI")
+	if not gui then return end
+	for _, obj in ipairs(gui:GetDescendants()) do
+		if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+			if obj.Text and obj.Text ~= "" and not obj.Text:find("Config:") and not obj.Text:find("Delete \"") then
+				local key = TextToKey[obj.Text]
+				if key then obj.Text = T(key) end
+			end
+		elseif obj:IsA("TextBox") then
+			local key = TextToKey[obj.PlaceholderText]
+			if key then obj.PlaceholderText = T(key) end
+		end
+	end
+	if getgenv().Eclipse_RefreshSaveSystem then pcall(getgenv().Eclipse_RefreshSaveSystem) end
+end
+
+local function SetLanguage(lang)
+	if Translation[lang] then
+		currentLanguage = lang
+		getgenv().FTF_Language = lang
+		ApplyTranslation()
+	end
+end
+
+getgenv().Eclipse_SetLanguage = SetLanguage
+getgenv().Eclipse_ApplyTranslation = ApplyTranslation
+getgenv().Eclipse_Translation = Translation
+getgenv().Eclipse_TextToKey = TextToKey
 
 local Translatable = {}
 local TranslatableElements = {}
