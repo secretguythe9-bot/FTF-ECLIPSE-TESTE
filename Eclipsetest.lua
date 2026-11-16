@@ -181,7 +181,7 @@ title.Size = UDim2.new(0, 200, 1, 0)
 title.Position = UDim2.new(0, 46, 0, 0)
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "Eclipse V3.0"
+title.Text = "Eclipse V3.1"
 title.TextSize = 16
 title.Font = Enum.Font.GothamBold
 title.TextColor3 = Color3.fromRGB(140, 140, 140)
@@ -402,7 +402,7 @@ end
 
 task.spawn(function()
     task.wait(2)
-    Notify("FTF Eclipse V3.0", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
+    Notify("FTF Eclipse V3.1", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
 end)
 
 local CROSSHAIR_SIZE = 26
@@ -513,7 +513,7 @@ local versionText = Instance.new("TextLabel", bottomBar)
 versionText.Size = UDim2.new(0.5, -10, 1, 0)
 versionText.Position = UDim2.new(0.5, 0, 0, 0)
 versionText.BackgroundTransparency = 1
-versionText.Text = "FTF Eclipse V3.0 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
+versionText.Text = "FTF Eclipse V3.1 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
 versionText.Font = Enum.Font.GothamBold
 versionText.TextSize = 10
 versionText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -615,6 +615,7 @@ local tabs = {
 	{Name = "Textures", Icon = "rbxassetid://12623720992"},
 	{Name = "Fog", Icon = "rbxassetid://88527860157418"},
 	{Name = "Auto Farm", Icon = "rbxassetid://9768843948"},
+	{Name = "HUD", Icon = "rbxassetid://11894535915"},
 	{Name = "Advanced", Icon = "rbxassetid://101596398409097"},
 	{Name = "Sounds", Icon = "rbxassetid://93160522453913"},
     {Name = "Visual Skins", Icon = "rbxassetid://138986094998542"},
@@ -659,7 +660,7 @@ for i, tab in ipairs(tabs) do
 	label.BackgroundTransparency = 1
 	label.Text = tab.Name
 	label.Font = Enum.Font.GothamBold
-	label.TextSize = 10
+	label.TextSize = 9
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextColor3 = i == 1 and Color3.fromRGB(220,220,220) or Color3.fromRGB(150,150,150)
 	label.ZIndex = 1
@@ -671,7 +672,7 @@ for i, tab in ipairs(tabs) do
 	shineLabel.BackgroundTransparency = 1
 	shineLabel.Text = tab.Name
 	shineLabel.Font = Enum.Font.GothamBold
-	shineLabel.TextSize = 10
+	shineLabel.TextSize = 9
 	shineLabel.TextXAlignment = Enum.TextXAlignment.Left
 	shineLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	shineLabel.ZIndex = 2
@@ -7068,6 +7069,416 @@ do
 end
 
 do
+    local settingsPageH = pages["HUD"]
+    local TweenService = game:GetService("TweenService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local player = LocalPlayer
+
+    for _,v in pairs(settingsPageH:GetChildren()) do
+        if v:IsA("Frame") or v:IsA("UIListLayout") or v:IsA("UIPadding") then
+            v:Destroy()
+        end
+    end
+
+    local columnsH = Instance.new("Frame", settingsPageH)
+    columnsH.Name = "ColumnsContainer"
+    columnsH.Size = UDim2.new(1, 0, 0, 0)
+    columnsH.AutomaticSize = Enum.AutomaticSize.Y
+    columnsH.BackgroundTransparency = 1
+
+    local padding = Instance.new("UIPadding", columnsH)
+    padding.PaddingTop = UDim.new(0, 10)
+    padding.PaddingBottom = UDim.new(0, 10)
+    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingRight = UDim.new(0, 10)
+
+    local leftColH = Instance.new("Frame", columnsH)
+    leftColH.Name = "LeftColumn"
+    leftColH.Size = UDim2.new(0.5, -10, 0, 0)
+    leftColH.AutomaticSize = Enum.AutomaticSize.Y
+    leftColH.BackgroundTransparency = 1
+    local leftList = Instance.new("UIListLayout", leftColH)
+    leftList.Padding = UDim.new(0, 10)
+    leftList.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local rightColH = Instance.new("Frame", columnsH)
+    rightColH.Name = "RightColumn"
+    rightColH.Size = UDim2.new(0.5, -10, 0, 0)
+    rightColH.AutomaticSize = Enum.AutomaticSize.Y
+    rightColH.Position = UDim2.new(0.5, 10, 0, 0)
+    rightColH.BackgroundTransparency = 1
+    local rightList = Instance.new("UIListLayout", rightColH)
+    rightList.Padding = UDim.new(0, 10)
+    rightList.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local HttpService = game:GetService("HttpService")
+    local SAVE_FILE = "Eclipse_JumpButtons_Save.json"
+    local SaveData = {
+        JumpEnabled = false, JumpX = 0, JumpY = 0, JumpScale = 1,
+        ThumbstickEnabled = false, ThumbstickX = 0, ThumbstickY = 0,
+        EEnabled = false, EX = 0, EY = 0, ESize = 30,
+        CEnabled = false, CX = 0, CY = 0, CSize = 30,
+    }
+    local function LoadSave()
+        local ok, data = pcall(function()
+            if isfile and isfile(SAVE_FILE) then return HttpService:JSONDecode(readfile(SAVE_FILE)) end
+            return nil
+        end)
+        if ok and data and typeof(data) == "table" then for k, v in pairs(data) do SaveData[k] = v end end
+        if getgenv and getgenv().Eclipse_JumpSave then for k, v in pairs(getgenv().Eclipse_JumpSave) do SaveData[k] = v end end
+    end
+    local function DoSave()
+        if getgenv then getgenv().Eclipse_JumpSave = SaveData end
+        pcall(function() if writefile then writefile(SAVE_FILE, HttpService:JSONEncode(SaveData)) end end)
+    end
+    LoadSave()
+
+    local SLIDER_H = 32
+    local function AnimateSliders(sliders, show)
+        for _, frame in pairs(sliders) do
+            if not frame then continue end
+            if show then
+                frame.Visible = true
+                frame.Size = UDim2.new(1, 0, 0, 0)
+                frame.ClipsDescendants = true
+                TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(1, 0, 0, SLIDER_H)
+                }):Play()
+                for _, d in ipairs(frame:GetDescendants()) do
+                    if d:IsA("TextLabel") or d:IsA("Frame") then
+                        pcall(function()
+                            TweenService:Create(d, TweenInfo.new(0.25), { BackgroundTransparency = d:GetAttribute("OrigTrans") or (d:IsA("TextLabel") and 1 or d.BackgroundTransparency) }):Play()
+                        end)
+                    end
+                end
+            else
+                TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                    Size = UDim2.new(1, 0, 0, 0)
+                }):Play()
+                task.delay(0.2, function()
+                    if frame then frame.Visible = false end
+                end)
+            end
+        end
+    end
+
+    local function CreateGroupbox(parent, title)
+        local groupbox = Instance.new("Frame")
+        groupbox.Size = UDim2.new(1, 0, 0, 0)
+        groupbox.AutomaticSize = Enum.AutomaticSize.Y
+        groupbox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        groupbox.BackgroundTransparency = 0.7
+        groupbox.Parent = parent
+        Instance.new("UICorner", groupbox).CornerRadius = UDim.new(0, 8)
+        local st = Instance.new("UIStroke", groupbox)
+        st.Color = Color3.fromRGB(0, 0, 0)
+        st.Thickness = 1
+        st.Transparency = 0.2
+
+        local titleLabel = Instance.new("TextLabel", groupbox)
+        titleLabel.Name = "Title"
+        titleLabel.Size = UDim2.new(1, -20, 0, 35)
+        titleLabel.Position = UDim2.new(0, 10, 0, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = title
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextSize = 13
+        titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        local content = Instance.new("Frame", groupbox)
+        content.Name = "Content"
+        content.Size = UDim2.new(1, 0, 0, 0)
+        content.Position = UDim2.new(0, 0, 0, 35)
+        content.AutomaticSize = Enum.AutomaticSize.Y
+        content.BackgroundTransparency = 1
+        local cl = Instance.new("UIListLayout", content)
+        cl.SortOrder = Enum.SortOrder.LayoutOrder
+        cl.Padding = UDim.new(0, 5)
+        local cp = Instance.new("UIPadding", content)
+        cp.PaddingTop = UDim.new(0, 2)
+        cp.PaddingBottom = UDim.new(0, 8)
+        cp.PaddingLeft = UDim.new(0, 10)
+        cp.PaddingRight = UDim.new(0, 10)
+
+        return groupbox, content
+    end
+
+    -- ===== TEU TOGGLE EXATO =====
+    local function CreateToggle(parent, text, default, callback)
+        local key = "Toggle_" .. text:gsub("[^%w_]", "_")
+        if getgenv().Eclipse_ToggleRegistry == nil then getgenv().Eclipse_ToggleRegistry = {} end
+
+        local initial = default
+        if getgenv()[key] ~= nil then
+            initial = getgenv()[key]
+        else
+            getgenv()[key] = default
+        end
+
+        local toggleFrame = Instance.new("Frame", parent)
+        toggleFrame.Size = UDim2.new(1, 0, 0, 22)
+        toggleFrame.BackgroundTransparency = 1
+
+        local label = Instance.new("TextLabel", toggleFrame)
+        label.Size = UDim2.new(1, -50, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(180, 180, 180)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+
+        local toggle = Instance.new("TextButton", toggleFrame)
+        toggle.Size = UDim2.new(0, 38, 0, 17)
+        toggle.Position = UDim2.new(1, -40, 0.5, -9)
+        toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        toggle.BackgroundTransparency = initial and 0 or 1
+        toggle.Text = ""
+        toggle.AutoButtonColor = false
+        Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+
+        local stroke = Instance.new("UIStroke", toggle)
+        stroke.Color = initial and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+        stroke.Thickness = 1.5
+
+        local circle = Instance.new("Frame", toggle)
+        circle.Size = UDim2.new(0, 14, 0, 14)
+        circle.Position = initial and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+        circle.BackgroundColor3 = initial and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
+        circle.BorderSizePixel = 0
+        Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+
+        local enabled = initial
+
+        local function SetState(state, callCallback)
+            enabled = state
+            getgenv()[key] = state
+
+            TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7),
+                BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
+            }):Play()
+
+            TweenService:Create(toggle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = enabled and 0 or 1,
+                BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            }):Play()
+
+            TweenService:Create(stroke, TweenInfo.new(0.15), {
+                Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+            }):Play()
+
+            if callCallback and callback then
+                pcall(callback, enabled)
+            end
+        end
+
+        getgenv().Eclipse_ToggleRegistry[key] = SetState
+        getgenv()["Eclipse_Apply_" .. key] = function()
+            SetState(getgenv()[key], true)
+        end
+
+        toggle.MouseButton1Click:Connect(function()
+            SetState(not enabled, true)
+            if DoSave then pcall(DoSave) end
+        end)
+
+        if initial == true then
+            task.spawn(function()
+                task.wait(0.5)
+                pcall(callback, true)
+            end)
+        end
+
+        return toggleFrame
+    end
+
+    local function CreateSlider(parent, text, min, max, default, callback)
+        local frame = Instance.new("Frame", parent)
+        frame.Size = UDim2.new(1, 0, 0, SLIDER_H)
+        frame.BackgroundTransparency = 1
+        frame.ClipsDescendants = true
+
+        local label = Instance.new("TextLabel", frame)
+        label.Size = UDim2.new(1, 0, 0, 14)
+        label.BackgroundTransparency = 1
+        label.Text = text .. ": " .. tostring(math.floor(default * 10) / 10)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 11 -- era 12
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+
+        local barBg = Instance.new("Frame", frame)
+        barBg.Size = UDim2.new(1, 0, 0, 6) -- era 8
+        barBg.Position = UDim2.new(0, 0, 0, 20) -- era 24
+        barBg.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+
+        local fill = Instance.new("Frame", barBg)
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+        local value = default
+        local dragging = false
+        local function Update(input)
+            local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / barBg.AbsoluteSize.X, 0, 1)
+            value = min + (max - min) * pos
+            value = math.floor(value * 10) / 10
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            label.Text = text .. ": " .. tostring(value)
+            if callback then callback(value) end
+        end
+        barBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                Update(input)
+            end
+        end)
+        game:GetService("UserInputService").InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                Update(input)
+            end
+        end)
+        game:GetService("UserInputService").InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+            end
+        end)
+        return frame
+    end
+
+    if getgenv().Eclipse_JumpLoop then pcall(function() task.cancel(getgenv().Eclipse_JumpLoop) end) getgenv().Eclipse_JumpLoop = nil end
+    getgenv().Eclipse_JumpOriginals = getgenv().Eclipse_JumpOriginals or {}
+    local originals = getgenv().Eclipse_JumpOriginals
+    local function GetOriginal(key, btn)
+        if not btn then return nil, nil end
+        local o = originals[key]
+        if not o then o = { Pos = btn.Position, Size = btn.Size } originals[key] = o end
+        return o.Pos, o.Size
+    end
+    local function GetTouchFrame()
+        local pg = player:FindFirstChild("PlayerGui")
+        local tg = pg and pg:FindFirstChild("TouchGui")
+        return tg and tg:FindFirstChild("TouchControlFrame")
+    end
+    local function GetJumpButton() local tf = GetTouchFrame() return tf and tf:FindFirstChild("JumpButton") end
+    local function GetThumbstick() local tf = GetTouchFrame() return tf and (tf:FindFirstChild("ThumbstickFrame") or tf:FindFirstChild("DynamicThumbstickFrame")) end
+
+    local JumpEnabled = SaveData.JumpEnabled
+    local JumpX = SaveData.JumpX
+    local JumpY = SaveData.JumpY
+    local JumpScale = SaveData.JumpScale
+    local JumpSliders = {}
+    local ThumbstickEnabled = SaveData.ThumbstickEnabled
+    local ThumbstickX = SaveData.ThumbstickX
+    local ThumbstickY = SaveData.ThumbstickY
+    local ThumbstickSliders = {}
+
+    local function ScaleSize(s, scale) return UDim2.new(s.X.Scale * scale, s.X.Offset * scale, s.Y.Scale * scale, s.Y.Offset * scale) end
+    local function ApplyThumbstick()
+        local t = GetThumbstick() if not t then return end
+        local orig = GetOriginal("Thumbstick", t) if not orig then return end
+        pcall(function()
+            if ThumbstickEnabled then t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
+            else t.Position = orig end
+        end)
+    end
+    local function ApplyJump()
+        local b = GetJumpButton() if not b then return end
+        local orig, osize = GetOriginal("JumpButton", b) if not orig then return end
+        pcall(function()
+            if JumpEnabled then
+                b.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (JumpX * 5), orig.Y.Scale, orig.Y.Offset + (JumpY * 5))
+                b.Size = ScaleSize(osize, JumpScale)
+            else b.Position = orig b.Size = osize end
+        end)
+    end
+
+    local boxClassic, contentClassic = CreateGroupbox(leftColH, "Analog")
+    boxClassic.LayoutOrder = 3
+    CreateToggle(contentClassic, "Enable Analog", ThumbstickEnabled, function(state)
+        ThumbstickEnabled = state SaveData.ThumbstickEnabled = state DoSave() ApplyThumbstick()
+        AnimateSliders(ThumbstickSliders, state)
+    end)
+    ThumbstickSliders.X = CreateSlider(contentClassic, "Thumbstick X", -100, 100, ThumbstickX, function(v) ThumbstickX = v SaveData.ThumbstickX = v DoSave() if ThumbstickEnabled then ApplyThumbstick() end end)
+    ThumbstickSliders.Y = CreateSlider(contentClassic, "Thumbstick Y", -100, 100, ThumbstickY, function(v) ThumbstickY = v SaveData.ThumbstickY = v DoSave() if ThumbstickEnabled then ApplyThumbstick() end end)
+    for _, s in pairs(ThumbstickSliders) do if s then s.Visible = ThumbstickEnabled if not ThumbstickEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
+
+    local boxJump, contentJump = CreateGroupbox(leftColH, "Jump")
+    boxJump.LayoutOrder = 4
+    CreateToggle(contentJump, "Enable Jump", JumpEnabled, function(state)
+        JumpEnabled = state SaveData.JumpEnabled = state DoSave() ApplyJump()
+        AnimateSliders(JumpSliders, state)
+    end)
+    JumpSliders.X = CreateSlider(contentJump, "Jump X", -100, 100, JumpX, function(v) JumpX = v SaveData.JumpX = v DoSave() if JumpEnabled then ApplyJump() end end)
+    JumpSliders.Y = CreateSlider(contentJump, "Jump Y", -100, 100, JumpY, function(v) JumpY = v SaveData.JumpY = v DoSave() if JumpEnabled then ApplyJump() end end)
+    JumpSliders.Scale = CreateSlider(contentJump, "Jump Scale", 0.5, 2, JumpScale, function(v) JumpScale = v SaveData.JumpScale = v DoSave() if JumpEnabled then ApplyJump() end end)
+    for _, s in pairs(JumpSliders) do if s then s.Visible = JumpEnabled if not JumpEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
+
+    local EEnabled = SaveData.EEnabled local EX = SaveData.EX local EY = SaveData.EY local ESize = SaveData.ESize local ESliders = {}
+    local CEnabled = SaveData.CEnabled local CX = SaveData.CX local CY = SaveData.CY local CSize = SaveData.CSize local CSliders = {}
+
+    local function GetButtonByText(text)
+        local pg = player:FindFirstChildOfClass("PlayerGui") if not pg then return nil end
+        local cg = pg:FindFirstChild("ContextActionGui") if not cg then return nil end
+        local fr = cg:FindFirstChild("ContextButtonFrame") if not fr then return nil end
+        for _, b in ipairs(fr:GetChildren()) do
+            if b.Name == "ContextActionButton" then
+                local title = b:FindFirstChild("ActionTitle", true)
+                if title and title:IsA("TextLabel") and title.Text:match("^%s*" .. text .. "%s*$") then return b end
+            end
+        end
+        return nil
+    end
+    local function ApplyEButton()
+        local B = GetButtonByText("E") if not B then return end
+        local orig, osize = GetOriginal("EButton", B) if not orig then return end
+        pcall(function()
+            if EEnabled then B.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (EX * 5), orig.Y.Scale, orig.Y.Offset + (EY * 5)) B.Size = UDim2.fromOffset(ESize, ESize)
+            else B.Position = orig B.Size = osize end
+        end)
+    end
+    local function ApplyCButton()
+        local B = GetButtonByText("C") if not B then return end
+        local orig, osize = GetOriginal("CButton", B) if not orig then return end
+        pcall(function()
+            if CEnabled then B.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (CX * 5), orig.Y.Scale, orig.Y.Offset + (CY * 5)) B.Size = UDim2.fromOffset(CSize, CSize)
+            else B.Position = orig B.Size = osize end
+        end)
+    end
+
+    local boxE, contentE = CreateGroupbox(rightColH, "Button E")
+    boxE.LayoutOrder = 4
+    CreateToggle(contentE, "Enable E", EEnabled, function(state) EEnabled = state SaveData.EEnabled = state DoSave() ApplyEButton() AnimateSliders(ESliders, state) end)
+    ESliders.X = CreateSlider(contentE, "E X", -100, 100, EX, function(v) EX = v SaveData.EX = v DoSave() if EEnabled then ApplyEButton() end end)
+    ESliders.Y = CreateSlider(contentE, "E Y", -100, 100, EY, function(v) EY = v SaveData.EY = v DoSave() if EEnabled then ApplyEButton() end end)
+    ESliders.Size = CreateSlider(contentE, "E Size", 20, 80, ESize, function(v) ESize = v SaveData.ESize = v DoSave() if EEnabled then ApplyEButton() end end)
+    for _, s in pairs(ESliders) do if s then s.Visible = EEnabled if not EEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
+
+    local boxC, contentC = CreateGroupbox(rightColH, "Button C")
+    boxC.LayoutOrder = 5
+    CreateToggle(contentC, "Enable C", CEnabled, function(state) CEnabled = state SaveData.CEnabled = state DoSave() ApplyCButton() AnimateSliders(CSliders, state) end)
+    CSliders.X = CreateSlider(contentC, "C X", -100, 100, CX, function(v) CX = v SaveData.CX = v DoSave() if CEnabled then ApplyCButton() end end)
+    CSliders.Y = CreateSlider(contentC, "C Y", -100, 100, CY, function(v) CY = v SaveData.CY = v DoSave() if CEnabled then ApplyCButton() end end)
+    CSliders.Size = CreateSlider(contentC, "C Size", 20, 80, CSize, function(v) CSize = v SaveData.CSize = v DoSave() if CEnabled then ApplyCButton() end end)
+    for _, s in pairs(CSliders) do if s then s.Visible = CEnabled if not CEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
+
+    local function ApplyAll() ApplyJump() ApplyThumbstick() ApplyEButton() ApplyCButton() end
+    getgenv().Eclipse_JumpLoop = task.spawn(function() task.wait(2) ApplyAll() while true do task.wait(1) ApplyAll() end end)
+    if getgenv().Eclipse_JumpConn then pcall(function() getgenv().Eclipse_JumpConn:Disconnect() end) end
+    if getgenv().Eclipse_JumpConn2 then pcall(function() getgenv().Eclipse_JumpConn2:Disconnect() end) end
+    pcall(function()
+        getgenv().Eclipse_JumpConn = player.PlayerGui.ChildAdded:Connect(function(child)
+            if child.Name == "TouchGui" or child.Name == "ContextActionGui" then task.wait(0.5) ApplyAll() task.wait(0.5) ApplyAll() end
+        end)
+        getgenv().Eclipse_JumpConn2 = player.CharacterAdded:Connect(function() task.wait(1) ApplyAll() task.wait(1) ApplyAll() end)
+    end)
+end
+
+do
     local settingsPageH = pages["Advanced"]
     local TweenService = game:GetService("TweenService")
     local Players = game:GetService("Players")
@@ -8073,334 +8484,6 @@ local crawlBoostEnabled = false
             hitboxParts[player] = nil
         end
     end)
-
-local HttpService = game:GetService("HttpService")
-local SAVE_FILE = "Eclipse_JumpButtons_Save.json"
-
-local SaveData = {
-    JumpEnabled = false, JumpX = 0, JumpY = 0, JumpScale = 1,
-    ThumbstickEnabled = false, ThumbstickX = 0, ThumbstickY = 0,
-    EEnabled = false, EX = 0, EY = 0, ESize = 30,
-    CEnabled = false, CX = 0, CY = 0, CSize = 30,
-}
-
-local function LoadSave()
-    local ok, data = pcall(function()
-        if isfile and isfile(SAVE_FILE) then
-            return HttpService:JSONDecode(readfile(SAVE_FILE))
-        end
-        return nil
-    end)
-    if ok and data and typeof(data) == "table" then
-        for k, v in pairs(data) do SaveData[k] = v end
-    end
-    if getgenv and getgenv().Eclipse_JumpSave then
-        for k, v in pairs(getgenv().Eclipse_JumpSave) do SaveData[k] = v end
-    end
-end
-
-local function DoSave()
-    if getgenv then getgenv().Eclipse_JumpSave = SaveData end
-    pcall(function()
-        if writefile then writefile(SAVE_FILE, HttpService:JSONEncode(SaveData)) end
-    end)
-end
-
-LoadSave()
-
-local boxJump, contentJump = CreateGroupbox(leftColH, "Jump & Classic")
-boxJump.LayoutOrder = 3
-
-local player = game.Players.LocalPlayer
-
-
-local originals = {}
-
-local function GetOriginal(btn)
-    if not btn then return nil, nil end
-
-    local original = originals[btn]
-
-    if not original then
-        original = {
-            Pos = btn.Position,
-            Size = btn.Size
-        }
-
-        originals[btn] = original
-    end
-
-    return original.Pos, original.Size
-end
-
-local function GetTouchFrame()
-    local touchGui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("TouchGui")
-    if not touchGui then return nil end
-    return touchGui:FindFirstChild("TouchControlFrame")
-end
-local function GetJumpButton()
-    local tf = GetTouchFrame()
-    return tf and tf:FindFirstChild("JumpButton")
-end
-local function GetThumbstick()
-    local tf = GetTouchFrame()
-    return tf and (tf:FindFirstChild("ThumbstickFrame") or tf:FindFirstChild("DynamicThumbstickFrame"))
-end
-
-local JumpEnabled = SaveData.JumpEnabled
-local JumpX = SaveData.JumpX
-local JumpY = SaveData.JumpY
-local JumpScale = SaveData.JumpScale
-local JumpSliders = {}
-
-local ThumbstickEnabled = SaveData.ThumbstickEnabled
-local ThumbstickX = SaveData.ThumbstickX
-local ThumbstickY = SaveData.ThumbstickY
-local ThumbstickSliders = {}
-
-local function ApplyThumbstick()
-    local thumbstick = GetThumbstick()
-    if not thumbstick then return end
-    local origPos = GetOriginal(thumbstick)
-    if not origPos then return end
-    pcall(function()
-        if ThumbstickEnabled then
-            local offsetX = origPos.X.Offset + (ThumbstickX * 5)
-            local offsetY = origPos.Y.Offset + (ThumbstickY * 5)
-            thumbstick.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
-        else
-            thumbstick.Position = origPos
-        end
-    end)
-end
-
-local function ApplyJump()
-    local jumpButton = GetJumpButton()
-    if not jumpButton then return end
-    local origPos, origSize = GetOriginal(jumpButton)
-    if not origPos or not origSize then return end
-    pcall(function()
-        if JumpEnabled then
-            local offsetX = origPos.X.Offset + (JumpX * 5)
-            local offsetY = origPos.Y.Offset + (JumpY * 5)
-            jumpButton.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
-            jumpButton.Size = UDim2.new(0, origSize.X.Offset * JumpScale, 0, origSize.Y.Offset * JumpScale)
-        else
-            jumpButton.Position = origPos
-            jumpButton.Size = origSize
-        end
-    end)
-end
-
-CreateToggle(contentJump, "Enable Classic Thumbstick", ThumbstickEnabled, function(state)
-    ThumbstickEnabled = state
-    SaveData.ThumbstickEnabled = state
-    DoSave()
-    ApplyThumbstick()
-    for _, slider in pairs(ThumbstickSliders) do slider.Visible = state end
-end)
-
-ThumbstickSliders.X = CreateSlider(contentJump, "Thumbstick X", -100, 100, ThumbstickX, function(value)
-    ThumbstickX = value
-    SaveData.ThumbstickX = value
-    DoSave()
-    if ThumbstickEnabled then ApplyThumbstick() end
-end)
-
-ThumbstickSliders.Y = CreateSlider(contentJump, "Thumbstick Y", -100, 100, ThumbstickY, function(value)
-    ThumbstickY = value
-    SaveData.ThumbstickY = value
-    DoSave()
-    if ThumbstickEnabled then ApplyThumbstick() end
-end)
-
-CreateToggle(contentJump, "Enable Jump Button", JumpEnabled, function(state)
-    JumpEnabled = state
-    SaveData.JumpEnabled = state
-    DoSave()
-    ApplyJump()
-    for _, slider in pairs(JumpSliders) do slider.Visible = state end
-end)
-
-JumpSliders.X = CreateSlider(contentJump, "Jump X", -100, 100, JumpX, function(value)
-    JumpX = value
-    SaveData.JumpX = value
-    DoSave()
-    if JumpEnabled then ApplyJump() end
-end)
-
-JumpSliders.Y = CreateSlider(contentJump, "Jump Y", -100, 100, JumpY, function(value)
-    JumpY = value
-    SaveData.JumpY = value
-    DoSave()
-    if JumpEnabled then ApplyJump() end
-end)
-
-JumpSliders.Scale = CreateSlider(contentJump, "Jump Scale", 0.5, 2, JumpScale, function(value)
-    JumpScale = value
-    SaveData.JumpScale = value
-    DoSave()
-    if JumpEnabled then ApplyJump() end
-end)
-
-for _, slider in pairs(ThumbstickSliders) do slider.Visible = ThumbstickEnabled end
-for _, slider in pairs(JumpSliders) do slider.Visible = JumpEnabled end
-
-local boxButtons, contentButtons = CreateGroupbox(rightColH, "Button E & Button C")
-boxButtons.LayoutOrder = 4
-
-local EEnabled = SaveData.EEnabled
-local EX = SaveData.EX
-local EY = SaveData.EY
-local ESize = SaveData.ESize
-local ESliders = {}
-
-local CEnabled = SaveData.CEnabled
-local CX = SaveData.CX
-local CY = SaveData.CY
-local CSize = SaveData.CSize
-local CSliders = {}
-
-
-local function GetButtonByText(text)
-    local playerGui = player:FindFirstChildOfClass("PlayerGui")
-    if not playerGui then return nil end
-
-    local contextGui = playerGui:FindFirstChild("ContextActionGui")
-    if not contextGui then return nil end
-
-    local frame = contextGui:FindFirstChild("ContextButtonFrame")
-    if not frame then return nil end
-
-    for _, button in ipairs(frame:GetChildren()) do
-        if button.Name == "ContextActionButton" then
-            local title = button:FindFirstChild("ActionTitle", true)
-
-            if title and title:IsA("TextLabel") then
-                if title.Text:match("^%s*" .. text .. "%s*$") then
-                    return button
-                end
-            end
-        end
-    end
-
-    return nil
-end
-
-
-local function ApplyEButton()
-    local Button = GetButtonByText("E")
-    if not Button then return end
-    local origPos, origSize = GetOriginal(Button)
-    if not origPos or not origSize then return end
-    pcall(function()
-        if EEnabled then
-            local offsetX = origPos.X.Offset + (EX * 5)
-            local offsetY = origPos.Y.Offset + (EY * 5)
-            Button.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
-            Button.Size = UDim2.fromOffset(ESize, ESize)
-        else
-            Button.Position = origPos
-            Button.Size = origSize
-        end
-    end)
-end
-
-local function ApplyCButton()
-    local Button = GetButtonByText("C")
-    if not Button then return end
-    local origPos, origSize = GetOriginal(Button)
-    if not origPos or not origSize then return end
-    pcall(function()
-        if CEnabled then
-            local offsetX = origPos.X.Offset + (CX * 5)
-            local offsetY = origPos.Y.Offset + (CY * 5)
-            Button.Position = UDim2.new(origPos.X.Scale, offsetX, origPos.Y.Scale, offsetY)
-            Button.Size = UDim2.fromOffset(CSize, CSize)
-        else
-            Button.Position = origPos
-            Button.Size = origSize
-        end
-    end)
-end
-
-CreateToggle(contentButtons, "Enable E Button", EEnabled, function(state)
-    EEnabled = state
-    SaveData.EEnabled = state
-    DoSave()
-    ApplyEButton()
-    for _, slider in pairs(ESliders) do slider.Visible = state end
-end)
-
-ESliders.X = CreateSlider(contentButtons, "E X", -100, 100, EX, function(value)
-    EX = value SaveData.EX = value DoSave()
-    if EEnabled then ApplyEButton() end
-end)
-ESliders.Y = CreateSlider(contentButtons, "E Y", -100, 100, EY, function(value)
-    EY = value SaveData.EY = value DoSave()
-    if EEnabled then ApplyEButton() end
-end)
-ESliders.Size = CreateSlider(contentButtons, "E Size", 20, 80, ESize, function(value)
-    ESize = value SaveData.ESize = value DoSave()
-    if EEnabled then ApplyEButton() end
-end)
-
-CreateToggle(contentButtons, "Enable C Button", CEnabled, function(state)
-    CEnabled = state
-    SaveData.CEnabled = state
-    DoSave()
-    ApplyCButton()
-    for _, slider in pairs(CSliders) do slider.Visible = state end
-end)
-
-CSliders.X = CreateSlider(contentButtons, "C X", -100, 100, CX, function(value)
-    CX = value SaveData.CX = value DoSave()
-    if CEnabled then ApplyCButton() end
-end)
-CSliders.Y = CreateSlider(contentButtons, "C Y", -100, 100, CY, function(value)
-    CY = value SaveData.CY = value DoSave()
-    if CEnabled then ApplyCButton() end
-end)
-CSliders.Size = CreateSlider(contentButtons, "C Size", 20, 80, CSize, function(value)
-    CSize = value SaveData.CSize = value DoSave()
-    if CEnabled then ApplyCButton() end
-end)
-
-for _, slider in pairs(ESliders) do slider.Visible = EEnabled end
-for _, slider in pairs(CSliders) do slider.Visible = CEnabled end
-
-local function ApplyAll()
-    ApplyJump()
-    ApplyThumbstick()
-    ApplyEButton()
-    ApplyCButton()
-end
-
-task.spawn(function()
-    task.wait(2)
-    ApplyAll()
-    while true do
-        task.wait(0.5)
-        ApplyAll()
-    end
-end)
-
-pcall(function()
-    player.PlayerGui.ChildAdded:Connect(function(child)
-        if child.Name == "TouchGui" or child.Name == "ContextActionGui" then
-            task.wait(0.5)
-            ApplyAll()
-            task.wait(0.5)
-            ApplyAll()
-        end
-    end)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        ApplyAll()
-        task.wait(1)
-        ApplyAll()
-    end)
-end)
 end
 
 task.spawn(function()
@@ -9158,6 +9241,7 @@ do
     local RunService = game:GetService("RunService")
     local Players = game:GetService("Players")
     local Lighting = game:GetService("Lighting")
+    local AssetService = game:GetService("AssetService")
 
     local Player = Players.LocalPlayer
     local settingsPageP = pages["Visual Skins"]
@@ -9167,7 +9251,8 @@ do
     settingsPageP.CanvasSize = UDim2.new(0, 0, 0, 0)
     settingsPageP.AutomaticCanvasSize = Enum.AutomaticSize.Y
     settingsPageP.ScrollBarThickness = 3
-    
+    settingsPageP.ClipsDescendants = false
+
     local listLayout = Instance.new("UIListLayout", settingsPageP)
     listLayout.Padding = UDim.new(0, 12)
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -9180,11 +9265,323 @@ do
 
     local gui = settingsPageP:FindFirstAncestorOfClass("ScreenGui")
 
+    local LUPA_ID = "rbxassetid://104986431790017"
+
+    local notifyThread = nil
+    local function Notify(msg)
+        if not gui then return end
+        local old = gui:FindFirstChild("SkinNotify")
+        if old then old:Destroy() end
+        if notifyThread then pcall(function() task.cancel(notifyThread) end) notifyThread = nil end
+        local holder = Instance.new("Frame", gui)
+        holder.Name = "SkinNotify"
+        holder.Size = UDim2.new(0, 280, 0, 38)
+        holder.Position = UDim2.new(0.5, -140, 0, -50)
+        holder.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+        holder.BackgroundTransparency = 0.15
+        holder.BorderSizePixel = 0
+        holder.ZIndex = 2000
+        holder.ClipsDescendants = true
+        Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 8)
+        local s = Instance.new("UIStroke", holder)
+        s.Color = Color3.fromRGB(80, 80, 80)
+        s.Thickness = 1
+        local lbl = Instance.new("TextLabel", holder)
+        lbl.Size = UDim2.new(1, -20, 1, 0)
+        lbl.Position = UDim2.new(0, 10, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = "" .. msg
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 13
+        lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+        lbl.TextXAlignment = Enum.TextXAlignment.Center
+        lbl.TextTruncate = Enum.TextTruncate.AtEnd
+        lbl.ZIndex = 2001
+        TweenService:Create(holder, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -140, 0, 20)}):Play()
+        notifyThread = task.delay(2, function()
+            notifyThread = nil
+            if holder and holder.Parent then
+                local t = TweenService:Create(holder, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -140, 0, -50)})
+                t:Play()
+                t.Completed:Connect(function() if holder then holder:Destroy() end end)
+            end
+        end)
+    end
+
+    local function CreateTopInput(parent, placeholder)
+        local holder = Instance.new("Frame", parent)
+        holder.Size = UDim2.new(1,0,0,35)
+        holder.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        holder.BackgroundTransparency = 0.45
+        holder.BorderSizePixel = 0
+        Instance.new("UICorner", holder).CornerRadius = UDim.new(0,6)
+        local st = Instance.new("UIStroke", holder)
+        st.Color = Color3.fromRGB(40,40,40)
+        st.Thickness = 1
+        local box = Instance.new("TextBox", holder)
+        box.Size = UDim2.new(1,-40,1,0)
+        box.Position = UDim2.new(0,10,0,0)
+        box.BackgroundTransparency = 1
+        box.Text = ""
+        box.PlaceholderText = placeholder
+        box.TextColor3 = Color3.fromRGB(220,220,220)
+        box.PlaceholderColor3 = Color3.fromRGB(120,120,120)
+        box.Font = Enum.Font.GothamBold
+        box.TextSize = 13
+        box.TextXAlignment = Enum.TextXAlignment.Left
+        box.ClearTextOnFocus = false
+        box.Focused:Connect(function() TweenService:Create(st, TweenInfo.new(0.2), {Color = Color3.fromRGB(120,120,120)}):Play() end)
+        box.FocusLost:Connect(function() TweenService:Create(st, TweenInfo.new(0.2), {Color = Color3.fromRGB(40,40,40)}):Play() end)
+        local icon = Instance.new("ImageButton", holder)
+        icon.Name = "SearchIcon"
+        icon.Size = UDim2.new(0,20,0,20)
+        icon.Position = UDim2.new(1,-28,0.5,-10)
+        icon.BackgroundTransparency = 1
+        icon.Image = LUPA_ID
+        icon.ImageColor3 = Color3.fromRGB(255,255,255)
+        icon.ScaleType = Enum.ScaleType.Fit
+        return box, icon
+    end
+    local function CreateTopCard(parent, text, imageUrl, cb)
+        local btn = Instance.new("TextButton", parent)
+        btn.BackgroundColor3 = Color3.fromRGB(6,6,6)
+        btn.BackgroundTransparency = 0.45
+        btn.BorderSizePixel = 0
+        btn.Text = ""
+        btn.AutoButtonColor = false
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+        local st = Instance.new("UIStroke", btn)
+        st.Color = Color3.fromRGB(40,40,40)
+        st.Thickness = 1
+        if imageUrl and imageUrl ~= "" then
+            local img = Instance.new("ImageLabel", btn)
+            img.Size = UDim2.new(0,28,0,28)
+            img.Position = UDim2.new(0,7,0.5,-14)
+            img.BackgroundColor3 = Color3.fromRGB(30,30,30)
+            img.BackgroundTransparency = 0.5
+            img.Image = imageUrl
+            img.BorderSizePixel = 0
+            Instance.new("UICorner", img).CornerRadius = UDim.new(0,6)
+        end
+        local lbl = Instance.new("TextLabel", btn)
+        lbl.Size = UDim2.new(1,-42,1,0)
+        lbl.Position = UDim2.new(0,40,0,0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = text
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 11
+        lbl.TextColor3 = Color3.fromRGB(220,220,220)
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextWrapped = true
+        btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.15}):Play() end)
+        btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.45}):Play() end)
+        btn.MouseButton1Click:Connect(cb)
+        return btn
+    end
+    local function CreateTopGrid(parent)
+        local grid = Instance.new("Frame", parent)
+        grid.Size = UDim2.new(1,0,0,0)
+        grid.AutomaticSize = Enum.AutomaticSize.Y
+        grid.BackgroundTransparency = 1
+        local gl = Instance.new("UIGridLayout", grid)
+        gl.CellSize = UDim2.new(0.5,-4,0,42)
+        gl.CellPadding = UDim2.new(0,8,0,8)
+        gl.SortOrder = Enum.SortOrder.LayoutOrder
+        return grid
+    end
+    local function CreateTopToggle(parent, text, imageUrl, cb)
+        local btn = CreateTopCard(parent, text, imageUrl, function() end)
+        local on = false
+        btn.MouseButton1Click:Connect(function() on = not on cb(on) end)
+        return btn, function(v) on = v end
+    end
+    local function GroupIn(parent, title)
+        local box = Instance.new("Frame", parent)
+        box.Size = UDim2.new(1,0,0,0)
+        box.AutomaticSize = Enum.AutomaticSize.Y
+        box.BackgroundColor3 = Color3.fromRGB(0,0,0)
+        box.BackgroundTransparency = 0.45
+        box.BorderSizePixel = 0
+        Instance.new("UICorner", box).CornerRadius = UDim.new(0,6)
+        local st = Instance.new("UIStroke", box)
+        st.Color = Color3.fromRGB(40,40,40)
+        st.Thickness = 1
+        local ll = Instance.new("UIListLayout", box)
+        ll.SortOrder = Enum.SortOrder.LayoutOrder
+        ll.Padding = UDim.new(0,8)
+        local pd = Instance.new("UIPadding", box)
+        pd.PaddingTop = UDim.new(0,8)
+        pd.PaddingBottom = UDim.new(0,8)
+        pd.PaddingLeft = UDim.new(0,10)
+        pd.PaddingRight = UDim.new(0,10)
+        local header = Instance.new("Frame", box)
+        header.Size = UDim2.new(1,0,0,20)
+        header.BackgroundTransparency = 1
+        local lbl = Instance.new("TextLabel", header)
+        lbl.Size = UDim2.new(1,0,1,0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = title
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 12
+        lbl.TextColor3 = Color3.fromRGB(255,255,255)
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        local content = Instance.new("Frame", box)
+        content.Size = UDim2.new(1,0,0,0)
+        content.AutomaticSize = Enum.AutomaticSize.Y
+        content.BackgroundTransparency = 1
+        local cl = Instance.new("UIListLayout", content)
+        cl.SortOrder = Enum.SortOrder.LayoutOrder
+        cl.Padding = UDim.new(0,6)
+        return content
+    end
+
+    local OriginalRightLegMesh = nil
+    local CurrentLegBundle = nil
+    local SavedHeadMesh = nil
+    local SavedHeadFace = nil
+    local SavedHeadTransparency = 0
+    local HeadlessLoop = nil
+    local HeadlessOn = false
+    local RoyalOn = false
+    local SetRoyalToggle = function() end
+    local SetHeadlessToggle = function() end
+    local SetLegTogglesReset = function() end
+    local CacheAssets = {}
+    local function GetAsset(id)
+        if CacheAssets[id] then return CacheAssets[id]:Clone() end
+        local ok, obj = pcall(function() return game:GetObjects("rbxassetid://"..tostring(id))[1] end)
+        if ok and obj then CacheAssets[id] = obj return obj:Clone() end
+        return nil
+    end
+    local function SaveOriginalLeg(char)
+        if OriginalRightLegMesh then return end
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("CharacterMesh") and v.BodyPart == Enum.BodyPart.RightLeg then OriginalRightLegMesh = v:Clone() break end
+        end
+    end
+    local function RemoveCurrentLeg(char)
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("CharacterMesh") and v.BodyPart == Enum.BodyPart.RightLeg then v:Destroy() end
+        end
+    end
+    local function RestoreLeg(char)
+        RemoveCurrentLeg(char)
+        if OriginalRightLegMesh then OriginalRightLegMesh:Clone().Parent = char end
+        CurrentLegBundle = nil
+    end
+
+    local function ClearAccessoryStates()
+        local char = Player.Character
+        if HeadlessLoop then HeadlessLoop:Disconnect() HeadlessLoop = nil end
+        HeadlessOn = false
+        SetHeadlessToggle(false)
+        if char then
+            local head = char:FindFirstChild("Head")
+            if head then head.Transparency = 0 head.CanCollide = true end
+        end
+        SavedHeadMesh = nil
+        SavedHeadFace = nil
+        if char then
+            for _, v in ipairs(char:GetChildren()) do
+                if (v:IsA("Accessory") or v:IsA("Hat") or v:IsA("Tool")) and (v.Name == "RoyalScepter" or v.Name == "Royal Scepter") then v:Destroy() end
+            end
+        end
+        RoyalOn = false
+        SetRoyalToggle(false)
+        OriginalRightLegMesh = nil
+        CurrentLegBundle = nil
+        SetLegTogglesReset()
+        if getgenv().SkinFixLoop then getgenv().SkinFixLoop:Disconnect() getgenv().SkinFixLoop = nil end
+    end
+
+    local ApplyBundleFunc = function() end
+    local ApplyLegOnlyFunc = function() end
+    local ApplyAccessoryFunc = function() end
+    local ApplyHeadlessFunc = function() end
+    local ApplyRoyalBackFunc = function() end
+
+    local top2Row = Instance.new("Frame", settingsPageP)
+    top2Row.Size = UDim2.new(1,0,0,0)
+    top2Row.AutomaticSize = Enum.AutomaticSize.Y
+    top2Row.BackgroundTransparency = 1
+    top2Row.LayoutOrder = 0
+    local top2Layout = Instance.new("UIListLayout", top2Row)
+    top2Layout.FillDirection = Enum.FillDirection.Horizontal
+    top2Layout.Padding = UDim.new(0,12)
+    top2Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    local leftTop = Instance.new("Frame", top2Row)
+    leftTop.Size = UDim2.new(0.5,-6,0,0)
+    leftTop.AutomaticSize = Enum.AutomaticSize.Y
+    leftTop.BackgroundTransparency = 1
+    local rightTop = Instance.new("Frame", top2Row)
+    rightTop.Size = UDim2.new(0.5,-6,0,0)
+    rightTop.AutomaticSize = Enum.AutomaticSize.Y
+    rightTop.BackgroundTransparency = 1
+
+    local bundleContent = GroupIn(leftTop, "Bundle Changer")
+    local bundleBox, bundleIcon = CreateTopInput(bundleContent, "Bundle ID (Ex: 201)...")
+    local function DoBundleSearch()
+        local id = tonumber(bundleBox.Text)
+        if not id then Notify("Insira um ID de Bundle válido.") return end
+        Notify("Applying: Bundle " .. id)
+        ApplyBundleFunc(id)
+    end
+    bundleBox.FocusLost:Connect(function(e) if e then DoBundleSearch() end end)
+    bundleIcon.MouseButton1Click:Connect(DoBundleSearch)
+    local bundleGrid = CreateTopGrid(bundleContent)
+    for _, b in ipairs({
+        {Name = "Headless", Id = 201}, {Name = "Korblox", Id = 192}, {Name = "Skeleton", Id = 295},
+        {Name = "Ice General", Id = 194}, {Name = "Gnomo", Id = 652}, {Name = "Dr. Fia Tyfoid", Id = 512},
+    }) do
+        CreateTopCard(bundleGrid, b.Name, "rbxthumb://type=BundleThumbnail&id="..b.Id.."&w=150&h=150", function()
+            Notify("Aplicando: Bundle " .. b.Name)
+            ApplyBundleFunc(b.Id)
+        end)
+    end
+
+    local accContent = GroupIn(rightTop, "Accessories Changer")
+    local accBox, accIcon = CreateTopInput(accContent, "Asset/Accessory ID...")
+    local function DoAccSearch()
+        local id = tonumber(accBox.Text)
+        if not id then Notify("Insira um ID de Ativo válido.") return end
+        ApplyAccessoryFunc(id)
+    end
+    accBox.FocusLost:Connect(function(e) if e then DoAccSearch() end end)
+    accIcon.MouseButton1Click:Connect(DoAccSearch)
+    local accGrid = CreateTopGrid(accContent)
+    local legState = { Korblox = false, SkeletonLeg = false, ZombieLeg = false }
+    local legSetters = {}
+    local function SetLegToggle(key, bundleId, legName, on)
+        legState[key] = on
+        if on then
+            for k,_ in pairs(legState) do if k ~= key then legState[k] = false end end
+            ApplyLegOnlyFunc(bundleId, legName)
+        else
+            local char = Player.Character
+            if char then RestoreLeg(char) end
+            Notify("Removido: " .. legName)
+        end
+    end
+    SetLegTogglesReset = function()
+        legState.Korblox = false legState.SkeletonLeg = false legState.ZombieLeg = false
+        for _, s in pairs(legSetters) do s(false) end
+    end
+    local _, setH = CreateTopToggle(accGrid, "Headless", "rbxthumb://type=BundleThumbnail&id=201&w=150&h=150", function(s) ApplyHeadlessFunc(s) end)
+    SetHeadlessToggle = setH
+    local _, setK = CreateTopToggle(accGrid, "Korblox", "rbxthumb://type=Asset&id=93791173513996&w=150&h=150", function(s) SetLegToggle("Korblox", 192, "Korblox Leg", s) end)
+    legSetters.Korblox = setK
+    local _, setS = CreateTopToggle(accGrid, "Skeleton Leg", "rbxthumb://type=Asset&id=118599491782541&w=150&h=150", function(s) SetLegToggle("SkeletonLeg", 295, "Skeleton Leg", s) end)
+    legSetters.SkeletonLeg = setS
+    local _, setZ = CreateTopToggle(accGrid, "Zombie Leg", "rbxthumb://type=Asset&id=137720329950856&w=150&h=150", function(s) SetLegToggle("ZombieLeg", 291, "Zombie Leg", s) end)
+    legSetters.ZombieLeg = setZ
+    local _, setR = CreateTopToggle(accGrid, "Royal Scepter", "rbxthumb://type=Asset&id=123021068422074&w=150&h=150", function(s) ApplyRoyalBackFunc(s) end)
+    SetRoyalToggle = setR
+    CreateTopToggle(accGrid, "Mysterious Arrow", "rbxthumb://type=Asset&id=100766397788630&w=150&h=150", function(s) if s then ApplyAccessoryFunc(100766397788630) end end)
+
     local titleHolder = Instance.new("Frame", settingsPageP)
     titleHolder.Size = UDim2.new(1, 0, 0, 20)
     titleHolder.BackgroundTransparency = 1
     titleHolder.LayoutOrder = 1
-
     local title = Instance.new("TextLabel", titleHolder)
     title.Size = UDim2.new(0, 100, 1, 0)
     title.BackgroundTransparency = 1
@@ -9193,60 +9590,162 @@ do
     title.TextSize = 14
     title.TextColor3 = Color3.fromRGB(220,220,220)
     title.TextXAlignment = Enum.TextXAlignment.Left
-
     local line = Instance.new("Frame", titleHolder)
     line.Size = UDim2.new(1, -110, 0, 1)
     line.Position = UDim2.new(0, 110, 0.5, 0)
     line.BackgroundColor3 = Color3.fromRGB(60,60,60)
     line.BorderSizePixel = 0
 
-    local searchHolder = Instance.new("Frame", settingsPageP)
-    searchHolder.Size = UDim2.new(1, 0, 0, 36)
+    local topRow = Instance.new("Frame", settingsPageP)
+    topRow.Size = UDim2.new(1, 0, 0, 36)
+    topRow.BackgroundTransparency = 1
+    topRow.LayoutOrder = 2
+    topRow.ZIndex = 50
+    topRow.ClipsDescendants = false
+    local rowLayout = Instance.new("UIListLayout", topRow)
+    rowLayout.FillDirection = Enum.FillDirection.Horizontal
+    rowLayout.Padding = UDim.new(0, 8)
+    rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+    local dropdownContainer = Instance.new("Frame", topRow)
+    dropdownContainer.Size = UDim2.new(0.5, -4, 0, 36)
+    dropdownContainer.BackgroundTransparency = 1
+    dropdownContainer.LayoutOrder = 1
+    dropdownContainer.ZIndex = 50
+    dropdownContainer.ClipsDescendants = false
+    local targetHolder = Instance.new("Frame", dropdownContainer)
+    targetHolder.Size = UDim2.new(1, 0, 0, 36)
+    targetHolder.BackgroundColor3 = Color3.fromRGB(6,6,6)
+    targetHolder.BackgroundTransparency = 0.65
+    targetHolder.BorderSizePixel = 0
+    targetHolder.ZIndex = 51
+    Instance.new("UICorner", targetHolder).CornerRadius = UDim.new(0,8)
+    local targetStroke = Instance.new("UIStroke", targetHolder)
+    targetStroke.Color = Color3.fromRGB(50,50,50)
+    local targetBtn = Instance.new("TextButton", targetHolder)
+    targetBtn.Size = UDim2.new(1, 0, 1, 0)
+    targetBtn.BackgroundTransparency = 1
+    targetBtn.Text = "Target Player: Select..."
+    targetBtn.Font = Enum.Font.GothamBold
+    targetBtn.TextSize = 12
+    targetBtn.TextColor3 = Color3.fromRGB(220,220,220)
+    targetBtn.TextXAlignment = Enum.TextXAlignment.Left
+    targetBtn.TextTruncate = Enum.TextTruncate.AtEnd
+    targetBtn.ZIndex = 52
+    local targetPadding = Instance.new("UIPadding", targetBtn)
+    targetPadding.PaddingLeft = UDim.new(0, 10)
+    targetPadding.PaddingRight = UDim.new(0, 24)
+    local arrow = Instance.new("TextLabel", targetHolder)
+    arrow.Size = UDim2.new(0, 20, 0, 20)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "v"
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 13
+    arrow.TextColor3 = Color3.fromRGB(150,150,150)
+    arrow.ZIndex = 52
+    arrow.AnchorPoint = Vector2.new(0.5, 0.5)
+    arrow.Position = UDim2.new(1, -14, 0.5, 0)
+    local dropdownList = Instance.new("ScrollingFrame", dropdownContainer)
+    dropdownList.Size = UDim2.new(1, 0, 0, 0)
+    dropdownList.Position = UDim2.new(0, 0, 0, 40)
+    dropdownList.BackgroundColor3 = Color3.fromRGB(10,10,10)
+    dropdownList.BackgroundTransparency = 1
+    dropdownList.BorderSizePixel = 0
+    dropdownList.Visible = false
+    dropdownList.ZIndex = 60
+    dropdownList.ScrollBarThickness = 3
+    dropdownList.CanvasSize = UDim2.new(0,0,0,0)
+    dropdownList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    dropdownList.ClipsDescendants = true
+    Instance.new("UICorner", dropdownList).CornerRadius = UDim.new(0,8)
+    local dropStroke = Instance.new("UIStroke", dropdownList)
+    dropStroke.Color = Color3.fromRGB(50,50,50)
+    dropStroke.Transparency = 1
+    local dropLayout = Instance.new("UIListLayout", dropdownList)
+    dropLayout.Padding = UDim.new(0, 2)
+    dropLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    local dropPad = Instance.new("UIPadding", dropdownList)
+    dropPad.PaddingTop = UDim.new(0, 4)
+    dropPad.PaddingBottom = UDim.new(0, 4)
+    dropPad.PaddingLeft = UDim.new(0, 4)
+    dropPad.PaddingRight = UDim.new(0, 4)
+    local dropdownOpen = false
+    local animating = false
+
+    local searchHolder = Instance.new("Frame", topRow)
+    searchHolder.Size = UDim2.new(0.5, -4, 0, 36)
     searchHolder.BackgroundColor3 = Color3.fromRGB(6,6,6)
     searchHolder.BackgroundTransparency = 0.65
     searchHolder.BorderSizePixel = 0
     searchHolder.LayoutOrder = 2
+    searchHolder.ZIndex = 5
     Instance.new("UICorner", searchHolder).CornerRadius = UDim.new(0,8)
     Instance.new("UIStroke", searchHolder).Color = Color3.fromRGB(50,50,50)
-
     local searchBox = Instance.new("TextBox", searchHolder)
-    searchBox.Size = UDim2.new(1, -40, 1, 0)
-    searchBox.Position = UDim2.new(0, 12, 0, 0)
+    searchBox.Size = UDim2.new(1, -36, 1, 0)
+    searchBox.Position = UDim2.new(0, 10, 0, 0)
     searchBox.BackgroundTransparency = 1
     searchBox.TextColor3 = Color3.fromRGB(220,220,220)
     searchBox.Font = Enum.Font.GothamBold
-    searchBox.TextSize = 13
+    searchBox.TextSize = 12
     searchBox.Text = ""
     searchBox.PlaceholderText = "Username..."
     searchBox.PlaceholderColor3 = Color3.fromRGB(120,120,120)
     searchBox.TextXAlignment = Enum.TextXAlignment.Left
     searchBox.ClearTextOnFocus = false
-
     local searchIcon = Instance.new("ImageButton", searchHolder)
+    searchIcon.Name = "SearchIcon"
     searchIcon.Size = UDim2.new(0, 18, 0, 18)
-    searchIcon.Position = UDim2.new(1, -28, 0.5, -9)
+    searchIcon.Position = UDim2.new(1, -26, 0.5, -9)
     searchIcon.BackgroundTransparency = 1
-    searchIcon.Image = "rbxassetid://6031154871"
-    searchIcon.ImageColor3 = Color3.fromRGB(150,150,150)
+    searchIcon.Image = LUPA_ID
+    searchIcon.ImageColor3 = Color3.fromRGB(255,255,255)
+    searchIcon.ScaleType = Enum.ScaleType.Fit
+
+    local resetHolder = Instance.new("Frame", settingsPageP)
+    resetHolder.Size = UDim2.new(1, 0, 0, 36)
+    resetHolder.BackgroundTransparency = 1
+    resetHolder.LayoutOrder = 3
+    resetHolder.ZIndex = 5
+    local resetBtn = Instance.new("TextButton", resetHolder)
+    resetBtn.Size = UDim2.new(1, 0, 1, 0)
+    resetBtn.BackgroundColor3 = Color3.fromRGB(6,6,6)
+    resetBtn.BackgroundTransparency = 0.65
+    resetBtn.BorderSizePixel = 0
+    resetBtn.Text = ""
+    resetBtn.AutoButtonColor = false
+    resetBtn.ZIndex = 6
+    Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 8)
+    local resetStroke = Instance.new("UIStroke", resetBtn)
+    resetStroke.Color = Color3.fromRGB(50,50,50)
+    resetStroke.Thickness = 1
+    local resetLabel = Instance.new("TextLabel", resetBtn)
+    resetLabel.Size = UDim2.new(1, 0, 1, 0)
+    resetLabel.BackgroundTransparency = 1
+    resetLabel.Text = "Reset Skin Character"
+    resetLabel.Font = Enum.Font.GothamBold
+    resetLabel.TextSize = 13
+    resetLabel.TextColor3 = Color3.fromRGB(220,220,220)
+    resetLabel.ZIndex = 7
 
     local skinGrid = Instance.new("Frame", settingsPageP)
-    skinGrid.Size = UDim2.new(1, 0, 0, 500)
+    skinGrid.Size = UDim2.new(1, 0, 0, 0)
+    skinGrid.AutomaticSize = Enum.AutomaticSize.Y
     skinGrid.BackgroundTransparency = 1
-    skinGrid.LayoutOrder = 3
+    skinGrid.LayoutOrder = 4
     skinGrid.ClipsDescendants = false
-    
+    skinGrid.ZIndex = 2
     local gridLayout = Instance.new("UIGridLayout", skinGrid)
     gridLayout.CellSize = UDim2.new(0.25, -4, 0, 50)
     gridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
     gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
     gridLayout.FillDirectionMaxCells = 4
 
-    if getgenv().SkinFixLoop then 
-        getgenv().SkinFixLoop:Disconnect() 
-        getgenv().SkinFixLoop = nil 
-    end
+    if getgenv().SkinFixLoop then getgenv().SkinFixLoop:Disconnect() getgenv().SkinFixLoop = nil end
     getgenv().CurrentSkinUserId = 0
     getgenv().IsApplyingSkin = false
+    getgenv().ApplyToken = 0
 
     local function SmartWeld(char, accessory)
         local handle = accessory:FindFirstChild("Handle")
@@ -9255,7 +9754,6 @@ do
         handle.CanCollide = false
         handle.Massless = true
         accessory.Parent = char
-        
         local accAtt = handle:FindFirstChildWhichIsA("Attachment")
         if not accAtt then
             local weld = Instance.new("Weld")
@@ -9265,14 +9763,12 @@ do
             weld.Parent = handle
             return
         end
-
         local targetPart = char:FindFirstChild("Head")
         local charAtt = targetPart and targetPart:FindFirstChild(accAtt.Name)
         if not charAtt then
             targetPart = char:FindFirstChild("Torso")
             charAtt = targetPart and targetPart:FindFirstChild(accAtt.Name)
         end
-
         local weld = Instance.new("Weld")
         weld.Part1 = handle
         weld.Part0 = targetPart or char:FindFirstChild("Head")
@@ -9280,19 +9776,33 @@ do
         weld.C1 = accAtt.CFrame
         weld.Parent = handle
     end
-
+    local function WeldBack(char, accessory)
+        local handle = accessory:FindFirstChild("Handle")
+        if not handle then return end
+        handle.Anchored = false
+        handle.CanCollide = false
+        handle.Massless = true
+        accessory.Parent = char
+        local torso = char:FindFirstChild("Torso")
+        if not torso then return end
+        local w = Instance.new("Weld")
+        w.Part0 = torso
+        w.Part1 = handle
+        w.C0 = CFrame.new(0.25, -0.1, 0.6)
+        w.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90))
+        w.Parent = handle
+    end
     local function StartFixLoop(char, colorTable, originalHeadTextureId)
         if getgenv().SkinFixLoop then getgenv().SkinFixLoop:Disconnect() end
         local lastCheck = 0
         getgenv().SkinFixLoop = RunService.Heartbeat:Connect(function()
             if tick() - lastCheck < 0.5 then return end
             lastCheck = tick()
-            
             if not char or not char.Parent then
                 if getgenv().SkinFixLoop then getgenv().SkinFixLoop:Disconnect() end
                 return
             end
-            
+            if HeadlessOn then return end
             for partName, color in pairs(colorTable) do
                 local part = char:FindFirstChild(partName)
                 if part and part:IsA("BasePart") and part.Color ~= color then
@@ -9302,71 +9812,30 @@ do
                         local mesh = part:FindFirstChildOfClass("SpecialMesh")
                         if mesh then
                             if originalHeadTextureId ~= "" then
-                                if mesh.TextureId ~= originalHeadTextureId then 
-                                    mesh.TextureId = originalHeadTextureId 
-                                end
-                            elseif mesh.TextureId ~= "" then 
-                                mesh.TextureId = "" 
-                            end
+                                if mesh.TextureId ~= originalHeadTextureId then mesh.TextureId = originalHeadTextureId end
+                            elseif mesh.TextureId ~= "" then mesh.TextureId = "" end
                         end
                     end
                 end
             end
         end)
     end
-
-    local function TransformarSkin(userId)
-        if getgenv().IsApplyingSkin or getgenv().CurrentSkinUserId == userId then return end
-        getgenv().IsApplyingSkin = true
-        
+    local function ApplyDesc(desc)
         local char = Player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if not char or not hum then 
-            getgenv().IsApplyingSkin = false
-            return 
-        end
-
-        local success, desc = pcall(function() 
-            return Players:GetHumanoidDescriptionFromUserId(userId) 
-        end)
-        if not success or not desc then 
-            getgenv().IsApplyingSkin = false
-            return 
-        end
-
-        if getgenv().SkinFixLoop then 
-            getgenv().SkinFixLoop:Disconnect() 
-            getgenv().SkinFixLoop = nil 
-        end
-        getgenv().CurrentSkinUserId = userId
-
+        if not char then return end
         local dummy = Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R6)
         dummy.Name = "AssetSource"
         dummy.Parent = nil
         task.wait(0.3)
-
-        local realColors = { 
-            ["Head"] = desc.HeadColor, 
-            ["Torso"] = desc.TorsoColor,
-            ["Left Arm"] = desc.LeftArmColor,
-            ["Right Arm"] = desc.RightArmColor,
-            ["Left Leg"] = desc.LeftLegColor,
-            ["Right Leg"] = desc.RightLegColor 
-        }
-        
+        local realColors = { ["Head"] = desc.HeadColor, ["Torso"] = desc.TorsoColor, ["Left Arm"] = desc.LeftArmColor, ["Right Arm"] = desc.RightArmColor, ["Left Leg"] = desc.LeftLegColor, ["Right Leg"] = desc.RightLegColor }
         local targetHeadTexture = ""
         local dummyMesh = dummy.Head:FindFirstChildOfClass("SpecialMesh")
         if dummyMesh then targetHeadTexture = dummyMesh.TextureId end
-
+        if char:FindFirstChild("Head") then char.Head.Transparency = 0 char.Head.CanCollide = true end
         for _, v in pairs(char:GetChildren()) do
-            if v:IsA("Accessory") or v:IsA("Hat") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") or v:IsA("BodyColors") then
-                v:Destroy()
-            end
+            if v:IsA("Accessory") or v:IsA("Hat") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") or v:IsA("CharacterMesh") or v:IsA("BodyColors") then v:Destroy() end
         end
-        if char:FindFirstChild("Head") and char.Head:FindFirstChild("face") then 
-            char.Head.face:Destroy() 
-        end
-
+        if char:FindFirstChild("Head") and char.Head:FindFirstChild("face") then char.Head.face:Destroy() end
         local myMesh = char.Head:FindFirstChildOfClass("SpecialMesh") or Instance.new("SpecialMesh", char.Head)
         if dummyMesh then
             myMesh.MeshType = dummyMesh.MeshType
@@ -9379,19 +9848,14 @@ do
             myMesh.TextureId = ""
         end
         myMesh.VertexColor = Vector3.new(1,1,1)
-
-        for _, item in pairs(dummy:GetChildren()) do 
-            if item:IsA("CharacterMesh") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") then 
-                item:Clone().Parent = char 
-            end 
+        for _, item in pairs(dummy:GetChildren()) do
+            if item:IsA("CharacterMesh") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") then item:Clone().Parent = char end
         end
-        
         local faceDecal = Instance.new("Decal")
         faceDecal.Name = "face"
         local dummyFace = dummy.Head:FindFirstChild("face")
         faceDecal.Texture = dummyFace and dummyFace.Texture or (desc.Face > 0 and "rbxassetid://"..desc.Face or "rbxasset://textures/face.png")
         faceDecal.Parent = char.Head
-
         local newBC = Instance.new("BodyColors")
         newBC.HeadColor3 = desc.HeadColor
         newBC.TorsoColor3 = desc.TorsoColor
@@ -9400,32 +9864,171 @@ do
         newBC.LeftLegColor3 = desc.LeftLegColor
         newBC.RightLegColor3 = desc.RightLegColor
         newBC.Parent = char
-
         StartFixLoop(char, realColors, targetHeadTexture)
-
         for _, item in pairs(dummy:GetChildren()) do
-            if item:IsA("Accessory") then
-                SmartWeld(char, item:Clone())
+            if item:IsA("Accessory") then SmartWeld(char, item:Clone()) end
+        end
+        dummy:Destroy()
+    end
+    local function TransformarSkin(userId, username)
+        if getgenv().IsApplyingSkin then return end
+        getgenv().ApplyToken = (getgenv().ApplyToken or 0) + 1
+        local myToken = getgenv().ApplyToken
+        getgenv().IsApplyingSkin = true
+        getgenv().CurrentSkinUserId = -1
+        local char = Player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not char or not hum then getgenv().IsApplyingSkin = false return end
+        ClearAccessoryStates()
+        local success, desc = pcall(function() return Players:GetHumanoidDescriptionFromUserId(userId) end)
+        if not success or not desc then getgenv().IsApplyingSkin = false Notify("Falha ao aplicar skin") return end
+        if myToken ~= getgenv().ApplyToken then getgenv().IsApplyingSkin = false return end
+        getgenv().CurrentSkinUserId = userId
+        ApplyDesc(desc)
+        task.wait(0.2)
+        if myToken ~= getgenv().ApplyToken then getgenv().IsApplyingSkin = false return end
+        getgenv().IsApplyingSkin = false
+        Notify("Applied: Skin " .. (username or userId))
+    end
+    ApplyBundleFunc = function(bundleId)
+        task.spawn(function()
+            ClearAccessoryStates()
+            local ok, details = pcall(function() return AssetService:GetBundleDetailsAsync(bundleId) end)
+            if not ok or not details then Notify("Falha ao carregar bundle") return end
+            local outfitDesc = nil
+            for _, item in ipairs(details.Items) do
+                if item.Type == "UserOutfit" then
+                    local ok2, d2 = pcall(function() return Players:GetHumanoidDescriptionFromOutfitId(item.Id) end)
+                    if ok2 and d2 then outfitDesc = d2 break end
+                end
+            end
+            if not outfitDesc then Notify("Bundle sem outfit") return end
+            ApplyDesc(outfitDesc)
+            Notify("Applied: Bundle " .. tostring(bundleId))
+        end)
+    end
+    ApplyLegOnlyFunc = function(bundleId, legName)
+        task.spawn(function()
+            local char = Player.Character
+            if not char then return end
+            SaveOriginalLeg(char)
+            RemoveCurrentLeg(char)
+            local ok, details = pcall(function() return AssetService:GetBundleDetailsAsync(bundleId) end)
+            if not ok or not details then Notify("Falha ao carregar perna") RestoreLeg(char) return end
+            local outfitDesc = nil
+            for _, item in ipairs(details.Items) do
+                if item.Type == "UserOutfit" then
+                    local ok2, d2 = pcall(function() return Players:GetHumanoidDescriptionFromOutfitId(item.Id) end)
+                    if ok2 and d2 then outfitDesc = d2 break end
+                end
+            end
+            if not outfitDesc then Notify("Bundle sem outfit") RestoreLeg(char) return end
+            local dummy = Players:CreateHumanoidModelFromDescription(outfitDesc, Enum.HumanoidRigType.R6)
+            dummy.Name = "LegSource"
+            dummy.Parent = workspace
+            dummy:PivotTo(CFrame.new(0,-500,0))
+            task.wait(0.4)
+            local legMesh = nil
+            for _, c in ipairs(dummy:GetChildren()) do
+                if c:IsA("CharacterMesh") and c.BodyPart == Enum.BodyPart.RightLeg then legMesh = c break end
+            end
+            if legMesh then legMesh:Clone().Parent = char CurrentLegBundle = bundleId Notify("Applied: " .. (legName or "Perna"))
+            else Notify("Perna não encontrada") RestoreLeg(char) end
+            dummy:Destroy()
+        end)
+    end
+    ApplyAccessoryFunc = function(id)
+        local char = Player.Character
+        if not char then return end
+        local obj = GetAsset(id)
+        if not obj then Notify("Failed to load item ID: " .. tostring(id)) return end
+        if obj:IsA("Accessory") or obj:IsA("Hat") then SmartWeld(char, obj) Notify("Accessory Equipped!")
+        elseif obj:IsA("Tool") then obj.Parent = char Notify("Tool Equipped!")
+        else obj.Parent = char Notify("Accessory Equipped!") end
+    end
+    ApplyHeadlessFunc = function(on)
+        HeadlessOn = on
+        local char = Player.Character
+        if not char then return end
+        local head = char:FindFirstChild("Head")
+        if not head then return end
+        if on then
+            SavedHeadTransparency = head.Transparency
+            local mesh = head:FindFirstChildOfClass("SpecialMesh")
+            if mesh and not SavedHeadMesh then SavedHeadMesh = mesh:Clone() end
+            local face = head:FindFirstChild("face") or head:FindFirstChildOfClass("Decal")
+            if face and not SavedHeadFace then SavedHeadFace = face:Clone() end
+            if mesh then mesh:Destroy() end
+            if face then face:Destroy() end
+            head.Transparency = 1
+            head.CanCollide = false
+            if HeadlessLoop then HeadlessLoop:Disconnect() end
+            HeadlessLoop = RunService.Heartbeat:Connect(function()
+                if not HeadlessOn then return end
+                if not char or not char.Parent or not head or not head.Parent then
+                    if HeadlessLoop then HeadlessLoop:Disconnect() HeadlessLoop = nil end
+                    return
+                end
+                if head.Transparency ~= 1 then head.Transparency = 1 end
+                local f = head:FindFirstChild("face") or head:FindFirstChildOfClass("Decal")
+                if f then f:Destroy() end
+                local m = head:FindFirstChildOfClass("SpecialMesh")
+                if m then m:Destroy() end
+            end)
+            Notify("Applied: Headless")
+        else
+            if HeadlessLoop then HeadlessLoop:Disconnect() HeadlessLoop = nil end
+            head.Transparency = SavedHeadTransparency or 0
+            head.CanCollide = true
+            local mesh = head:FindFirstChildOfClass("SpecialMesh")
+            if mesh then mesh:Destroy() end
+            if SavedHeadMesh then SavedHeadMesh:Clone().Parent = head SavedHeadMesh = nil end
+            local face = head:FindFirstChild("face") or head:FindFirstChildOfClass("Decal")
+            if face then face:Destroy() end
+            if SavedHeadFace then SavedHeadFace:Clone().Parent = head SavedHeadFace = nil end
+            Notify("Removido: Headless")
+        end
+    end
+    ApplyRoyalBackFunc = function(on)
+        RoyalOn = on
+        local char = Player.Character
+        if not char then return end
+        local function RemoveRoyal()
+            for _, v in ipairs(char:GetChildren()) do
+                if (v:IsA("Accessory") or v:IsA("Hat") or v:IsA("Tool")) and (v.Name == "RoyalScepter" or v.Name == "Royal Scepter") then v:Destroy() end
             end
         end
-        
-        dummy:Destroy()
-        task.wait(0.2)
-        getgenv().IsApplyingSkin = false
+        if not on then RemoveRoyal() Notify("Removido: Royal Scepter") return end
+        RemoveRoyal()
+        local obj = GetAsset(123021068422074)
+        if not obj then Notify("Failed to load Royal") return end
+        obj.Name = "RoyalScepter"
+        if obj:IsA("Accessory") or obj:IsA("Hat") then WeldBack(char, obj)
+        elseif obj:IsA("Tool") then
+            local handle = obj:FindFirstChild("Handle")
+            if handle then
+                obj.Parent = char
+                handle.Anchored = false
+                handle.CanCollide = false
+                local torso = char:FindFirstChild("Torso")
+                local w = Instance.new("Weld")
+                w.Part0 = torso
+                w.Part1 = handle
+                w.C0 = CFrame.new(0.25, -0.1, 0.6)
+                w.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90))
+                w.Parent = handle
+            else obj.Parent = char end
+        else obj.Parent = char end
+        Notify("Applied: Royal Scepter nas costas")
     end
-
     local function ShowSkinPopup(userId, username)
         local oldBlur = Lighting:FindFirstChild("SkinPopupBlur")
         if oldBlur then oldBlur:Destroy() end
-        if gui:FindFirstChild("SkinPopupOverlay") then
-            gui:FindFirstChild("SkinPopupOverlay"):Destroy()
-        end
-
+        if gui:FindFirstChild("SkinPopupOverlay") then gui:FindFirstChild("SkinPopupOverlay"):Destroy() end
         local blur = Instance.new("BlurEffect")
         blur.Name = "SkinPopupBlur"
         blur.Size = 12
         blur.Parent = Lighting
-
         local overlay = Instance.new("Frame", gui)
         overlay.Name = "SkinPopupOverlay"
         overlay.Size = UDim2.new(1, 0, 1, 0)
@@ -9433,7 +10036,6 @@ do
         overlay.BackgroundTransparency = 1
         overlay.ZIndex = 1000
         overlay.Active = true
-
         local popupFrame = Instance.new("Frame", overlay)
         popupFrame.Size = UDim2.new(0, 320, 0, 170)
         popupFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -9442,21 +10044,17 @@ do
         popupFrame.BackgroundTransparency = 0.05
         popupFrame.ZIndex = 1001
         Instance.new("UICorner", popupFrame).CornerRadius = UDim.new(0, 8)
-
         local popupStroke = Instance.new("UIStroke", popupFrame)
         popupStroke.Color = Color3.fromRGB(80, 80, 80)
         popupStroke.Thickness = 1
-
         local popupTitle = Instance.new("TextLabel", popupFrame)
         popupTitle.Size = UDim2.new(1, 0, 0, 40)
-        popupTitle.Position = UDim2.new(0, 0, 0, 0)
         popupTitle.BackgroundTransparency = 1
         popupTitle.Text = "SKIN FOUND"
         popupTitle.Font = Enum.Font.GothamBold
         popupTitle.TextSize = 15
         popupTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
         popupTitle.ZIndex = 1002
-
         local avatarImg = Instance.new("ImageLabel", popupFrame)
         avatarImg.Size = UDim2.new(0, 60, 0, 60)
         avatarImg.Position = UDim2.new(0, 25, 0, 50)
@@ -9464,7 +10062,6 @@ do
         avatarImg.Image = "https://www.roblox.com/headshot-thumbnail/image?userId="..userId.."&width=150&height=150&format=png"
         avatarImg.ZIndex = 1002
         Instance.new("UICorner", avatarImg).CornerRadius = UDim.new(0, 6)
-
         local nameLabel = Instance.new("TextLabel", popupFrame)
         nameLabel.Size = UDim2.new(1, -100, 0, 20)
         nameLabel.Position = UDim2.new(0, 95, 0, 70)
@@ -9475,7 +10072,6 @@ do
         nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
         nameLabel.ZIndex = 1002
-
         local applyBtn = Instance.new("TextButton", popupFrame)
         applyBtn.Size = UDim2.new(0, 120, 0, 32)
         applyBtn.Position = UDim2.new(0, 25, 1, -50)
@@ -9487,7 +10083,6 @@ do
         applyBtn.ZIndex = 1003
         applyBtn.AutoButtonColor = false
         Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 6)
-
         local cancelBtn = Instance.new("TextButton", popupFrame)
         cancelBtn.Size = UDim2.new(0, 120, 0, 32)
         cancelBtn.Position = UDim2.new(1, -145, 1, -50)
@@ -9498,50 +10093,181 @@ do
         cancelBtn.TextColor3 = Color3.fromRGB(255, 59, 59)
         cancelBtn.ZIndex = 1003
         cancelBtn.AutoButtonColor = false
-
         applyBtn.MouseButton1Click:Connect(function()
             blur:Destroy()
             overlay:Destroy()
-            TransformarSkin(userId)
+            Notify("Applying: " .. username)
+            TransformarSkin(userId, username)
         end)
-
-        cancelBtn.MouseButton1Click:Connect(function()
-            blur:Destroy()
-            overlay:Destroy()
-        end)
-
-        applyBtn.MouseEnter:Connect(function()
-            TweenService:Create(applyBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-        end)
-        applyBtn.MouseLeave:Connect(function()
-            TweenService:Create(applyBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(235, 235, 235)}):Play()
-        end)
-
-        cancelBtn.MouseEnter:Connect(function()
-            TweenService:Create(cancelBtn, TweenInfo.new(0.1), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-        end)
-        cancelBtn.MouseLeave:Connect(function()
-            TweenService:Create(cancelBtn, TweenInfo.new(0.1), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
-        end)
+        cancelBtn.MouseButton1Click:Connect(function() blur:Destroy() overlay:Destroy() end)
+        applyBtn.MouseEnter:Connect(function() TweenService:Create(applyBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play() end)
+        applyBtn.MouseLeave:Connect(function() TweenService:Create(applyBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(235, 235, 235)}):Play() end)
+        cancelBtn.MouseEnter:Connect(function() TweenService:Create(cancelBtn, TweenInfo.new(0.1), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play() end)
+        cancelBtn.MouseLeave:Connect(function() TweenService:Create(cancelBtn, TweenInfo.new(0.1), {TextColor3 = Color3.fromRGB(180, 180, 180)}):Play() end)
     end
-
-    local function searchUser()
-        if searchBox.Text == "" then return end
-        local success, userId = pcall(function()
-            return Players:GetUserIdFromNameAsync(searchBox.Text)
-        end)
-        if success then 
-            ShowSkinPopup(userId, searchBox.Text)
+    local function AnimatePlayerButtons()
+        local delayCount = 0
+        for _, c in pairs(dropdownList:GetChildren()) do
+            if c:IsA("TextButton") then
+                delayCount = delayCount + 1
+                c.BackgroundTransparency = 1
+                local lbl = c:FindFirstChildOfClass("TextLabel")
+                if lbl then lbl.TextTransparency = 1 end
+                local thumb = c:FindFirstChildOfClass("ImageLabel")
+                if thumb then thumb.ImageTransparency = 1 end
+                local idx = delayCount
+                task.delay(idx * 0.03, function()
+                    TweenService:Create(c, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0.3}):Play()
+                    if lbl then TweenService:Create(lbl, TweenInfo.new(0.25), {TextTransparency = 0}):Play() end
+                    if thumb then TweenService:Create(thumb, TweenInfo.new(0.25), {ImageTransparency = 0}):Play() end
+                end)
+            end
         end
     end
-
-    searchBox.FocusLost:Connect(function(enter)
-        if enter then searchUser() end
+    local function OpenDropdown()
+        if animating then return end
+        animating = true
+        dropdownOpen = true
+        dropdownList.Visible = true
+        local qtd = math.min(math.max(#Players:GetPlayers()-1, 1), 5)
+        local targetHeight = qtd * 34 + 8
+        TweenService:Create(arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Rotation = 180}):Play()
+        TweenService:Create(targetStroke, TweenInfo.new(0.25), {Color = Color3.fromRGB(150,150,150)}):Play()
+        TweenService:Create(dropdownList, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, targetHeight),
+            BackgroundTransparency = 0.05,
+            Position = UDim2.new(0, 0, 0, 40)
+        }):Play()
+        TweenService:Create(dropStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
+        AnimatePlayerButtons()
+        task.delay(0.3, function() animating = false end)
+    end
+    local function CloseDropdown(instant)
+        if animating and not instant then return end
+        dropdownOpen = false
+        if instant then
+            dropdownList.Visible = false
+            dropdownList.Size = UDim2.new(1, 0, 0, 0)
+            arrow.Rotation = 0
+            return
+        end
+        animating = true
+        TweenService:Create(arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+        TweenService:Create(targetStroke, TweenInfo.new(0.25), {Color = Color3.fromRGB(50,50,50)}):Play()
+        local tween = TweenService:Create(dropdownList, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Size = UDim2.new(1, 0, 0, 0),
+            BackgroundTransparency = 1
+        })
+        TweenService:Create(dropStroke, TweenInfo.new(0.22), {Transparency = 1}):Play()
+        tween:Play()
+        tween.Completed:Connect(function()
+            dropdownList.Visible = false
+            animating = false
+        end)
+    end
+    local function RefreshPlayerList()
+        for _, c in pairs(dropdownList:GetChildren()) do
+            if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end
+        end
+        local count = 0
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= Player then
+                count = count + 1
+                local btn = Instance.new("TextButton", dropdownList)
+                btn.Size = UDim2.new(1, 0, 0, 32)
+                btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
+                btn.BackgroundTransparency = 1
+                btn.BorderSizePixel = 0
+                btn.Text = ""
+                btn.AutoButtonColor = false
+                btn.ZIndex = 61
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+                local thumb = Instance.new("ImageLabel", btn)
+                thumb.Size = UDim2.new(0, 24, 0, 24)
+                thumb.Position = UDim2.new(0, 6, 0.5, -12)
+                thumb.BackgroundTransparency = 1
+                thumb.Image = "https://www.roblox.com/headshot-thumbnail/image?userId="..plr.UserId.."&width=100&height=100&format=png"
+                thumb.ImageTransparency = 1
+                thumb.ZIndex = 62
+                Instance.new("UICorner", thumb).CornerRadius = UDim.new(0,4)
+                local lbl = Instance.new("TextLabel", btn)
+                lbl.Size = UDim2.new(1, -40, 1, 0)
+                lbl.Position = UDim2.new(0, 36, 0, 0)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = plr.Name .. (plr.DisplayName ~= plr.Name and " ("..plr.DisplayName..")" or "")
+                lbl.Font = Enum.Font.GothamBold
+                lbl.TextSize = 12
+                lbl.TextColor3 = Color3.fromRGB(220,220,220)
+                lbl.TextTransparency = 1
+                lbl.TextXAlignment = Enum.TextXAlignment.Left
+                lbl.ZIndex = 62
+                btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.1}):Play() end)
+                btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.3}):Play() end)
+                btn.MouseButton1Click:Connect(function()
+                    targetBtn.Text = "Target: "..plr.Name
+                    CloseDropdown()
+                    ShowSkinPopup(plr.UserId, plr.Name)
+                end)
+            end
+        end
+        if count == 0 then
+            local empty = Instance.new("TextLabel", dropdownList)
+            empty.Size = UDim2.new(1, 0, 0, 32)
+            empty.BackgroundTransparency = 1
+            empty.Text = "Nenhum player"
+            empty.Font = Enum.Font.GothamBold
+            empty.TextSize = 12
+            empty.TextColor3 = Color3.fromRGB(120,120,120)
+            empty.ZIndex = 61
+        end
+    end
+    targetBtn.MouseButton1Click:Connect(function()
+        if dropdownOpen then CloseDropdown() else RefreshPlayerList() OpenDropdown() end
     end)
-
+    targetBtn.MouseEnter:Connect(function() TweenService:Create(targetStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(100,100,100)}):Play() end)
+    targetBtn.MouseLeave:Connect(function()
+        if not dropdownOpen then TweenService:Create(targetStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50,50,50)}):Play() end
+    end)
+    Players.PlayerAdded:Connect(function()
+        if dropdownOpen then
+            RefreshPlayerList()
+            AnimatePlayerButtons()
+            local qtd = math.min(math.max(#Players:GetPlayers()-1, 1), 5)
+            TweenService:Create(dropdownList, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, qtd * 34 + 8)}):Play()
+        end
+    end)
+    Players.PlayerRemoving:Connect(function()
+        if dropdownOpen then RefreshPlayerList() AnimatePlayerButtons() end
+    end)
+    local function searchUser()
+        if searchBox.Text == "" then return end
+        local success, userId = pcall(function() return Players:GetUserIdFromNameAsync(searchBox.Text) end)
+        if success then ShowSkinPopup(userId, searchBox.Text) else Notify("User not found") end
+    end
+    searchBox.FocusLost:Connect(function(enter) if enter then searchUser() end end)
     searchIcon.MouseButton1Click:Connect(searchUser)
-
+    local function ResetSkin()
+        if getgenv().IsApplyingSkin then return end
+        Notify("Applied: Reset Skin")
+        TweenService:Create(resetBtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.3}):Play()
+        task.delay(0.1, function() TweenService:Create(resetBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0.65}):Play() end)
+        ClearAccessoryStates()
+        getgenv().CurrentSkinUserId = -1
+        targetBtn.Text = "Target Player: Select..."
+        searchBox.Text = ""
+        TransformarSkin(Player.UserId, Player.Name)
+    end
+    resetBtn.MouseButton1Click:Connect(ResetSkin)
+    resetBtn.MouseEnter:Connect(function()
+        TweenService:Create(resetBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0.4}):Play()
+        TweenService:Create(resetStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(100,100,100)}):Play()
+    end)
+    resetBtn.MouseLeave:Connect(function()
+        TweenService:Create(resetBtn, TweenInfo.new(0.15), {BackgroundTransparency = 0.65}):Play()
+        TweenService:Create(resetStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(50,50,50)}):Play()
+    end)
     local skinList = {
+        {name = "KayquezinXD", id = 7445816356},
         {name = "Foxygaimar", id = 534577197},
         {name = "Meshew", id = 471532382},
         {name = "nathanserafas12", id = 1154255704},
@@ -9573,7 +10299,6 @@ do
         {name = "Guime_blox", id = 2633091297},
         {name = "Mwaiconn", id = 3948962607},
     }
-
     for i, skin in ipairs(skinList) do
         local card = Instance.new("TextButton", skinGrid)
         card.BackgroundColor3 = Color3.fromRGB(6,6,6)
@@ -9585,7 +10310,6 @@ do
         card.ClipsDescendants = true
         card.ZIndex = 2
         Instance.new("UICorner", card).CornerRadius = UDim.new(0,6)
-
         local thumb = Instance.new("ImageLabel", card)
         thumb.Size = UDim2.new(0, 32, 0, 32)
         thumb.Position = UDim2.new(0, 8, 0.5, -16)
@@ -9593,7 +10317,6 @@ do
         thumb.Image = "https://www.roblox.com/headshot-thumbnail/image?userId="..skin.id.."&width=150&height=150&format=png"
         thumb.ZIndex = 1
         Instance.new("UICorner", thumb).CornerRadius = UDim.new(0,4)
-
         local nameLabel = Instance.new("TextLabel", card)
         nameLabel.Size = UDim2.new(1, -48, 1, 0)
         nameLabel.Position = UDim2.new(0, 45, 0, 0)
@@ -9606,7 +10329,6 @@ do
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
         nameLabel.TextYAlignment = Enum.TextYAlignment.Center
         nameLabel.ZIndex = 1
-
         card.MouseButton1Click:Connect(function()
             if getgenv().IsApplyingSkin then return end
             TweenService:Create(card, TweenInfo.new(0.05), {BackgroundTransparency = 0.1}):Play()
@@ -9614,13 +10336,8 @@ do
             TweenService:Create(card, TweenInfo.new(0.05), {BackgroundTransparency = 0.3}):Play()
             ShowSkinPopup(skin.id, skin.name)
         end)
-
-        card.MouseEnter:Connect(function()
-            TweenService:Create(card, TweenInfo.new(0.15), {BackgroundTransparency = 0.15}):Play()
-        end)
-        card.MouseLeave:Connect(function()
-            TweenService:Create(card, TweenInfo.new(0.15), {BackgroundTransparency = 0.3}):Play()
-        end)
+        card.MouseEnter:Connect(function() TweenService:Create(card, TweenInfo.new(0.15), {BackgroundTransparency = 0.15}):Play() end)
+        card.MouseLeave:Connect(function() TweenService:Create(card, TweenInfo.new(0.15), {BackgroundTransparency = 0.3}):Play() end)
     end
 end
 
@@ -9933,34 +10650,35 @@ do
     if not isfolder("FTF_Eclipse") then makefolder("FTF_Eclipse") end
 
     local backgrounds = {
-        {"Style 1", "96152990832798"},
-        {"Style 2", "92787928900360"},
-        {"Style 3", "109143338870022"},
-        {"Style 4", "78186972924904"},
-        {"Style 5", "105066440016571"},
-        {"Style 6", "110215769551010"},
-        {"Style 7", "115541469321190"},
-        {"Style 8", "97984932480755"},
-        {"Style 9", "86192845180549"},
-        {"Style 10", "85784609294289"},
-        {"Style 11", "140636010520663"},
-        {"Style 12", "124240486073107"},
-        {"Style 13", "85635291549219"},
-        {"Style 14", "117512819334968"},
-        {"Style 15", "111750153717391"},
-        {"Style 16", "98791036867631"},
-        {"Style 17", "131737959610359"},
-        {"Style 18", "81997082602790"},
-        {"Style 19", "117151748213203"},
-        {"Style 20", "112483283923855"},
-        {"Style 21", "109490272700736"},
-        {"Style 22", "125661929366351"},
-        {"Style 23", "74184537251110"},
-        {"Style 24", "124786302962772"},
-        {"Style 25", "125474858681812"},
-        {"Style 26", "99142368271124"},
-        {"Style 27", "94865353552525"},
-        {"Style 28", "120484401704545"},
+        {"Style 1", "103432456204846"},
+        {"Style 2", "96152990832798"},
+        {"Style 3", "92787928900360"},
+        {"Style 4", "109143338870022"},
+        {"Style 5", "78186972924904"},
+        {"Style 6", "105066440016571"},
+        {"Style 7", "110215769551010"},
+        {"Style 8", "115541469321190"},
+        {"Style 9", "97984932480755"},
+        {"Style 10", "86192845180549"},
+        {"Style 11", "85784609294289"},
+        {"Style 12", "140636010520663"},
+        {"Style 13", "124240486073107"},
+        {"Style 14", "85635291549219"},
+        {"Style 15", "117512819334968"},
+        {"Style 16", "111750153717391"},
+        {"Style 17", "98791036867631"},
+        {"Style 18", "131737959610359"},
+        {"Style 19", "81997082602790"},
+        {"Style 20", "117151748213203"},
+        {"Style 21", "112483283923855"},
+        {"Style 22", "109490272700736"},
+        {"Style 23", "125661929366351"},
+        {"Style 24", "74184537251110"},
+        {"Style 25", "124786302962772"},
+        {"Style 26", "125474858681812"},
+        {"Style 27", "99142368271124"},
+        {"Style 28", "94865353552525"},
+        {"Style 29", "120484401704545"},
     }
 
     getgenv().BackgroundLocked = getgenv().BackgroundLocked or false
@@ -10385,7 +11103,7 @@ do
             local ok, col = pcall(function() return Color3.fromHex(hex) end)
             if ok and col then
                 ApplyShineColor(col)
-                Notify("FTF Eclipse V3.0", "Shine color aplicado!", 3)
+                Notify("FTF Eclipse V3.1", "Shine color applied!", 3)
             end
         end
     end)
@@ -11237,7 +11955,7 @@ local Translation = {
 		ShowPing = "Show Ping",
 		ShowCPU = "Show CPU",
 		TextBoxLabel = "TextBox",
-		ThanksFooter = "FTF Eclipse V3.0 Mobile | Thank you for using FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.1 Mobile | Thank you for using FTF Eclipse.",
 		SaveSystem = "Save System",
 		Config = "Config",
 		ConfigName = "Config name",
@@ -11272,7 +11990,30 @@ local Translation = {
 		Back = "Back", Next = "Next", Done = "Done", Save = "Save", Reset = "Reset",
 		Enable = "Enable", Disable = "Disable", Open = "Open",
 		Copy = "Copy", Paste = "Paste", Edit = "Edit",
-		SaveSystem = "Save System",
+		BundleChanger = "Bundle Changer",
+		AccessoriesChanger = "Accessories Changer",
+		BundleIDPlaceholder = "Bundle ID (Ex: 201)...",
+		AccessoryIDPlaceholder = "Asset/Accessory ID...",
+		TargetPlayerSelect = "Target Player: Select...",
+		TargetPlayer = "Target: ",
+		ResetSkinCharacter = "Reset Skin Character",
+		SkinFound = "SKIN FOUND",
+		ApplySkin = "Apply Skin",
+		UserNotFound = "User not found",
+		Applying = "Applying: ",
+		Applied = "Applied: ",
+		FailedLoadBundle = "Failed to load bundle",
+		BundleNoOutfit = "Bundle has no outfit",
+		FailedLoadLeg = "Failed to load leg",
+		LegNotFound = "Leg not found",
+		Removed = "Removed: ",
+		FailedLoadItem = "Failed to load item ID: ",
+		AccessoryEquipped = "Accessory Equipped!",
+		ToolEquipped = "Tool Equipped!",
+		InvalidBundleID = "Enter a valid Bundle ID.",
+		InvalidAssetID = "Enter a valid Asset ID.",
+		FailedApplySkin = "Failed to apply skin",
+		NoPlayer = "No player",
 	},
 	PT = {
 		Search = "Pesquisar...",
@@ -11450,8 +12191,8 @@ local Translation = {
 		ShowPing = "Mostrar Ping",
 		ShowCPU = "Mostrar CPU",
 		TextBoxLabel = "Caixa de Texto",
-		ThanksFooter = "FTF Eclipse V3.0 Mobile | Obrigado por usar FTF Eclipse.",
-		SaveSystem = "Save System",
+		ThanksFooter = "FTF Eclipse V3.1 Mobile | Obrigado por usar FTF Eclipse.",
+		SaveSystem = "Sistema de Save",
 		Config = "Config",
 		ConfigName = "Nome da config",
 		NoConfigSaved = "Nenhuma config salva",
@@ -11485,7 +12226,30 @@ local Translation = {
 		Back = "Voltar", Next = "Próximo", Done = "Pronto", Save = "Salvar", Reset = "Resetar",
 		Enable = "Ativar", Disable = "Desativar", Open = "Abrir",
 		Copy = "Copiar", Paste = "Colar", Edit = "Editar",
-		SaveSystem = "Sistema de Save",
+		BundleChanger = "Trocador de Bundle",
+		AccessoriesChanger = "Trocador de Acessórios",
+		BundleIDPlaceholder = "ID do Bundle (Ex: 201)...",
+		AccessoryIDPlaceholder = "ID do Asset/Acessório...",
+		TargetPlayerSelect = "Jogador Alvo: Selecionar...",
+		TargetPlayer = "Alvo: ",
+		ResetSkinCharacter = "Resetar Skin do Personagem",
+		SkinFound = "SKIN ENCONTRADA",
+		ApplySkin = "Aplicar Skin",
+		UserNotFound = "Usuário não encontrado",
+		Applying = "Aplicando: ",
+		Applied = "Aplicado: ",
+		FailedLoadBundle = "Falha ao carregar bundle",
+		BundleNoOutfit = "Bundle sem outfit",
+		FailedLoadLeg = "Falha ao carregar perna",
+		LegNotFound = "Perna não encontrada",
+		Removed = "Removido: ",
+		FailedLoadItem = "Falha ao carregar item ID: ",
+		AccessoryEquipped = "Acessório Equipado!",
+		ToolEquipped = "Ferramenta Equipada!",
+		InvalidBundleID = "Insira um ID de Bundle válido.",
+		InvalidAssetID = "Insira um ID de Ativo válido.",
+		FailedApplySkin = "Falha ao aplicar skin",
+		NoPlayer = "Nenhum player",
 	}
 }
 
@@ -11697,8 +12461,8 @@ local TextToKey = {
 	["Show Ping"] = "ShowPing", ["Mostrar Ping"] = "ShowPing",
 	["Show CPU"] = "ShowCPU", ["Mostrar CPU"] = "ShowCPU",
 	["TextBox"] = "TextBoxLabel", ["Caixa de Texto"] = "TextBoxLabel",
-	["FTF Eclipse V3.0 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
-	["FTF Eclipse V3.0 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.1 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.1 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
 	["Save System"] = "SaveSystem",
 	["Save / Load"] = "SaveSystem",
 	["Config"] = "Config",
@@ -11732,6 +12496,31 @@ local TextToKey = {
 	["Copy"] = "Copy", ["Copiar"] = "Copy",
 	["Paste"] = "Paste", ["Colar"] = "Paste",
 	["Edit"] = "Edit", ["Editar"] = "Edit",
+	-- Skin Changer / Bundle / Accessories - AGORA VAI
+	["Bundle Changer"] = "BundleChanger", ["Trocador de Bundle"] = "BundleChanger",
+	["Accessories Changer"] = "AccessoriesChanger", ["Trocador de Acessórios"] = "AccessoriesChanger",
+	["Bundle ID (Ex: 201)..."] = "BundleIDPlaceholder", ["ID do Bundle (Ex: 201)..."] = "BundleIDPlaceholder",
+	["Asset/Accessory ID..."] = "AccessoryIDPlaceholder", ["ID do Asset/Acessório..."] = "AccessoryIDPlaceholder",
+	["Target Player: Select..."] = "TargetPlayerSelect", ["Jogador Alvo: Selecionar..."] = "TargetPlayerSelect",
+	["Target: "] = "TargetPlayer", ["Alvo: "] = "TargetPlayer",
+	["Reset Skin Character"] = "ResetSkinCharacter", ["Resetar Skin do Personagem"] = "ResetSkinCharacter",
+	["SKIN FOUND"] = "SkinFound", ["SKIN ENCONTRADA"] = "SkinFound",
+	["Apply Skin"] = "ApplySkin", ["Aplicar Skin"] = "ApplySkin",
+	["User not found"] = "UserNotFound", ["Usuário não encontrado"] = "UserNotFound",
+	["Applying: "] = "Applying", ["Aplicando: "] = "Applying",
+	["Applied: "] = "Applied", ["Aplicado: "] = "Applied",
+	["Failed to load bundle"] = "FailedLoadBundle", ["Falha ao carregar bundle"] = "FailedLoadBundle",
+	["Bundle has no outfit"] = "BundleNoOutfit", ["Bundle sem outfit"] = "BundleNoOutfit",
+	["Failed to load leg"] = "FailedLoadLeg", ["Falha ao carregar perna"] = "FailedLoadLeg",
+	["Leg not found"] = "LegNotFound", ["Perna não encontrada"] = "LegNotFound",
+	["Removed: "] = "Removed", ["Removido: "] = "Removed",
+	["Failed to load item ID: "] = "FailedLoadItem", ["Falha ao carregar item ID: "] = "FailedLoadItem",
+	["Accessory Equipped!"] = "AccessoryEquipped", ["Acessório Equipado!"] = "AccessoryEquipped",
+	["Tool Equipped!"] = "ToolEquipped", ["Ferramenta Equipada!"] = "ToolEquipped",
+	["Enter a valid Bundle ID."] = "InvalidBundleID", ["Insira um ID de Bundle válido."] = "InvalidBundleID",
+	["Enter a valid Asset ID."] = "InvalidAssetID", ["Insira um ID de Ativo válido."] = "InvalidAssetID",
+	["Failed to apply skin"] = "FailedApplySkin", ["Falha ao aplicar skin"] = "FailedApplySkin",
+	["No player"] = "NoPlayer", ["Nenhum player"] = "NoPlayer",
 }
 
 local function T(key)
