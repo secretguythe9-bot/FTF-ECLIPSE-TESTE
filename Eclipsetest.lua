@@ -8973,6 +8973,7 @@ task.spawn(function()
 
     local extrasCat, extrasContent = CreateGroupbox(leftColH, "Extras Jumps")
     extrasCat.LayoutOrder = 5
+    CreateSoundButton(extrasContent, "Yusei Jump", "Jump", "119519595212440")
     CreateSoundButton(extrasContent, "Pew Jump", "Jump", "136299701781122")
     CreateSoundButton(extrasContent, "Sharingan Jump", "Jump", "118102230060662")
     CreateSoundButton(extrasContent, "Bubble Jump", "Jump", "129415490412106")
@@ -9237,6 +9238,17 @@ task.spawn(function()
     CreateSoundButton(fkpsContent, "FootSteps", "Footsteps", "97733831736820")
     CreateSoundButton(fkpsContent, "Jump", "Jump", "86031664547378")
     CreateSoundButton(fkpsContent, "Fall", "Fall", "78180192109919")
+    
+    local michaCat, michaContent = CreateGroupbox(rightColH, "Michael")
+    michaCat.LayoutOrder = 4
+    CreateSoundButton(michaContent, "FootSteps", "Footsteps", "116140177933689")
+    CreateSoundButton(michaContent, "Jump", "Jump", "70420181848348")
+    
+    local drakCat, drakContent = CreateGroupbox(rightColH, "DraxynSoulx")
+    drakCat.LayoutOrder = 4
+    CreateSoundButton(drakContent, "FootSteps", "Footsteps", "130152479167305")
+    CreateSoundButton(drakContent, "Jump", "Jump", "122238807601932")
+    CreateSoundButton(drakContent, "Fall", "Fall", "71782790555091")
 
     getgenv().Eclipse_ApplySounds = function()
         local ns = getgenv().FTF_Sounds
