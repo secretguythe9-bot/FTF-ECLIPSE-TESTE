@@ -181,7 +181,7 @@ title.Size = UDim2.new(0, 200, 1, 0)
 title.Position = UDim2.new(0, 46, 0, 0)
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "Eclipse V3.1"
+title.Text = "Eclipse V3.2"
 title.TextSize = 16
 title.Font = Enum.Font.GothamBold
 title.TextColor3 = Color3.fromRGB(140, 140, 140)
@@ -402,7 +402,7 @@ end
 
 task.spawn(function()
     task.wait(2)
-    Notify("FTF Eclipse V3.1", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
+    Notify("FTF Eclipse V3.2", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
 end)
 
 local CROSSHAIR_SIZE = 26
@@ -513,7 +513,7 @@ local versionText = Instance.new("TextLabel", bottomBar)
 versionText.Size = UDim2.new(0.5, -10, 1, 0)
 versionText.Position = UDim2.new(0.5, 0, 0, 0)
 versionText.BackgroundTransparency = 1
-versionText.Text = "FTF Eclipse V3.1 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
+versionText.Text = "FTF Eclipse V3.2 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
 versionText.Font = Enum.Font.GothamBold
 versionText.TextSize = 10
 versionText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -7205,7 +7205,6 @@ do
         return groupbox, content
     end
 
-    -- ===== TEU TOGGLE EXATO =====
     local function CreateToggle(parent, text, default, callback)
         local key = "Toggle_" .. text:gsub("[^%w_]", "_")
         if getgenv().Eclipse_ToggleRegistry == nil then getgenv().Eclipse_ToggleRegistry = {} end
@@ -7306,13 +7305,13 @@ do
         label.BackgroundTransparency = 1
         label.Text = text .. ": " .. tostring(math.floor(default * 10) / 10)
         label.Font = Enum.Font.Gotham
-        label.TextSize = 11 -- era 12
+        label.TextSize = 11
         label.TextColor3 = Color3.fromRGB(255, 255, 255)
         label.TextXAlignment = Enum.TextXAlignment.Left
 
         local barBg = Instance.new("Frame", frame)
-        barBg.Size = UDim2.new(1, 0, 0, 6) -- era 8
-        barBg.Position = UDim2.new(0, 0, 0, 20) -- era 24
+        barBg.Size = UDim2.new(1, 0, 0, 6)
+        barBg.Position = UDim2.new(0, 0, 0, 20)
         barBg.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
 
@@ -7353,10 +7352,16 @@ do
     if getgenv().Eclipse_JumpLoop then pcall(function() task.cancel(getgenv().Eclipse_JumpLoop) end) getgenv().Eclipse_JumpLoop = nil end
     getgenv().Eclipse_JumpOriginals = getgenv().Eclipse_JumpOriginals or {}
     local originals = getgenv().Eclipse_JumpOriginals
+    local originalsByInstance = setmetatable({}, { __mode = "k" })
     local function GetOriginal(key, btn)
         if not btn then return nil, nil end
-        local o = originals[key]
-        if not o then o = { Pos = btn.Position, Size = btn.Size } originals[key] = o end
+        if key ~= "Thumbstick" then
+            local o = originals[key]
+            if not o then o = { Pos = btn.Position, Size = btn.Size } originals[key] = o end
+            return o.Pos, o.Size
+        end
+        local o = originalsByInstance[btn]
+        if not o then o = { Pos = btn.Position, Size = btn.Size } originalsByInstance[btn] = o end
         return o.Pos, o.Size
     end
     local function GetTouchFrame()
@@ -7378,14 +7383,38 @@ do
     local ThumbstickSliders = {}
 
     local function ScaleSize(s, scale) return UDim2.new(s.X.Scale * scale, s.X.Offset * scale, s.Y.Scale * scale, s.Y.Offset * scale) end
-    local function ApplyThumbstick()
-        local t = GetThumbstick() if not t then return end
-        local orig = GetOriginal("Thumbstick", t) if not orig then return end
+
+    local thumbstickAppliedTo = nil
+    local function ApplyThumbstick(forceRestore)
+        local t = GetThumbstick()
+        if not t then return end
+        if not ThumbstickEnabled and not forceRestore then return end
+        local orig = GetOriginal("Thumbstick", t)
+        if not orig then return end
         pcall(function()
-            if ThumbstickEnabled then t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
-            else t.Position = orig end
+            if ThumbstickEnabled then
+                if thumbstickAppliedTo == t and not forceRestore then
+                    return
+                end
+                t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
+                thumbstickAppliedTo = t
+            else
+                t.Position = orig
+                thumbstickAppliedTo = nil
+            end
         end)
     end
+    local function ApplyThumbstickFromSlider()
+        local t = GetThumbstick()
+        if not t or not ThumbstickEnabled then return end
+        local orig = GetOriginal("Thumbstick", t)
+        if not orig then return end
+        pcall(function()
+            t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
+            thumbstickAppliedTo = t
+        end)
+    end
+
     local function ApplyJump()
         local b = GetJumpButton() if not b then return end
         local orig, osize = GetOriginal("JumpButton", b) if not orig then return end
@@ -7400,11 +7429,16 @@ do
     local boxClassic, contentClassic = CreateGroupbox(leftColH, "Analog")
     boxClassic.LayoutOrder = 3
     CreateToggle(contentClassic, "Enable Analog", ThumbstickEnabled, function(state)
-        ThumbstickEnabled = state SaveData.ThumbstickEnabled = state DoSave() ApplyThumbstick()
+        ThumbstickEnabled = state SaveData.ThumbstickEnabled = state DoSave()
+        if state then
+            ApplyThumbstick(true)
+        else
+            ApplyThumbstick(true)
+        end
         AnimateSliders(ThumbstickSliders, state)
     end)
-    ThumbstickSliders.X = CreateSlider(contentClassic, "Thumbstick X", -100, 100, ThumbstickX, function(v) ThumbstickX = v SaveData.ThumbstickX = v DoSave() if ThumbstickEnabled then ApplyThumbstick() end end)
-    ThumbstickSliders.Y = CreateSlider(contentClassic, "Thumbstick Y", -100, 100, ThumbstickY, function(v) ThumbstickY = v SaveData.ThumbstickY = v DoSave() if ThumbstickEnabled then ApplyThumbstick() end end)
+    ThumbstickSliders.X = CreateSlider(contentClassic, "Thumbstick X", -100, 100, ThumbstickX, function(v) ThumbstickX = v SaveData.ThumbstickX = v DoSave() if ThumbstickEnabled then ApplyThumbstickFromSlider() end end)
+    ThumbstickSliders.Y = CreateSlider(contentClassic, "Thumbstick Y", -100, 100, ThumbstickY, function(v) ThumbstickY = v SaveData.ThumbstickY = v DoSave() if ThumbstickEnabled then ApplyThumbstickFromSlider() end end)
     for _, s in pairs(ThumbstickSliders) do if s then s.Visible = ThumbstickEnabled if not ThumbstickEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
 
     local boxJump, contentJump = CreateGroupbox(leftColH, "Jump")
@@ -7466,15 +7500,27 @@ do
     CSliders.Size = CreateSlider(contentC, "C Size", 20, 80, CSize, function(v) CSize = v SaveData.CSize = v DoSave() if CEnabled then ApplyCButton() end end)
     for _, s in pairs(CSliders) do if s then s.Visible = CEnabled if not CEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
 
-    local function ApplyAll() ApplyJump() ApplyThumbstick() ApplyEButton() ApplyCButton() end
+    local function ApplyAll() ApplyJump() ApplyEButton() ApplyCButton() end
     getgenv().Eclipse_JumpLoop = task.spawn(function() task.wait(2) ApplyAll() while true do task.wait(1) ApplyAll() end end)
     if getgenv().Eclipse_JumpConn then pcall(function() getgenv().Eclipse_JumpConn:Disconnect() end) end
     if getgenv().Eclipse_JumpConn2 then pcall(function() getgenv().Eclipse_JumpConn2:Disconnect() end) end
     pcall(function()
         getgenv().Eclipse_JumpConn = player.PlayerGui.ChildAdded:Connect(function(child)
-            if child.Name == "TouchGui" or child.Name == "ContextActionGui" then task.wait(0.5) ApplyAll() task.wait(0.5) ApplyAll() end
+            if child.Name == "TouchGui" then
+                task.wait(1)
+                thumbstickAppliedTo = nil
+                if ThumbstickEnabled then ApplyThumbstick(true) end
+                task.wait(0.5) ApplyAll()
+            elseif child.Name == "ContextActionGui" then
+                task.wait(0.5) ApplyAll() task.wait(0.5) ApplyAll()
+            end
         end)
-        getgenv().Eclipse_JumpConn2 = player.CharacterAdded:Connect(function() task.wait(1) ApplyAll() task.wait(1) ApplyAll() end)
+        getgenv().Eclipse_JumpConn2 = player.CharacterAdded:Connect(function()
+            task.wait(1)
+            thumbstickAppliedTo = nil
+            if ThumbstickEnabled then ApplyThumbstick(true) end
+            task.wait(1) ApplyAll()
+        end)
     end)
 end
 
@@ -10650,35 +10696,36 @@ do
     if not isfolder("FTF_Eclipse") then makefolder("FTF_Eclipse") end
 
     local backgrounds = {
-        {"Style 1", "103432456204846"},
-        {"Style 2", "96152990832798"},
-        {"Style 3", "92787928900360"},
-        {"Style 4", "109143338870022"},
-        {"Style 5", "78186972924904"},
-        {"Style 6", "105066440016571"},
-        {"Style 7", "110215769551010"},
-        {"Style 8", "115541469321190"},
-        {"Style 9", "97984932480755"},
-        {"Style 10", "86192845180549"},
-        {"Style 11", "85784609294289"},
-        {"Style 12", "140636010520663"},
-        {"Style 13", "124240486073107"},
-        {"Style 14", "85635291549219"},
-        {"Style 15", "117512819334968"},
-        {"Style 16", "111750153717391"},
-        {"Style 17", "98791036867631"},
-        {"Style 18", "131737959610359"},
-        {"Style 19", "81997082602790"},
-        {"Style 20", "117151748213203"},
-        {"Style 21", "112483283923855"},
-        {"Style 22", "109490272700736"},
-        {"Style 23", "125661929366351"},
-        {"Style 24", "74184537251110"},
-        {"Style 25", "124786302962772"},
-        {"Style 26", "125474858681812"},
-        {"Style 27", "99142368271124"},
-        {"Style 28", "94865353552525"},
-        {"Style 29", "120484401704545"},
+        {"Style 1", "130108633476177"},
+        {"Style 2", "103432456204846"},
+        {"Style 3", "96152990832798"},
+        {"Style 4", "92787928900360"},
+        {"Style 5", "109143338870022"},
+        {"Style 6", "78186972924904"},
+        {"Style 7", "105066440016571"},
+        {"Style 8", "110215769551010"},
+        {"Style 9", "115541469321190"},
+        {"Style 10", "97984932480755"},
+        {"Style 11", "86192845180549"},
+        {"Style 12", "85784609294289"},
+        {"Style 13", "140636010520663"},
+        {"Style 14", "124240486073107"},
+        {"Style 15", "85635291549219"},
+        {"Style 16", "117512819334968"},
+        {"Style 17", "111750153717391"},
+        {"Style 18", "98791036867631"},
+        {"Style 19", "131737959610359"},
+        {"Style 20", "81997082602790"},
+        {"Style 21", "117151748213203"},
+        {"Style 22", "112483283923855"},
+        {"Style 23", "109490272700736"},
+        {"Style 24", "125661929366351"},
+        {"Style 25", "74184537251110"},
+        {"Style 26", "124786302962772"},
+        {"Style 27", "125474858681812"},
+        {"Style 28", "99142368271124"},
+        {"Style 29", "94865353552525"},
+        {"Style 30", "120484401704545"},
     }
 
     getgenv().BackgroundLocked = getgenv().BackgroundLocked or false
@@ -11103,7 +11150,7 @@ do
             local ok, col = pcall(function() return Color3.fromHex(hex) end)
             if ok and col then
                 ApplyShineColor(col)
-                Notify("FTF Eclipse V3.1", "Shine color applied!", 3)
+                Notify("FTF Eclipse V3.2", "Shine color applied!", 3)
             end
         end
     end)
@@ -11292,7 +11339,11 @@ end
 
 local boxSave, contentSave = CreateGroupbox(container, "Save System")
 
-if not isfolder("FTF_Eclipse/configs") then makefolder("FTF_Eclipse/configs") end
+local HttpService = game:GetService("HttpService")
+
+pcall(function()
+    if isfolder and not isfolder("FTF_Eclipse/configs") then makefolder("FTF_Eclipse/configs") end
+end)
 
 local saveLayout = contentSave:FindFirstChildOfClass("UIListLayout")
 if not saveLayout then saveLayout = Instance.new("UIListLayout", contentSave) end
@@ -11303,56 +11354,70 @@ saveLayout.Padding = UDim.new(0, 6)
 local SelectedConfig = nil
 local ConfigList = {}
 
-local function EncodeValue(v)
-    if typeof(v) == "Color3" then
-        return {__type = "Color3", R = v.R, G = v.G, B = v.B}
-    elseif type(v) == "table" then
-        local t = {}
-        for k2, v2 in pairs(v) do
-            t[k2] = EncodeValue(v2)
-        end
-        return t
-    else
+local function SanitizeName(name)
+    if not name then return "" end
+    name = tostring(name):gsub("^%s+", ""):gsub("%s+$", "")
+    name = name:gsub("[^%w%-%_ ]", "")
+    name = name:gsub("%s+", " ")
+    name = name:gsub("^%s+", ""):gsub("%s+$", "")
+    return name
+end
+
+local function SafeEncode(v, seen)
+    local t = typeof(v)
+    if t == "boolean" or t == "string" then
         return v
+    elseif t == "number" then
+        if v ~= v or v == math.huge or v == -math.huge then return 0 end
+        return v
+    elseif t == "Color3" then
+        return { __type = "Color3", R = v.R, G = v.G, B = v.B }
+    elseif t == "table" then
+        seen = seen or {}
+        if seen[v] then return nil end
+        seen[v] = true
+        local out = {}
+        for k2, v2 in pairs(v) do
+            if type(k2) == "string" or type(k2) == "number" then
+                local enc = SafeEncode(v2, seen)
+                if enc ~= nil then out[k2] = enc end
+            end
+        end
+        seen[v] = nil
+        return out
+    else
+        return nil
     end
+end
+
+local function SafeJSONEncode(data)
+    local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
+    if not ok or not json then return nil end
+    local ok2 = pcall(function() HttpService:JSONDecode(json) end)
+    if not ok2 then return nil end
+    return json
 end
 
 local function GatherAll()
     local data = {}
     for k, v in pairs(getgenv()) do
         local t = typeof(v)
-        if t == "boolean" or t == "number" or t == "string" then
-            if k ~= "BackgroundLocked" then data[k] = v end
-        elseif t == "Color3" then
-            data[k] = {__type = "Color3", R = v.R, G = v.G, B = v.B}
-        end
-    end
-    if getgenv().FTF_Sounds then
-        data.FTF_Sounds = EncodeValue(getgenv().FTF_Sounds)
-    end
-    if getgenv().FTF_Shaders then
-        data.FTF_Shaders = EncodeValue(getgenv().FTF_Shaders)
-    end
-    if getgenv().FTF_Calibration then
-        data.FTF_Calibration = EncodeValue(getgenv().FTF_Calibration)
-    end
-    if getgenv().FTF_Textures then
-        local texCopy = {}
-        for k, v in pairs(getgenv().FTF_Textures) do
-            if typeof(v) ~= "Instance" then
-                texCopy[k] = v
+        if t == "boolean" or t == "number" or t == "string" or t == "Color3" then
+            if k ~= "BackgroundLocked" then
+                local enc = SafeEncode(v)
+                if enc ~= nil then data[k] = enc end
             end
         end
-        data.FTF_Textures = EncodeValue(texCopy)
     end
-    if getgenv().FTF_JumpSkinID then
-        data.FTF_JumpSkinID = getgenv().FTF_JumpSkinID
-    end
-    if getgenv().Eclipse_JumpData then
-        data.Eclipse_JumpData = getgenv().Eclipse_JumpData
-    end
+    if getgenv().FTF_Sounds then data.FTF_Sounds = SafeEncode(getgenv().FTF_Sounds) end
+    if getgenv().FTF_Shaders then data.FTF_Shaders = SafeEncode(getgenv().FTF_Shaders) end
+    if getgenv().FTF_Calibration then data.FTF_Calibration = SafeEncode(getgenv().FTF_Calibration) end
+    if getgenv().FTF_Textures then data.FTF_Textures = SafeEncode(getgenv().FTF_Textures) end
+    if getgenv().FTF_JumpSkinID then data.FTF_JumpSkinID = getgenv().FTF_JumpSkinID end
     if getgenv().Eclipse_JumpSave then
-        data.Eclipse_JumpData = getgenv().Eclipse_JumpSave
+        data.Eclipse_JumpData = SafeEncode(getgenv().Eclipse_JumpSave)
+    elseif getgenv().Eclipse_JumpData then
+        data.Eclipse_JumpData = SafeEncode(getgenv().Eclipse_JumpData)
     end
     data.TouchScreen = getgenv().TouchScreen
     data.ShowFPS = getgenv().ShowFPS
@@ -11377,15 +11442,28 @@ local function DecodeValue(v)
     return v
 end
 
+local function WriteConfig(name, data)
+    local json = SafeJSONEncode(data)
+    if not json then return false, "encode" end
+    local path = "FTF_Eclipse/configs/"..name..".json"
+    local ok = pcall(function() writefile(path, json) end)
+    if not ok then return false, "writefile" end
+    local ok2 = pcall(function()
+        if not isfile or not isfile(path) then error("no file") end
+        local back = HttpService:JSONDecode(readfile(path))
+        if type(back) ~= "table" then error("bad json") end
+    end)
+    if not ok2 then return false, "verify" end
+    return true
+end
+
 local function ApplyAllLoaded(data)
     if not data then return end
-
     for k, v in pairs(data) do
         if k ~= "Eclipse_JumpData" then
             getgenv()[k] = DecodeValue(v)
         end
     end
-
     if data.Eclipse_JumpData and typeof(data.Eclipse_JumpData) == "table" then
         getgenv().Eclipse_JumpData = data.Eclipse_JumpData
         getgenv().Eclipse_JumpSave = data.Eclipse_JumpData
@@ -11399,7 +11477,6 @@ local function ApplyAllLoaded(data)
             end)
         end
     end
-
     if getgenv().Eclipse_ToggleRegistry then
         for key, setState in pairs(getgenv().Eclipse_ToggleRegistry) do
             task.spawn(function()
@@ -11410,50 +11487,24 @@ local function ApplyAllLoaded(data)
             end)
         end
     end
-
-    if getgenv().Eclipse_ApplyFog then
-        task.spawn(function()
-            task.wait(0.4)
-            pcall(getgenv().Eclipse_ApplyFog)
-        end)
-    end
-    if getgenv().Eclipse_ApplySounds then
-        task.spawn(function()
-            task.wait(0.4)
-            pcall(getgenv().Eclipse_ApplySounds)
-        end)
-    end
-    if getgenv().Eclipse_ApplyShaders then
-        task.spawn(function()
-            task.wait(0.4)
-            pcall(getgenv().Eclipse_ApplyShaders)
-        end)
-    end
-    if getgenv().Eclipse_ApplyCalibration then
-        task.spawn(function()
-            task.wait(0.4)
-            pcall(getgenv().Eclipse_ApplyCalibration)
-        end)
-    end
-    if getgenv().Eclipse_ApplyTextures then
-        task.spawn(function()
-            task.wait(0.5)
-            pcall(getgenv().Eclipse_ApplyTextures)
-        end)
-    end
-
+    if getgenv().Eclipse_ApplyFog then task.spawn(function() task.wait(0.4) pcall(getgenv().Eclipse_ApplyFog) end) end
+    if getgenv().Eclipse_ApplySounds then task.spawn(function() task.wait(0.4) pcall(getgenv().Eclipse_ApplySounds) end) end
+    if getgenv().Eclipse_ApplyShaders then task.spawn(function() task.wait(0.4) pcall(getgenv().Eclipse_ApplyShaders) end) end
+    if getgenv().Eclipse_ApplyCalibration then task.spawn(function() task.wait(0.4) pcall(getgenv().Eclipse_ApplyCalibration) end) end
+    if getgenv().Eclipse_ApplyTextures then task.spawn(function() task.wait(0.5) pcall(getgenv().Eclipse_ApplyTextures) end) end
     pcall(function() if CrosshairLayer then CrosshairLayer.Visible = getgenv().TouchScreen end end)
     pcall(function() if getgenv().CustomBackgroundID then UpdateBackground(getgenv().CustomBackgroundID, true) end end)
     pcall(function() if getgenv().UIFont then ApplyFont(Enum.Font[getgenv().UIFont] or Enum.Font.Gotham) end end)
     if getgenv().OnConfigLoaded then pcall(getgenv().OnConfigLoaded, data) end
-    SaveConfig()
+    if SaveConfig then pcall(SaveConfig) end
 end
 
 local function GetConfigFiles()
     local list = {}
     pcall(function()
+        if not listfiles then return end
         for _, path in ipairs(listfiles("FTF_Eclipse/configs")) do
-            local name = path:match("([^/\\]+)%.json$")
+            local name = tostring(path):match("([^/\\]+)%.json$")
             if name then table.insert(list, name) end
         end
     end)
@@ -11608,7 +11659,6 @@ local function ShowConfirm(title, desc, confirmText, onConfirm, showInput, defau
     d.BackgroundTransparency = 1 d.Text = desc d.Font = CurrentFont d.TextSize = 13
     d.TextColor3 = Color3.fromRGB(180, 180, 180) d.TextXAlignment = Enum.TextXAlignment.Left
     d.TextYAlignment = Enum.TextYAlignment.Top d.TextWrapped = true
-
     local inputBox
     if showInput then
         local holder = Instance.new("Frame", popup)
@@ -11626,7 +11676,6 @@ local function ShowConfirm(title, desc, confirmText, onConfirm, showInput, defau
         inputBox.TextXAlignment = Enum.TextXAlignment.Center
         inputBox.ClearTextOnFocus = false
     end
-
     local cancel = Instance.new("TextButton", popup)
     cancel.Size = UDim2.new(0, 140, 0, 38) cancel.Position = UDim2.new(0.5, -145, 1, -50)
     cancel.BackgroundColor3 = Color3.fromRGB(20, 20, 20) cancel.Text = "Cancel"
@@ -11641,7 +11690,7 @@ local function ShowConfirm(title, desc, confirmText, onConfirm, showInput, defau
     Instance.new("UICorner", confirm).CornerRadius = UDim.new(0, 8)
     cancel.MouseButton1Click:Connect(function() popup:Destroy() end)
     confirm.MouseButton1Click:Connect(function()
-        local newName = inputBox and inputBox.Text:gsub("^%s+", ""):gsub("%s+$", "") or nil
+        local newName = inputBox and SanitizeName(inputBox.Text) or nil
         popup:Destroy()
         if onConfirm then onConfirm(newName) end
     end)
@@ -11689,10 +11738,14 @@ local btnOver = CreateSaveButton(row2, "Overwrite config", UDim2.new(0.5, -3, 1,
 local btnDel = CreateSaveButton(row2, "Delete config", UDim2.new(0.5, -3, 1, 0))
 
 btnCreate.MouseButton1Click:Connect(function()
-    local name = nameBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
+    local name = SanitizeName(nameBox.Text)
     if name == "" then pcall(function() Notify("Save System", "Escreva um nome primeiro!", 3) end) return end
-    if isfile("FTF_Eclipse/configs/"..name..".json") then pcall(function() Notify("Save System", "Já existe! Use Overwrite.", 3) end) return end
-    pcall(function() writefile("FTF_Eclipse/configs/"..name..".json", HttpService:JSONEncode(GatherAll())) end)
+    if isfile and isfile("FTF_Eclipse/configs/"..name..".json") then pcall(function() Notify("Save System", "Já existe! Use Overwrite.", 3) end) return end
+    local ok, err = WriteConfig(name, GatherAll())
+    if not ok then
+        pcall(function() Notify("Save System", "Falha ao salvar! ("..tostring(err)..")", 3) end)
+        return
+    end
     SelectedConfig = name
     dropLabel.Text = "Config: "..name
     nameBox.Text = ""
@@ -11704,7 +11757,8 @@ btnLoad.MouseButton1Click:Connect(function()
     if not SelectedConfig then pcall(function() Notify("Save System", "Selecione uma config no dropdown!", 3) end) return end
     ShowConfirm("Load config", 'Are you sure you want to load "'..SelectedConfig..'"? Your current settings will be overwritten.', "Load", function()
         local ok, data = pcall(function() return HttpService:JSONDecode(readfile("FTF_Eclipse/configs/"..SelectedConfig..".json")) end)
-        if ok and data then ApplyAllLoaded(data) pcall(function() Notify("Save System", "Config '"..SelectedConfig.."' carregada!", 3) end) end
+        if ok and data then ApplyAllLoaded(data) pcall(function() Notify("Save System", "Config '"..SelectedConfig.."' carregada!", 3) end)
+        else pcall(function() Notify("Save System", "Arquivo corrompido!", 3) end) end
     end)
 end)
 
@@ -11717,23 +11771,26 @@ btnOver.MouseButton1Click:Connect(function()
             return
         end
         if newName ~= oldName then
-            if isfile("FTF_Eclipse/configs/"..newName..".json") then
+            if isfile and isfile("FTF_Eclipse/configs/"..newName..".json") then
                 pcall(function() Notify("Save System", "Já existe! Use outro nome.", 3) end)
                 return
             end
-            local ok, content = pcall(function() return readfile("FTF_Eclipse/configs/"..oldName..".json") end)
-            if not ok or not content then
-                pcall(function() Notify("Save System", "Erro ao ler a config antiga!", 3) end)
+            local ok, err = WriteConfig(newName, GatherAll())
+            if not ok then
+                pcall(function() Notify("Save System", "Falha ao salvar! ("..tostring(err)..")", 3) end)
                 return
             end
-            pcall(function() writefile("FTF_Eclipse/configs/"..newName..".json", content) end)
             pcall(function() delfile("FTF_Eclipse/configs/"..oldName..".json") end)
             SelectedConfig = newName
             dropLabel.Text = "Config: "..newName
             RefreshDropdown()
             pcall(function() Notify("Save System", "Config renomeada para '"..newName.."'!", 3) end)
         else
-            pcall(function() writefile("FTF_Eclipse/configs/"..oldName..".json", HttpService:JSONEncode(GatherAll())) end)
+            local ok, err = WriteConfig(oldName, GatherAll())
+            if not ok then
+                pcall(function() Notify("Save System", "Falha ao salvar! ("..tostring(err)..")", 3) end)
+                return
+            end
             pcall(function() Notify("Save System", "Config '"..oldName.."' atualizada!", 3) end)
         end
     end, true, oldName)
@@ -11955,7 +12012,7 @@ local Translation = {
 		ShowPing = "Show Ping",
 		ShowCPU = "Show CPU",
 		TextBoxLabel = "TextBox",
-		ThanksFooter = "FTF Eclipse V3.1 Mobile | Thank you for using FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.2 Mobile | Thank you for using FTF Eclipse.",
 		SaveSystem = "Save System",
 		Config = "Config",
 		ConfigName = "Config name",
@@ -12191,7 +12248,7 @@ local Translation = {
 		ShowPing = "Mostrar Ping",
 		ShowCPU = "Mostrar CPU",
 		TextBoxLabel = "Caixa de Texto",
-		ThanksFooter = "FTF Eclipse V3.1 Mobile | Obrigado por usar FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.2 Mobile | Obrigado por usar FTF Eclipse.",
 		SaveSystem = "Sistema de Save",
 		Config = "Config",
 		ConfigName = "Nome da config",
@@ -12461,8 +12518,8 @@ local TextToKey = {
 	["Show Ping"] = "ShowPing", ["Mostrar Ping"] = "ShowPing",
 	["Show CPU"] = "ShowCPU", ["Mostrar CPU"] = "ShowCPU",
 	["TextBox"] = "TextBoxLabel", ["Caixa de Texto"] = "TextBoxLabel",
-	["FTF Eclipse V3.1 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
-	["FTF Eclipse V3.1 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.2 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.2 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
 	["Save System"] = "SaveSystem",
 	["Save / Load"] = "SaveSystem",
 	["Config"] = "Config",
@@ -12496,7 +12553,6 @@ local TextToKey = {
 	["Copy"] = "Copy", ["Copiar"] = "Copy",
 	["Paste"] = "Paste", ["Colar"] = "Paste",
 	["Edit"] = "Edit", ["Editar"] = "Edit",
-	-- Skin Changer / Bundle / Accessories - AGORA VAI
 	["Bundle Changer"] = "BundleChanger", ["Trocador de Bundle"] = "BundleChanger",
 	["Accessories Changer"] = "AccessoriesChanger", ["Trocador de Acessórios"] = "AccessoriesChanger",
 	["Bundle ID (Ex: 201)..."] = "BundleIDPlaceholder", ["ID do Bundle (Ex: 201)..."] = "BundleIDPlaceholder",
