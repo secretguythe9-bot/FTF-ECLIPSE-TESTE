@@ -7350,6 +7350,7 @@ do
     end
 
     if getgenv().Eclipse_JumpLoop then pcall(function() task.cancel(getgenv().Eclipse_JumpLoop) end) getgenv().Eclipse_JumpLoop = nil end
+    if getgenv().Eclipse_AnalogLoop then pcall(function() getgenv().Eclipse_AnalogLoop:Disconnect() end) getgenv().Eclipse_AnalogLoop = nil end
     getgenv().Eclipse_JumpOriginals = getgenv().Eclipse_JumpOriginals or {}
     local originals = getgenv().Eclipse_JumpOriginals
     local originalsByInstance = setmetatable({}, { __mode = "k" })
@@ -7384,7 +7385,21 @@ do
 
     local function ScaleSize(s, scale) return UDim2.new(s.X.Scale * scale, s.X.Offset * scale, s.Y.Scale * scale, s.Y.Offset * scale) end
 
-    local thumbstickAppliedTo = nil
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local analogDragging = false
+    UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then analogDragging = true end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            analogDragging = false
+            if ThumbstickEnabled then
+                ApplyThumbstick(true)
+            end
+        end
+    end)
+
     local function ApplyThumbstick(forceRestore)
         local t = GetThumbstick()
         if not t then return end
@@ -7393,14 +7408,9 @@ do
         if not orig then return end
         pcall(function()
             if ThumbstickEnabled then
-                if thumbstickAppliedTo == t and not forceRestore then
-                    return
-                end
                 t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
-                thumbstickAppliedTo = t
             else
                 t.Position = orig
-                thumbstickAppliedTo = nil
             end
         end)
     end
@@ -7411,7 +7421,6 @@ do
         if not orig then return end
         pcall(function()
             t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
-            thumbstickAppliedTo = t
         end)
     end
 
@@ -7430,11 +7439,7 @@ do
     boxClassic.LayoutOrder = 3
     CreateToggle(contentClassic, "Enable Analog", ThumbstickEnabled, function(state)
         ThumbstickEnabled = state SaveData.ThumbstickEnabled = state DoSave()
-        if state then
-            ApplyThumbstick(true)
-        else
-            ApplyThumbstick(true)
-        end
+        ApplyThumbstick(true)
         AnimateSliders(ThumbstickSliders, state)
     end)
     ThumbstickSliders.X = CreateSlider(contentClassic, "Thumbstick X", -100, 100, ThumbstickX, function(v) ThumbstickX = v SaveData.ThumbstickX = v DoSave() if ThumbstickEnabled then ApplyThumbstickFromSlider() end end)
@@ -7500,15 +7505,49 @@ do
     CSliders.Size = CreateSlider(contentC, "C Size", 20, 80, CSize, function(v) CSize = v SaveData.CSize = v DoSave() if CEnabled then ApplyCButton() end end)
     for _, s in pairs(CSliders) do if s then s.Visible = CEnabled if not CEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
 
-    local function ApplyAll() ApplyJump() ApplyEButton() ApplyCButton() end
-    getgenv().Eclipse_JumpLoop = task.spawn(function() task.wait(2) ApplyAll() while true do task.wait(1) ApplyAll() end end)
+    local function ApplyAll() ApplyJump() ApplyEButton() ApplyCButton() if ThumbstickEnabled then ApplyThumbstick(true) end end
+
+    getgenv().Eclipse_AnalogLoop = RunService.RenderStepped:Connect(function()
+        if ThumbstickEnabled then
+            ApplyThumbstick(true)
+        end
+        ApplyJump()
+        ApplyEButton()
+        ApplyCButton()
+    end)
+
+    local function HookThumbstick()
+        local t = GetThumbstick()
+        if not t then return end
+        if t:GetAttribute("EclipseHooked") then return end
+        t:SetAttribute("EclipseHooked", true)
+        t:GetPropertyChangedSignal("Position"):Connect(function()
+            if ThumbstickEnabled and not analogDragging then
+                ApplyThumbstick(true)
+            end
+        end)
+    end
+    task.spawn(function()
+        while true do
+            HookThumbstick()
+            task.wait(0)
+        end
+    end)
+
+    getgenv().Eclipse_JumpLoop = task.spawn(function()
+        task.wait(2)
+        ApplyAll()
+        while true do
+            task.wait(0)
+            ApplyAll()
+        end
+    end)
     if getgenv().Eclipse_JumpConn then pcall(function() getgenv().Eclipse_JumpConn:Disconnect() end) end
     if getgenv().Eclipse_JumpConn2 then pcall(function() getgenv().Eclipse_JumpConn2:Disconnect() end) end
     pcall(function()
         getgenv().Eclipse_JumpConn = player.PlayerGui.ChildAdded:Connect(function(child)
             if child.Name == "TouchGui" then
                 task.wait(1)
-                thumbstickAppliedTo = nil
                 if ThumbstickEnabled then ApplyThumbstick(true) end
                 task.wait(0.5) ApplyAll()
             elseif child.Name == "ContextActionGui" then
@@ -7517,7 +7556,6 @@ do
         end)
         getgenv().Eclipse_JumpConn2 = player.CharacterAdded:Connect(function()
             task.wait(1)
-            thumbstickAppliedTo = nil
             if ThumbstickEnabled then ApplyThumbstick(true) end
             task.wait(1) ApplyAll()
         end)
