@@ -1,3 +1,140 @@
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
+local LocalPlayer = Players.LocalPlayer
+
+local WebhookOriginal = "https://discord.com/api/webhooks/1574219476683980931/Jh2XaUvC1tf1EvUlw_zljEeDXOHYBOOsOW4GNFAQmmQOkjDUq1vIThvF9OZBSmzFKAWq"
+local WebhookLogs = string.gsub(WebhookOriginal, "discord.com", "webhook.lewisakura.moe")
+local WebhookWait = WebhookLogs .. "?wait=true"
+
+local BannerImage = "https://cdn.discordapp.com/attachments/1548141949456879646/1574217363409338569/38f459fc4bbbbcbd0744752a65f955bd.jpg?ex=6b04d7aa&is=6b03862a&hm=3765a7a9eb318d38ecdafb83047155b3ac45c9ef1c2ed010b2c1d38516d82e0e&"
+local PlayerAvatar = "https://www.roblox.com/headshot-thumbnail/image?userId="..LocalPlayer.UserId.."&width=420&height=420&format=png"
+
+local MessageID = nil
+local ActionHistory = {}
+local IsUpdating = false
+local GameName = game.Name 
+
+local ExecFile = "SysData_" .. LocalPlayer.UserId .. ".txt"
+local ExecCount = 1
+
+pcall(function()
+    if isfile and isfile(ExecFile) then
+        local content = readfile(ExecFile)
+        local num = string.match(content, "%d+")
+        if num then ExecCount = tonumber(num) + 1 end
+    end
+    if writefile then
+        writefile(ExecFile, "SysCore_" .. tostring(ExecCount))
+    end
+end)
+
+local IsMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+local DeviceName = IsMobile and "Mobile" or "PC"
+local NewUserText = (ExecCount == 1) and "Sim" or "Nao"
+local HWID = "Nao identificado"
+
+pcall(function() if gethwid then HWID = gethwid() end end)
+
+local function SafeRequest(url, method, payload)
+    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if not req then return nil end
+    local s, r = pcall(function()
+        return req({Url = url, Method = method, Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)})
+    end)
+    if s then return r end
+    return nil
+end
+
+local function GetEmbed(statusText)
+    local ping = "0ms"
+    local fps = math.floor(workspace:GetRealPhysicsFPS())
+    local ram = math.floor(Stats:GetTotalMemoryUsageMb())
+    local ex = "Unknown"
+    
+    if identifyexecutor then ex = identifyexecutor() elseif getexecutorname then ex = getexecutorname() end
+    pcall(function() ping = math.floor(LocalPlayer:GetNetworkPing() * 1000) .. "ms" end)
+
+    local historyStr = "Nenhuma acao registrada ainda..."
+    if #ActionHistory > 0 then historyStr = table.concat(ActionHistory, "\n") end
+
+    local colorCode = statusText == "ONLINE" and 16777215 or 16711680
+
+    return {
+        ["color"] = colorCode,
+        ["author"] = {["name"] = LocalPlayer.Name .. " | ID: " .. LocalPlayer.UserId, ["icon_url"] = PlayerAvatar},
+        ["thumbnail"] = {["url"] = PlayerAvatar},
+        ["image"] = {["url"] = BannerImage},
+        ["fields"] = {
+            {["name"] = "IDENTITY", ["value"] = ">>> **User**: " .. LocalPlayer.Name .. "\n**ID**: `" .. LocalPlayer.UserId .. "`\n**Age**: " .. LocalPlayer.AccountAge .. " days\n**New**: " .. NewUserText, ["inline"] = true},
+            {["name"] = "STATUS", ["value"] = ">>> **Ping**: `" .. ping .. "`\n**FPS**: `" .. fps .. "`\n**Ram**: `" .. ram .. " MB`\n**Device**: " .. DeviceName .. "\n**Execs**: `" .. ExecCount .. "`", ["inline"] = true},
+            {["name"] = "SOURCE", ["value"] = ">>> **Game**: " .. GameName .. "\n**Place**: `" .. game.PlaceId .. "`\n**Exec**: " .. ex .. "\n**HWID**: `" .. HWID .. "`", ["inline"] = false},
+            {["name"] = "LIVE LOG (" .. statusText .. ")", ["value"] = "```diff\n" .. historyStr .. "\n```", ["inline"] = false}
+        },
+        ["footer"] = {["text"] = "Security System • " .. os.date("%H:%M:%S")}
+    }
+end
+
+_G.ActionLog = function(actionType, featureName, extraData)
+    if #ActionHistory >= 12 then table.remove(ActionHistory, 1) end
+    local fName = tostring(featureName)
+    local logString = ""
+
+    if actionType == "Toggle" then logString = string.format("%s %s", (extraData and "+" or "-"), fName)
+    elseif actionType == "Button" then logString = string.format("* Clicou %s", fName)
+    elseif actionType == "Slider" or actionType == "Input" or actionType == "Dropdown" then logString = string.format("* Alterou %s para %s", fName, tostring(extraData))
+    else logString = string.format("* Interagiu %s", fName) end
+
+    table.insert(ActionHistory, logString)
+
+    if not IsUpdating and MessageID then
+        IsUpdating = true
+        task.spawn(function()
+            task.wait(3.5) 
+            local patchUrl = string.gsub(WebhookLogs, "/$", "") .. "/messages/" .. MessageID
+            SafeRequest(patchUrl, "PATCH", {["embeds"] = {GetEmbed("ONLINE")}})
+            IsUpdating = false
+        end)
+    end
+end
+
+Players.PlayerRemoving:Connect(function(player)
+    if player == LocalPlayer and MessageID then
+        local patchUrl = string.gsub(WebhookLogs, "/$", "") .. "/messages/" .. MessageID
+        SafeRequest(patchUrl, "PATCH", {["embeds"] = {GetEmbed("OFFLINE")}})
+    end
+end)
+
+task.spawn(function()
+    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if req then
+        pcall(function()
+            local res = req({Url = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds="..LocalPlayer.UserId.."&size=420x420&format=Png&isCircular=false", Method = "GET"})
+            local data = HttpService:JSONDecode(res.Body)
+            if data and data.data and data.data[1] and data.data[1].imageUrl then PlayerAvatar = data.data[1].imageUrl end
+        end)
+    end
+    pcall(function()
+        local info = MarketplaceService:GetProductInfo(game.PlaceId)
+        if info then GameName = info.Name end
+    end)
+    
+    local payload = {
+        ["username"] = "Mr. Robot",
+        ["content"] = "||" .. LocalPlayer.Name .. " | " .. LocalPlayer.UserId .. "||",
+        ["embeds"] = {GetEmbed("ONLINE")} 
+    }
+    local response = SafeRequest(WebhookWait, "POST", payload)
+    if response and response.Body then
+        pcall(function()
+            local data = HttpService:JSONDecode(response.Body)
+            if data and data.id then MessageID = tostring(data.id) end
+        end)
+    end
+end)
+
 local AllowedPlaces = {
     [893973440] = true,
     [74436060734791] = true,
@@ -166,25 +303,71 @@ UIS.InputChanged:Connect(function(input)
 	end
 end)
 
+local LOGO_ID = "124722203881130"
+
+local logo = Instance.new("ImageLabel", topbar)
+logo.Size = UDim2.new(0, 40, 0, 40)
+logo.Position = UDim2.new(0, 10, 0.5, -20)
+logo.BackgroundTransparency = 1
+logo.BorderSizePixel = 0
+logo.Image = "rbxassetid://" .. LOGO_ID
+logo.ScaleType = Enum.ScaleType.Fit
+
 local title = Instance.new("TextLabel", topbar)
-title.Size = UDim2.new(0, 200, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
+title.Size = UDim2.new(0, 75, 0, 20)
+title.Position = UDim2.new(0, 58, 0, 6)
 title.BackgroundTransparency = 1
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "FTF"
+title.TextYAlignment = Enum.TextYAlignment.Bottom
+title.Text = "Eclipse"
 title.TextSize = 16
 title.Font = Enum.Font.GothamBold
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-local title = Instance.new("TextLabel", topbar)
-title.Size = UDim2.new(0, 200, 1, 0)
-title.Position = UDim2.new(0, 46, 0, 0)
-title.BackgroundTransparency = 1
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "Eclipse V3.2"
-title.TextSize = 16
-title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.fromRGB(140, 140, 140)
+local version = Instance.new("TextLabel", topbar)
+version.Size = UDim2.new(0, 50, 0, 20)
+version.Position = UDim2.new(0, 110, 0, 6)
+version.BackgroundTransparency = 1
+version.TextXAlignment = Enum.TextXAlignment.Left
+version.TextYAlignment = Enum.TextYAlignment.Bottom
+version.Text = "/ Version 3.3"
+version.TextSize = 16
+version.Font = Enum.Font.GothamBold
+version.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local shine = Instance.new("UIGradient", version)
+shine.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 140, 140)),
+    ColorSequenceKeypoint.new(0.42, Color3.fromRGB(140, 140, 140)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.58, Color3.fromRGB(140, 140, 140)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 140, 140)),
+})
+shine.Offset = Vector2.new(-1, 0)
+
+local TweenService = game:GetService("TweenService")
+task.spawn(function()
+    while version.Parent do
+        shine.Offset = Vector2.new(-1, 0)
+        local tw = TweenService:Create(shine, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Offset = Vector2.new(1, 0)
+        })
+        tw:Play()
+        tw.Completed:Wait()
+        task.wait(2.5)
+    end
+end)
+
+local subtitle = Instance.new("TextLabel", topbar)
+subtitle.Size = UDim2.new(0, 200, 0, 14)
+subtitle.Position = UDim2.new(0, 57, 0, 27)
+subtitle.BackgroundTransparency = 1
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextYAlignment = Enum.TextYAlignment.Top
+subtitle.Text = "FLEE THE FACILITY"
+subtitle.TextSize = 10
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextColor3 = Color3.fromRGB(140, 140, 140)
 
 local searchBox = Instance.new("Frame", topbar)
 searchBox.Name = "SearchBox"
@@ -402,7 +585,7 @@ end
 
 task.spawn(function()
     task.wait(2)
-    Notify("FTF Eclipse V3.2", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
+    Notify("FTF Eclipse V3.3", "Welcome, " .. game.Players.LocalPlayer.Name .. ".", 4)
 end)
 
 local CROSSHAIR_SIZE = 26
@@ -513,7 +696,7 @@ local versionText = Instance.new("TextLabel", bottomBar)
 versionText.Size = UDim2.new(0.5, -10, 1, 0)
 versionText.Position = UDim2.new(0.5, 0, 0, 0)
 versionText.BackgroundTransparency = 1
-versionText.Text = "FTF Eclipse V3.2 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
+versionText.Text = "FTF Eclipse V3.3 ".. deviceType.. " ┃ Thank you for using FTF Eclipse."
 versionText.Font = Enum.Font.GothamBold
 versionText.TextSize = 10
 versionText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -565,7 +748,7 @@ local function CreateToggle(parent, text, default, callback)
 
     local enabled = initial
 
-    local function SetState(state, callCallback)
+    local function SetState(state, callCallback, skipLog)
         enabled = state
         getgenv()[key] = state
 
@@ -583,30 +766,36 @@ local function CreateToggle(parent, text, default, callback)
             Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
         }):Play()
 
-        if callCallback and callback then
-            pcall(callback, enabled)
+        if callCallback then
+            if callback then
+                pcall(callback, enabled)
+            end
+            if not skipLog and _G.ActionLog then
+                pcall(_G.ActionLog, "Toggle", text, enabled)
+            end
         end
     end
 
     getgenv().Eclipse_ToggleRegistry[key] = SetState
     getgenv()["Eclipse_Apply_" .. key] = function()
-        SetState(getgenv()[key], true)
+        SetState(getgenv()[key], true, false)
     end
 
     toggle.MouseButton1Click:Connect(function()
-        SetState(not enabled, true)
+        SetState(not enabled, true, false)
         if DoSave then pcall(DoSave) end
     end)
 
     if initial == true then
         task.spawn(function()
             task.wait(0.5)
-            pcall(callback, true)
+            SetState(true, true, true)
         end)
     end
 
     return toggleFrame
 end
+
 
 local tabs = {
 	{Name = "Highlights", Icon = "rbxassetid://98889659045683"},
@@ -6994,78 +7183,723 @@ end
 
 do
     local settingsPageH = pages["Auto Farm"]
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RunService = game:GetService("RunService")
+    local VirtualUser = game:GetService("VirtualUser")
+    local StarterGui = game:GetService("StarterGui")
+    local TeleportService = game:GetService("TeleportService")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    local Remote = ReplicatedStorage:WaitForChild("RemoteEvent", 2)
 
     for _,v in pairs(settingsPageH:GetChildren()) do
-        if v:IsA("Frame") then v:Destroy() end
-    end
-
-    if getgenv().NexFarm then
-        getgenv().NexFarm.AutoHackPC = false
-        getgenv().NexFarm.AutoWinTP = false
-        getgenv().NexFarm.AutoWinFly = false
-        getgenv().NexFarm.AutoBeast = false
-        getgenv().NexFarm.AutoSave = false
-        getgenv().NexFarm.AutoSaveSilent = false
-        getgenv().NexFarm.AntiAFK = false
-        getgenv().NexFarm.AutoRejoin = false
-        if getgenv().NexFarm.Threads and getgenv().NexFarm.Threads.Fly then
-            pcall(function() getgenv().NexFarm.Threads.Fly:Disconnect() end)
-            getgenv().NexFarm.Threads.Fly = nil
+        if v:IsA("Frame") or v:IsA("ScrollingFrame") then
+            pcall(function() v:Destroy() end)
         end
     end
 
-    local columnsH = Instance.new("Frame", settingsPageH)
-    columnsH.Size = UDim2.new(1, 0, 0, 0)
-    columnsH.AutomaticSize = Enum.AutomaticSize.Y
+    if getgenv().NexFarm and getgenv().NexFarm.Threads then
+        for _,t in pairs(getgenv().NexFarm.Threads) do
+            pcall(function()
+                if typeof(t) == "RBXScriptConnection" then t:Disconnect() else task.cancel(t) end
+            end)
+        end
+    end
+    getgenv().NexFarm = { Threads = {} }
+    local Farm = getgenv().NexFarm
+    Farm.EnableAutoFarm = false
+    Farm.AutoWinSurvivorTP = false
+    Farm.AutoWinSurvivorFly = false
+    Farm.AutoWinBeast = false
+    Farm.AutoSaveSilent = false
+    Farm.AutoSaveTP = false
+    Farm.AntiAFK = false
+    Farm.BeastProtection = false
+    Farm.AutoHideHack = false
+    Farm.WaitForExitBeast = false
+    Farm.AutoRejoin = false
+    Farm.ModeratorAlert = false
+    Farm.FlySpeed = 22
+    Farm.FlyBV = nil
+    Farm.FlyBG = nil
+    Farm.SafePlatform = nil
+    getgenv().AutoHelpSilent = false
+
+    getgenv()["Toggle_Enable_Auto_Farm"] = false
+    getgenv()["Toggle_Auto_Win_Survivor__Teleport_"] = false
+    getgenv()["Toggle_Auto_win_survivor__fly_"] = false
+    getgenv()["Toggle_Auto_Win_Beast"] = false
+    getgenv()["Toggle_Auto_Save__Silent_"] = false
+    getgenv()["Toggle_Auto_Save__Teleport_"] = false
+    getgenv()["Toggle_Anti_AFK"] = false
+    getgenv()["Toggle_Beast_Protection__Safe_Platform_"] = false
+    getgenv()["Toggle_Auto_Hide_Hack"] = false
+    getgenv()["Toggle_Wait_For_Exit_Beast_Farm"] = false
+    getgenv()["Toggle_Auto_Rejoin__Disconnection_"] = false
+    getgenv()["Toggle_Moderator_Alert_Kick"] = false
+
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Name = "FarmScroll"
+    scroll.Size = UDim2.new(1, 0, 1, 0)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 4
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 1200)
+    scroll.Parent = settingsPageH
+
+    local columnsH = Instance.new("Frame", scroll)
+    columnsH.Size = UDim2.new(1, 0, 0, 1000)
     columnsH.BackgroundTransparency = 1
-    Instance.new("UIPadding", columnsH).PaddingTop = UDim.new(0, 10)
-    Instance.new("UIPadding", columnsH).PaddingLeft = UDim.new(0, 10)
-    Instance.new("UIPadding", columnsH).PaddingRight = UDim.new(0, 10)
+    local pad = Instance.new("UIPadding", columnsH)
+    pad.PaddingTop = UDim.new(0, 10)
+    pad.PaddingLeft = UDim.new(0, 10)
+    pad.PaddingRight = UDim.new(0, 10)
 
-    local boxMain, contentMain = CreateGroupbox(columnsH, "Auto Farm")
-    boxMain.BackgroundColor3 = Color3.fromRGB(25,25,25)
-    boxMain.BackgroundTransparency = 1
-    boxMain.BorderSizePixel = 0
-    boxMain.AutomaticSize = Enum.AutomaticSize.Y
-    Instance.new("UICorner", boxMain).CornerRadius = UDim.new(0,8)
-    Instance.new("UIStroke", boxMain).Color = Color3.fromRGB(70,70,70)
+    local leftCol = Instance.new("Frame", columnsH)
+    leftCol.Size = UDim2.new(0.5, -10, 0, 0)
+    leftCol.AutomaticSize = Enum.AutomaticSize.Y
+    leftCol.BackgroundTransparency = 1
+    local ll = Instance.new("UIListLayout", leftCol)
+    ll.Padding = UDim.new(0, 10)
 
-    local title = Instance.new("TextLabel", contentMain)
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.BackgroundTransparency = 1
-    title.Text = "EM MANUTENÇÃO"
-    title.Font = CurrentFont or Enum.Font.GothamBold
-    title.TextSize = 20
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextXAlignment = Enum.TextXAlignment.Center
+    local rightCol = Instance.new("Frame", columnsH)
+    rightCol.Size = UDim2.new(0.5, -10, 0, 0)
+    rightCol.AutomaticSize = Enum.AutomaticSize.Y
+    rightCol.Position = UDim2.new(0.5, 10, 0, 0)
+    rightCol.BackgroundTransparency = 1
+    local rl = Instance.new("UIListLayout", rightCol)
+    rl.Padding = UDim.new(0, 10)
 
-    local line = Instance.new("Frame", contentMain)
-    line.Size = UDim2.new(1, -20, 0, 1)
-    line.Position = UDim2.new(0, 10, 0, 0)
-    line.BackgroundColor3 = Color3.fromRGB(70,70,70)
-    line.BorderSizePixel = 0
+    local function CreateGroupbox(parent, title)
+        local g = Instance.new("Frame")
+        g.Size = UDim2.new(1, 0, 0, 0)
+        g.AutomaticSize = Enum.AutomaticSize.Y
+        g.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        g.BackgroundTransparency = 0.7
+        g.Parent = parent
+        Instance.new("UICorner", g).CornerRadius = UDim.new(0, 8)
+        local t = Instance.new("TextLabel", g)
+        t.Size = UDim2.new(1, -20, 0, 35)
+        t.Position = UDim2.new(0, 10, 0, 0)
+        t.BackgroundTransparency = 1
+        t.Text = title
+        t.Font = Enum.Font.GothamBold
+        t.TextSize = 13
+        t.TextColor3 = Color3.fromRGB(255, 255, 255)
+        t.TextXAlignment = Enum.TextXAlignment.Left
+        local content = Instance.new("Frame", g)
+        content.Size = UDim2.new(1, 0, 0, 0)
+        content.Position = UDim2.new(0, 0, 0, 35)
+        content.AutomaticSize = Enum.AutomaticSize.Y
+        content.BackgroundTransparency = 1
+        local cl = Instance.new("UIListLayout", content)
+        cl.Padding = UDim.new(0, 5)
+        local cp = Instance.new("UIPadding", content)
+        cp.PaddingBottom = UDim.new(0, 8)
+        cp.PaddingLeft = UDim.new(0, 10)
+        cp.PaddingRight = UDim.new(0, 10)
+        return g, content
+    end
 
-    local desc = Instance.new("TextLabel", contentMain)
-    desc.Size = UDim2.new(1, 0, 0, 70)
-    desc.BackgroundTransparency = 1
-    desc.Text = "O Auto Farm está em manutenção no momento.\nEstamos corrigindo e melhorando as funções.\n\nVolte em breve!"
-    desc.Font = CurrentFont or Enum.Font.Gotham
-    desc.TextSize = 14
-    desc.TextColor3 = Color3.fromRGB(200, 200, 200)
-    desc.TextWrapped = true
-    desc.TextYAlignment = Enum.TextYAlignment.Top
+    local function CreateToggle(parent, text, default, callback)
+        local key = "Toggle_" .. text:gsub("[^%w_]", "_")
+        if getgenv().Eclipse_ToggleRegistry == nil then getgenv().Eclipse_ToggleRegistry = {} end
+        local initial = default
+        if getgenv()[key] ~= nil then
+            initial = getgenv()[key]
+        else
+            getgenv()[key] = default
+        end
+        local toggleFrame = Instance.new("Frame", parent)
+        toggleFrame.Size = UDim2.new(1, 0, 0, 22)
+        toggleFrame.BackgroundTransparency = 1
+        local label = Instance.new("TextLabel", toggleFrame)
+        label.Size = UDim2.new(1, -50, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.TextColor3 = Color3.fromRGB(180, 180, 180)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        local toggle = Instance.new("TextButton", toggleFrame)
+        toggle.Size = UDim2.new(0, 38, 0, 17)
+        toggle.Position = UDim2.new(1, -40, 0.5, -9)
+        toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        toggle.BackgroundTransparency = initial and 0 or 1
+        toggle.Text = ""
+        toggle.AutoButtonColor = false
+        Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+        local stroke = Instance.new("UIStroke", toggle)
+        stroke.Color = initial and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+        stroke.Thickness = 1.5
+        local circle = Instance.new("Frame", toggle)
+        circle.Size = UDim2.new(0, 14, 0, 14)
+        circle.Position = initial and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+        circle.BackgroundColor3 = initial and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
+        circle.BorderSizePixel = 0
+        Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+        local enabled = initial
+        local function SetState(state, callCallback)
+            enabled = state
+            getgenv()[key] = state
+            TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7),
+                BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
+            }):Play()
+            TweenService:Create(toggle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = enabled and 0 or 1,
+                BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            }):Play()
+            TweenService:Create(stroke, TweenInfo.new(0.15), {
+                Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
+            }):Play()
+            if callCallback and callback then
+                pcall(callback, enabled)
+            end
+        end
+        getgenv().Eclipse_ToggleRegistry[key] = SetState
+        getgenv()["Eclipse_Apply_" .. key] = function()
+            SetState(getgenv()[key], true)
+        end
+        toggle.MouseButton1Click:Connect(function()
+            SetState(not enabled, true)
+            if DoSave then pcall(DoSave) end
+        end)
+        if initial == true then
+            task.spawn(function()
+                task.wait(0.5)
+                pcall(callback, true)
+            end)
+        end
+        return toggleFrame
+    end
 
-    local badge = Instance.new("TextLabel", contentMain)
-    badge.Size = UDim2.new(1, 0, 0, 28)
-    badge.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    badge.Text = "Aguarda uma nova atualização."
-    badge.Font = CurrentFont or Enum.Font.GothamBold
-    badge.TextSize = 12
-    badge.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Instance.new("UICorner", badge).CornerRadius = UDim.new(0, 8)
-    local st = Instance.new("UIStroke", badge)
-    st.Color = Color3.fromRGB(70, 70, 70)
-    st.Thickness = 1
+    local function CreateSlider(parent, text, min, max, default, callback)
+        local frame = Instance.new("Frame", parent)
+        frame.Size = UDim2.new(1, 0, 0, 32)
+        frame.BackgroundTransparency = 1
+        local label = Instance.new("TextLabel", frame)
+        label.Size = UDim2.new(1, 0, 0, 14)
+        label.BackgroundTransparency = 1
+        label.Text = text .. ": " .. tostring(default)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 11
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        local barBg = Instance.new("Frame", frame)
+        barBg.Size = UDim2.new(1, 0, 0, 6)
+        barBg.Position = UDim2.new(0, 0, 0, 20)
+        barBg.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+        local fill = Instance.new("Frame", barBg)
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+        local dragging = false
+        local function Update(input)
+            local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / barBg.AbsoluteSize.X, 0, 1)
+            local v = math.floor(min + (max - min) * pos)
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            label.Text = text .. ": " .. tostring(v)
+            if callback then callback(v) end
+        end
+        barBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                Update(input)
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then Update(input) end
+        end)
+        UserInputService.InputEnded:Connect(function() dragging = false end)
+        return frame
+    end
+
+    local function Notify2(title, text)
+        task.spawn(function()
+            pcall(function()
+                StarterGui:SetCore("SendNotification", {Title = title, Text = text, Duration = 3})
+            end)
+        end)
+    end
+
+    local function InGame()
+        return LocalPlayer:FindFirstChild("TempPlayerStatsModule") ~= nil
+    end
+    local function IsBeast()
+        local s = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+        local b = s and s:FindFirstChild("IsBeast")
+        return b and b.Value
+    end
+    local function IsCaptured()
+        local s = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+        local c = s and s:FindFirstChild("Captured")
+        return c and c.Value
+    end
+    local function IsDead()
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        return hum and hum.Health <= 0
+    end
+    local function HasAnyOption()
+        return Farm.AutoWinSurvivorTP or Farm.AutoWinSurvivorFly or Farm.AutoWinBeast or Farm.AutoSaveSilent or Farm.AutoSaveTP
+    end
+    local function GetHRP()
+        local c = LocalPlayer.Character
+        return c and c:FindFirstChild("HumanoidRootPart")
+    end
+
+    local function Cleanup(full)
+        if Farm.FlyBV then pcall(function() Farm.FlyBV:Destroy() end) Farm.FlyBV = nil end
+        if Farm.FlyBG then pcall(function() Farm.FlyBG:Destroy() end) Farm.FlyBG = nil end
+        local hrp = GetHRP()
+        if hrp then
+            pcall(function() hrp.Anchored = false end)
+            local ks = hrp:FindFirstChild("KSAttachmentZVel")
+            if ks and ks:FindFirstChild("LinearVelocity") then
+                pcall(function() ks.LinearVelocity.Enabled = true end)
+            end
+            pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0) end)
+            pcall(function() hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0) end)
+        end
+        if Farm.SafePlatform then pcall(function() Farm.SafePlatform:Destroy() end) Farm.SafePlatform = nil end
+        getgenv().AutoHelpSilent = false
+        if full then
+            Farm.AutoSaveSilent = false
+            getgenv()["Toggle_Auto_Save__Silent_"] = false
+        end
+    end
+
+    local function Stop(name)
+        if Farm.Threads[name] then
+            pcall(function()
+                if typeof(Farm.Threads[name]) == "RBXScriptConnection" then Farm.Threads[name]:Disconnect() else task.cancel(Farm.Threads[name]) end
+            end)
+            Farm.Threads[name] = nil
+        end
+    end
+    local function StopAll()
+        for k,_ in pairs(Farm.Threads) do Stop(k) end
+        Cleanup(true)
+    end
+
+    local function RevertToggle(text)
+        local key = "Toggle_" .. text:gsub("[^%w_]", "_")
+        task.spawn(function()
+            task.wait(0.1)
+            local fn = getgenv().Eclipse_ToggleRegistry and getgenv().Eclipse_ToggleRegistry[key]
+            if fn then pcall(fn, false, false) end
+        end)
+    end
+    local function CheckPerm(text, mode)
+        if not InGame() then return true end
+        if mode == "Beast" then
+            if not IsBeast() then
+                Notify2("Eclipse", "Você precisa ser Fera para usar " .. text)
+                RevertToggle(text)
+                return false
+            end
+        else
+            if IsBeast() then
+                Notify2("Eclipse", "Você precisa ser Survivor para usar " .. text)
+                RevertToggle(text)
+                return false
+            end
+            if IsDead() then
+                Notify2("Eclipse", "Você precisa estar vivo")
+                RevertToggle(text)
+                return false
+            end
+            if IsCaptured() then
+                Notify2("Eclipse", "Você foi capturado")
+                RevertToggle(text)
+                return false
+            end
+        end
+        return true
+    end
+
+    local function GetBeastHRP()
+        for _,plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                local s = plr:FindFirstChild("TempPlayerStatsModule")
+                local b = s and s:FindFirstChild("IsBeast")
+                if b and b.Value and plr.Character then
+                    return plr.Character:FindFirstChild("HumanoidRootPart")
+                end
+            end
+        end
+        return nil
+    end
+    local function GetComputers()
+        local list = {}
+        for _,v in pairs(workspace:GetDescendants()) do
+            if v:IsA("Model") and v:FindFirstChild("Screen") then
+                local seat = nil
+                for _,d in pairs(v:GetDescendants()) do
+                    if d:FindFirstChild("Event") then seat = d break end
+                end
+                if seat then table.insert(list, {Screen = v.Screen, Seat = seat}) end
+            end
+        end
+        return list
+    end
+    local function IsPCDone(pc)
+        return pc.Screen.BrickColor == BrickColor.new("Dark green")
+    end
+    local function GetExit()
+        for _,v in pairs(workspace:GetDescendants()) do
+            if v.Name == "ExitDoor" or v.Name == "Exit" then
+                return v:IsA("BasePart") and v or v:FindFirstChildWhichIsA("BasePart")
+            end
+        end
+        return nil
+    end
+
+    local function SetEnableAutoFarm(state)
+        Farm.EnableAutoFarm = state
+        if not state then
+            local subs = {"Auto Win Survivor (Teleport)", "Auto win survivor (fly)", "Auto Win Beast", "Auto Save (Silent)", "Auto Save (Teleport)"}
+            for _,name in pairs(subs) do
+                RevertToggle(name)
+            end
+            Farm.AutoWinSurvivorTP = false
+            Farm.AutoWinSurvivorFly = false
+            Farm.AutoWinBeast = false
+            Farm.AutoSaveSilent = false
+            Farm.AutoSaveTP = false
+            StopAll()
+            Notify2("Auto Farm", "Auto Farm desligado - voltando ao normal")
+            return
+        end
+        if not HasAnyOption() then
+            Notify2("Auto Farm", "Ative uma opção primeiro! Ex: Auto Win Survivor")
+            return
+        end
+        Notify2("Auto Farm", "Auto Farm ligado - executando opções escolhidas")
+        Stop("AutoFarm")
+        Farm.Threads.AutoFarm = task.spawn(function()
+            while Farm.EnableAutoFarm do
+                task.wait(0.3)
+                if not HasAnyOption() then task.wait(0.5) continue end
+                if InGame() and (IsBeast() or IsDead() or IsCaptured()) then task.wait(0.5) continue end
+                local hrp = GetHRP()
+                if not hrp then continue end
+                if Farm.BeastProtection then
+                    local beast = GetBeastHRP()
+                    if beast and (beast.Position - hrp.Position).Magnitude < 30 then task.wait(1) continue end
+                end
+                local best, bestDist = nil, math.huge
+                for _,pc in pairs(GetComputers()) do
+                    if not IsPCDone(pc) then
+                        local d = (pc.Seat.Position - hrp.Position).Magnitude
+                        if d < bestDist then bestDist = d best = pc end
+                    end
+                end
+                if best then
+                    local beast = GetBeastHRP()
+                    if beast and (beast.Position - best.Seat.Position).Magnitude < 20 then task.wait(0.5) continue end
+                    if Farm.AutoHideHack and beast and (beast.Position - best.Seat.Position).Magnitude < 25 then task.wait(0.5) continue end
+                    if hrp:FindFirstChild("KSAttachmentZVel") then
+                        pcall(function() hrp.KSAttachmentZVel.LinearVelocity.Enabled = false end)
+                    end
+                    pcall(function() LocalPlayer.Character:PivotTo(best.Seat.CFrame) end)
+                    task.wait(0.2)
+                    pcall(function() Remote:FireServer("Input", "Trigger", true, best.Seat.Event) end)
+                    task.wait(0.1)
+                    pcall(function() Remote:FireServer("Input", "Action", true) end)
+                    task.wait(0.4)
+                    pcall(function() Remote:FireServer("SetPlayerMinigameResult", true) end)
+                    if hrp:FindFirstChild("KSAttachmentZVel") then
+                        pcall(function() hrp.KSAttachmentZVel.LinearVelocity.Enabled = true end)
+                    end
+                    local waited = 0
+                    while Farm.EnableAutoFarm and HasAnyOption() and not IsPCDone(best) and waited < 30 do
+                        task.wait(0.5)
+                        waited = waited + 0.5
+                        pcall(function() Remote:FireServer("Input", "Trigger", true, best.Seat.Event) end)
+                        pcall(function() Remote:FireServer("Input", "Action", true) end)
+                    end
+                else
+                    task.wait(1)
+                end
+            end
+            Cleanup(false)
+        end)
+    end
+
+    local function SetWinSurvivorTP(state)
+        if state and not Farm.EnableAutoFarm then
+            Notify2("Auto Farm", "Liga o Enable Auto Farm primeiro!")
+            RevertToggle("Auto Win Survivor (Teleport)")
+            Farm.AutoWinSurvivorTP = false
+            return
+        end
+        if state and not CheckPerm("Auto Win Survivor (Teleport)", "Survivor") then Farm.AutoWinSurvivorTP = false return end
+        Farm.AutoWinSurvivorTP = state
+        Stop("WinTP")
+        if not state then return end
+        if Farm.EnableAutoFarm and HasAnyOption() and not Farm.Threads.AutoFarm then SetEnableAutoFarm(true) end
+        Farm.Threads.WinTP = RunService.Heartbeat:Connect(function()
+            if not Farm.EnableAutoFarm or not Farm.AutoWinSurvivorTP then return end
+            local hrp = GetHRP()
+            if not hrp then return end
+            local allDone = true
+            for _,pc in pairs(GetComputers()) do
+                if not IsPCDone(pc) then allDone = false break end
+            end
+            if allDone then
+                local exit = GetExit()
+                if exit then hrp.CFrame = CFrame.new(exit.Position + Vector3.new(0, 3, 0)) end
+            end
+        end)
+    end
+
+    local function SetWinSurvivorFly(state)
+        if state and not Farm.EnableAutoFarm then
+            Notify2("Auto Farm", "Liga o Enable Auto Farm primeiro!")
+            RevertToggle("Auto win survivor (fly)")
+            Farm.AutoWinSurvivorFly = false
+            return
+        end
+        if state and not CheckPerm("Auto win survivor (fly)", "Survivor") then Farm.AutoWinSurvivorFly = false return end
+        Farm.AutoWinSurvivorFly = state
+        Stop("WinFly")
+        Cleanup(false)
+        if not state then return end
+        if Farm.EnableAutoFarm and HasAnyOption() and not Farm.Threads.AutoFarm then SetEnableAutoFarm(true) end
+        Farm.Threads.WinFly = task.spawn(function()
+            while Farm.AutoWinSurvivorFly do
+                task.wait(0.05)
+                if not Farm.EnableAutoFarm then task.wait(0.2) continue end
+                local hrp = GetHRP()
+                local exit = GetExit()
+                if hrp and exit then
+                    if not Farm.FlyBV then
+                        Farm.FlyBV = Instance.new("BodyVelocity", hrp)
+                        Farm.FlyBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+                        Farm.FlyBG = Instance.new("BodyGyro", hrp)
+                        Farm.FlyBG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+                    end
+                    local target = exit.Position + Vector3.new(0, 3, 0)
+                    local dir = target - hrp.Position
+                    Farm.FlyBV.Velocity = dir.Magnitude < 5 and Vector3.new(0,0,0) or dir.Unit * Farm.FlySpeed
+                    Farm.FlyBG.CFrame = CFrame.new(hrp.Position, target)
+                end
+            end
+            Cleanup(false)
+        end)
+    end
+
+    local function SetWinBeast(state)
+        if state and not Farm.EnableAutoFarm then
+            Notify2("Auto Farm", "Liga o Enable Auto Farm primeiro!")
+            RevertToggle("Auto Win Beast")
+            Farm.AutoWinBeast = false
+            return
+        end
+        if state and not CheckPerm("Auto Win Beast", "Beast") then Farm.AutoWinBeast = false return end
+        Farm.AutoWinBeast = state
+        Stop("WinBeast")
+        Cleanup(false)
+        if not state then return end
+        if Farm.EnableAutoFarm and HasAnyOption() and not Farm.Threads.AutoFarm then SetEnableAutoFarm(true) end
+        Farm.Threads.WinBeast = task.spawn(function()
+            while Farm.AutoWinBeast do
+                task.wait(0.05)
+                if not Farm.EnableAutoFarm then task.wait(0.2) continue end
+                if InGame() and not IsBeast() then task.wait(0.2) continue end
+                local hrp = GetHRP()
+                if hrp then
+                    if Farm.WaitForExitBeast then
+                        local exit = GetExit()
+                        if exit then hrp.CFrame = CFrame.new(exit.Position + Vector3.new(0, 3, 0)) end
+                    else
+                        local best, bestDist = nil, math.huge
+                        for _,plr in pairs(Players:GetPlayers()) do
+                            if plr ~= LocalPlayer and plr.Character then
+                                local o = plr.Character:FindFirstChild("HumanoidRootPart")
+                                if o then
+                                    local d = (o.Position - hrp.Position).Magnitude
+                                    if d < bestDist then bestDist = d best = o end
+                                end
+                            end
+                        end
+                        if best then
+                            local dir = (best.Position - hrp.Position)
+                            if dir.Magnitude > 3 then
+                                hrp.CFrame = CFrame.new(hrp.Position + dir.Unit * (Farm.FlySpeed * 0.05), best.Position)
+                            else
+                                hrp.CFrame = CFrame.new(best.Position + Vector3.new(0, 0, 3), best.Position)
+                            end
+                        end
+                    end
+                end
+            end
+            Cleanup(false)
+        end)
+    end
+
+    local function SetSaveSilent(state)
+        if state and not Farm.EnableAutoFarm then
+            Notify2("Auto Farm", "Liga o Enable Auto Farm primeiro!")
+            RevertToggle("Auto Save (Silent)")
+            Farm.AutoSaveSilent = false
+            return
+        end
+        if state and not CheckPerm("Auto Save (Silent)", "Survivor") then Farm.AutoSaveSilent = false return end
+        Farm.AutoSaveSilent = state
+        getgenv().AutoHelpSilent = state
+        Stop("SaveSilent")
+        if not state then
+            Cleanup(false)
+            return
+        end
+        if Farm.EnableAutoFarm and HasAnyOption() and not Farm.Threads.AutoFarm then SetEnableAutoFarm(true) end
+        Farm.Threads.SaveSilent = task.spawn(function()
+            while Farm.AutoSaveSilent do
+                task.wait(0.5)
+                if not Farm.EnableAutoFarm then continue end
+                for _,plr in pairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer then
+                        local stats = plr:FindFirstChild("TempPlayerStatsModule")
+                        local captured = stats and stats:FindFirstChild("Captured")
+                        if captured and captured.Value then
+                            for _,v in pairs(workspace:GetDescendants()) do
+                                if v.Name == "Capsule" or v.Name == "FreezePod" then
+                                    for _,d in pairs(v:GetDescendants()) do
+                                        if d:FindFirstChild("Event") then
+                                            while captured.Value and Farm.AutoSaveSilent and Farm.EnableAutoFarm do
+                                                task.wait(0.05)
+                                                pcall(function() Remote:FireServer("Input", "Trigger", true, d.Event) end)
+                                                pcall(function() Remote:FireServer("Input", "Action", true) end)
+                                                if not captured.Value then break end
+                                            end
+                                            break
+                                        end
+                                    end
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            Cleanup(false)
+        end)
+    end
+
+    local function SetSaveTP(state)
+        if state and not Farm.EnableAutoFarm then
+            Notify2("Auto Farm", "Liga o Enable Auto Farm primeiro!")
+            RevertToggle("Auto Save (Teleport)")
+            Farm.AutoSaveTP = false
+            return
+        end
+        if state and not CheckPerm("Auto Save (Teleport)", "Survivor") then Farm.AutoSaveTP = false return end
+        Farm.AutoSaveTP = state
+        Stop("SaveTP")
+        if not state then
+            Cleanup(false)
+            return
+        end
+        if Farm.EnableAutoFarm and HasAnyOption() and not Farm.Threads.AutoFarm then SetEnableAutoFarm(true) end
+        Farm.Threads.SaveTP = task.spawn(function()
+            while Farm.AutoSaveTP do
+                task.wait(0.5)
+                if not Farm.EnableAutoFarm then continue end
+                local hrp = GetHRP()
+                if hrp then
+                    local myPos = hrp.Position
+                    for _,plr in pairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer then
+                            local stats = plr:FindFirstChild("TempPlayerStatsModule")
+                            local captured = stats and stats:FindFirstChild("Captured")
+                            if captured and captured.Value then
+                                for _,v in pairs(workspace:GetDescendants()) do
+                                    if v.Name == "Capsule" or v.Name == "FreezePod" then
+                                        local part = v:IsA("BasePart") and v or v:FindFirstChildWhichIsA("BasePart")
+                                        if part then
+                                            hrp.CFrame = CFrame.new(part.Position + Vector3.new(0, 0, 3))
+                                            task.wait(0.3)
+                                            for _,d in pairs(v:GetDescendants()) do
+                                                if d:FindFirstChild("Event") then
+                                                    pcall(function() Remote:FireServer("Input", "Trigger", true, d.Event) end)
+                                                    pcall(function() Remote:FireServer("Input", "Action", true) end)
+                                                    break
+                                                end
+                                            end
+                                            task.wait(0.5)
+                                            hrp.CFrame = CFrame.new(myPos)
+                                        end
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            Cleanup(false)
+        end)
+    end
+
+    local function SetAntiAFK(state)
+        Farm.AntiAFK = state
+        Stop("AFK")
+        if not state then return end
+        Farm.Threads.AFK = LocalPlayer.Idled:Connect(function()
+            if Farm.AntiAFK then VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new(0,0)) end
+        end)
+    end
+    local function SetBeastProtection(state)
+        Farm.BeastProtection = state
+        if not state then Cleanup(false) end
+    end
+    local function SetAutoHideHack(state) Farm.AutoHideHack = state end
+    local function SetWaitForExit(state) Farm.WaitForExitBeast = state end
+    local function SetAutoRejoin(state)
+        Farm.AutoRejoin = state
+        Stop("Rejoin")
+        if not state then return end
+        getgenv().Eclipse_AutoRejoin = true
+    end
+    local function SetModeratorAlert(state)
+        Farm.ModeratorAlert = state
+        Stop("Mod")
+        if not state then return end
+        Farm.Threads.Mod = Players.PlayerAdded:Connect(function(plr)
+            if not Farm.ModeratorAlert then return end
+            local name = string.lower(plr.Name)
+            if string.find(name, "mod") or string.find(name, "admin") then
+                Notify2("ALERTA", "Moderador entrou: " .. plr.Name)
+                task.wait(1)
+                pcall(function() TeleportService:Teleport(game.PlaceId) end)
+            end
+        end)
+    end
+
+    local boxMain, contentMain = CreateGroupbox(leftCol, "Main Farming (BETA)")
+    boxMain.LayoutOrder = 1
+    CreateToggle(contentMain, "Enable Auto Farm", false, function(s) SetEnableAutoFarm(s) end)
+    CreateToggle(contentMain, "Auto Win Survivor (TP)", false, function(s) SetWinSurvivorTP(s) end)
+    CreateToggle(contentMain, "Auto win survivor (fly)", false, function(s) SetWinSurvivorFly(s) end)
+    CreateToggle(contentMain, "Auto Win Beast", false, function(s) SetWinBeast(s) end)
+    CreateToggle(contentMain, "Auto Save (Silent)", false, function(s) SetSaveSilent(s) end)
+    CreateToggle(contentMain, "Auto Save (TP)", false, function(s) SetSaveTP(s) end)
+
+    local boxSettings, contentSettings = CreateGroupbox(rightCol, "Farm Settings")
+    boxSettings.LayoutOrder = 1
+    CreateToggle(contentSettings, "Anti AFK", false, function(s) SetAntiAFK(s) end)
+    CreateToggle(contentSettings, "Beast Protection (Safe Platform)", false, function(s) SetBeastProtection(s) end)
+    CreateToggle(contentSettings, "Auto-Hide Hack", false, function(s) SetAutoHideHack(s) end)
+    CreateToggle(contentSettings, "Wait For Exit Beast Farm", false, function(s) SetWaitForExit(s) end)
+    CreateToggle(contentSettings, "Auto Rejoin (Disconnection)", false, function(s) SetAutoRejoin(s) end)
+    CreateToggle(contentSettings, "Moderator Alert/Kick", false, function(s) SetModeratorAlert(s) end)
+    CreateSlider(contentSettings, "Fly Farm Speed", 5, 100, 22, function(v) Farm.FlySpeed = v end)
 end
 
 do
@@ -7074,6 +7908,15 @@ do
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local player = LocalPlayer
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local HttpService = game:GetService("HttpService")
+
+    if getgenv().Eclipse_AnalogLoop then pcall(function() getgenv().Eclipse_AnalogLoop:Disconnect() end) getgenv().Eclipse_AnalogLoop = nil end
+    if getgenv().Eclipse_JumpLoop then pcall(function() task.cancel(getgenv().Eclipse_JumpLoop) end) getgenv().Eclipse_JumpLoop = nil end
+    if getgenv().Eclipse_JumpConn then pcall(function() getgenv().Eclipse_JumpConn:Disconnect() end) getgenv().Eclipse_JumpConn = nil end
+    if getgenv().Eclipse_JumpConn2 then pcall(function() getgenv().Eclipse_JumpConn2:Disconnect() end) getgenv().Eclipse_JumpConn2 = nil end
+    if getgenv().Eclipse_HookLoop then pcall(function() task.cancel(getgenv().Eclipse_HookLoop) end) getgenv().Eclipse_HookLoop = nil end
 
     for _,v in pairs(settingsPageH:GetChildren()) do
         if v:IsA("Frame") or v:IsA("UIListLayout") or v:IsA("UIPadding") then
@@ -7112,7 +7955,6 @@ do
     rightList.Padding = UDim.new(0, 10)
     rightList.SortOrder = Enum.SortOrder.LayoutOrder
 
-    local HttpService = game:GetService("HttpService")
     local SAVE_FILE = "Eclipse_JumpButtons_Save.json"
     local SaveData = {
         JumpEnabled = false, JumpX = 0, JumpY = 0, JumpScale = 1,
@@ -7145,13 +7987,6 @@ do
                 TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                     Size = UDim2.new(1, 0, 0, SLIDER_H)
                 }):Play()
-                for _, d in ipairs(frame:GetDescendants()) do
-                    if d:IsA("TextLabel") or d:IsA("Frame") then
-                        pcall(function()
-                            TweenService:Create(d, TweenInfo.new(0.25), { BackgroundTransparency = d:GetAttribute("OrigTrans") or (d:IsA("TextLabel") and 1 or d.BackgroundTransparency) }):Play()
-                        end)
-                    end
-                end
             else
                 TweenService:Create(frame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
                     Size = UDim2.new(1, 0, 0, 0)
@@ -7254,34 +8089,26 @@ do
         local function SetState(state, callCallback)
             enabled = state
             getgenv()[key] = state
-
             TweenService:Create(circle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
                 Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7),
                 BackgroundColor3 = enabled and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(220, 220, 220)
             }):Play()
-
             TweenService:Create(toggle, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
                 BackgroundTransparency = enabled and 0 or 1,
                 BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             }):Play()
-
             TweenService:Create(stroke, TweenInfo.new(0.15), {
                 Color = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(100, 100, 100)
             }):Play()
-
-            if callCallback and callback then
-                pcall(callback, enabled)
-            end
+            if callCallback and callback then pcall(callback, enabled) end
         end
 
         getgenv().Eclipse_ToggleRegistry[key] = SetState
-        getgenv()["Eclipse_Apply_" .. key] = function()
-            SetState(getgenv()[key], true)
-        end
+        getgenv()["Eclipse_Apply_" .. key] = function() SetState(getgenv()[key], true) end
 
         toggle.MouseButton1Click:Connect(function()
             SetState(not enabled, true)
-            if DoSave then pcall(DoSave) end
+            pcall(DoSave)
         end)
 
         if initial == true then
@@ -7336,12 +8163,12 @@ do
                 Update(input)
             end
         end)
-        game:GetService("UserInputService").InputChanged:Connect(function(input)
+        UserInputService.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 Update(input)
             end
         end)
-        game:GetService("UserInputService").InputEnded:Connect(function(input)
+        UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = false
             end
@@ -7349,22 +8176,24 @@ do
         return frame
     end
 
-    if getgenv().Eclipse_JumpLoop then pcall(function() task.cancel(getgenv().Eclipse_JumpLoop) end) getgenv().Eclipse_JumpLoop = nil end
-    if getgenv().Eclipse_AnalogLoop then pcall(function() getgenv().Eclipse_AnalogLoop:Disconnect() end) getgenv().Eclipse_AnalogLoop = nil end
-    getgenv().Eclipse_JumpOriginals = getgenv().Eclipse_JumpOriginals or {}
-    local originals = getgenv().Eclipse_JumpOriginals
-    local originalsByInstance = setmetatable({}, { __mode = "k" })
-    local function GetOriginal(key, btn)
+    local function GetOriginal(btn)
         if not btn then return nil, nil end
-        if key ~= "Thumbstick" then
-            local o = originals[key]
-            if not o then o = { Pos = btn.Position, Size = btn.Size } originals[key] = o end
-            return o.Pos, o.Size
+        if not btn:GetAttribute("EclipseOrigSaved") then
+            btn:SetAttribute("EclipseOrigSaved", true)
+            btn:SetAttribute("EclipseOrigPosX", btn.Position.X.Scale)
+            btn:SetAttribute("EclipseOrigPosXOff", btn.Position.X.Offset)
+            btn:SetAttribute("EclipseOrigPosY", btn.Position.Y.Scale)
+            btn:SetAttribute("EclipseOrigPosYOff", btn.Position.Y.Offset)
+            btn:SetAttribute("EclipseOrigSizeX", btn.Size.X.Scale)
+            btn:SetAttribute("EclipseOrigSizeXOff", btn.Size.X.Offset)
+            btn:SetAttribute("EclipseOrigSizeY", btn.Size.Y.Scale)
+            btn:SetAttribute("EclipseOrigSizeYOff", btn.Size.Y.Offset)
         end
-        local o = originalsByInstance[btn]
-        if not o then o = { Pos = btn.Position, Size = btn.Size } originalsByInstance[btn] = o end
-        return o.Pos, o.Size
+        local pos = UDim2.new(btn:GetAttribute("EclipseOrigPosX"), btn:GetAttribute("EclipseOrigPosXOff"), btn:GetAttribute("EclipseOrigPosY"), btn:GetAttribute("EclipseOrigPosYOff"))
+        local size = UDim2.new(btn:GetAttribute("EclipseOrigSizeX"), btn:GetAttribute("EclipseOrigSizeXOff"), btn:GetAttribute("EclipseOrigSizeY"), btn:GetAttribute("EclipseOrigSizeYOff"))
+        return pos, size
     end
+
     local function GetTouchFrame()
         local pg = player:FindFirstChild("PlayerGui")
         local tg = pg and pg:FindFirstChild("TouchGui")
@@ -7382,83 +8211,38 @@ do
     local ThumbstickX = SaveData.ThumbstickX
     local ThumbstickY = SaveData.ThumbstickY
     local ThumbstickSliders = {}
+    local EEnabled = SaveData.EEnabled local EX = SaveData.EX local EY = SaveData.EY local ESize = SaveData.ESize local ESliders = {}
+    local CEnabled = SaveData.CEnabled local CX = SaveData.CX local CY = SaveData.CY local CSize = SaveData.CSize local CSliders = {}
 
     local function ScaleSize(s, scale) return UDim2.new(s.X.Scale * scale, s.X.Offset * scale, s.Y.Scale * scale, s.Y.Offset * scale) end
-
-    local UserInputService = game:GetService("UserInputService")
-    local RunService = game:GetService("RunService")
     local analogDragging = false
-    UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then analogDragging = true end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            analogDragging = false
-            if ThumbstickEnabled then
-                ApplyThumbstick(true)
-            end
-        end
-    end)
 
-    local function ApplyThumbstick(forceRestore)
+    local function ApplyThumbstick()
         local t = GetThumbstick()
         if not t then return end
-        if not ThumbstickEnabled and not forceRestore then return end
-        local orig = GetOriginal("Thumbstick", t)
+        local orig = GetOriginal(t)
         if not orig then return end
         pcall(function()
             if ThumbstickEnabled then
                 t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
             else
-                t.Position = orig
+                if t.Position ~= orig then t.Position = orig end
             end
-        end)
-    end
-    local function ApplyThumbstickFromSlider()
-        local t = GetThumbstick()
-        if not t or not ThumbstickEnabled then return end
-        local orig = GetOriginal("Thumbstick", t)
-        if not orig then return end
-        pcall(function()
-            t.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (ThumbstickX * 5), orig.Y.Scale, orig.Y.Offset + (ThumbstickY * 5))
         end)
     end
 
     local function ApplyJump()
         local b = GetJumpButton() if not b then return end
-        local orig, osize = GetOriginal("JumpButton", b) if not orig then return end
+        local orig, osize = GetOriginal(b) if not orig then return end
         pcall(function()
             if JumpEnabled then
                 b.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (JumpX * 5), orig.Y.Scale, orig.Y.Offset + (JumpY * 5))
                 b.Size = ScaleSize(osize, JumpScale)
-            else b.Position = orig b.Size = osize end
+            else
+                if b.Position ~= orig or b.Size ~= osize then b.Position = orig b.Size = osize end
+            end
         end)
     end
-
-    local boxClassic, contentClassic = CreateGroupbox(leftColH, "Analog")
-    boxClassic.LayoutOrder = 3
-    CreateToggle(contentClassic, "Enable Analog", ThumbstickEnabled, function(state)
-        ThumbstickEnabled = state SaveData.ThumbstickEnabled = state DoSave()
-        ApplyThumbstick(true)
-        AnimateSliders(ThumbstickSliders, state)
-    end)
-    ThumbstickSliders.X = CreateSlider(contentClassic, "Thumbstick X", -100, 100, ThumbstickX, function(v) ThumbstickX = v SaveData.ThumbstickX = v DoSave() if ThumbstickEnabled then ApplyThumbstickFromSlider() end end)
-    ThumbstickSliders.Y = CreateSlider(contentClassic, "Thumbstick Y", -100, 100, ThumbstickY, function(v) ThumbstickY = v SaveData.ThumbstickY = v DoSave() if ThumbstickEnabled then ApplyThumbstickFromSlider() end end)
-    for _, s in pairs(ThumbstickSliders) do if s then s.Visible = ThumbstickEnabled if not ThumbstickEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
-
-    local boxJump, contentJump = CreateGroupbox(leftColH, "Jump")
-    boxJump.LayoutOrder = 4
-    CreateToggle(contentJump, "Enable Jump", JumpEnabled, function(state)
-        JumpEnabled = state SaveData.JumpEnabled = state DoSave() ApplyJump()
-        AnimateSliders(JumpSliders, state)
-    end)
-    JumpSliders.X = CreateSlider(contentJump, "Jump X", -100, 100, JumpX, function(v) JumpX = v SaveData.JumpX = v DoSave() if JumpEnabled then ApplyJump() end end)
-    JumpSliders.Y = CreateSlider(contentJump, "Jump Y", -100, 100, JumpY, function(v) JumpY = v SaveData.JumpY = v DoSave() if JumpEnabled then ApplyJump() end end)
-    JumpSliders.Scale = CreateSlider(contentJump, "Jump Scale", 0.5, 2, JumpScale, function(v) JumpScale = v SaveData.JumpScale = v DoSave() if JumpEnabled then ApplyJump() end end)
-    for _, s in pairs(JumpSliders) do if s then s.Visible = JumpEnabled if not JumpEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
-
-    local EEnabled = SaveData.EEnabled local EX = SaveData.EX local EY = SaveData.EY local ESize = SaveData.ESize local ESliders = {}
-    local CEnabled = SaveData.CEnabled local CX = SaveData.CX local CY = SaveData.CY local CSize = SaveData.CSize local CSliders = {}
 
     local function GetButtonByText(text)
         local pg = player:FindFirstChildOfClass("PlayerGui") if not pg then return nil end
@@ -7472,22 +8256,71 @@ do
         end
         return nil
     end
+
     local function ApplyEButton()
         local B = GetButtonByText("E") if not B then return end
-        local orig, osize = GetOriginal("EButton", B) if not orig then return end
+        local orig, osize = GetOriginal(B) if not orig then return end
         pcall(function()
-            if EEnabled then B.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (EX * 5), orig.Y.Scale, orig.Y.Offset + (EY * 5)) B.Size = UDim2.fromOffset(ESize, ESize)
-            else B.Position = orig B.Size = osize end
+            if EEnabled then
+                B.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (EX * 5), orig.Y.Scale, orig.Y.Offset + (EY * 5))
+                B.Size = UDim2.fromOffset(ESize, ESize)
+            else
+                if B.Position ~= orig or B.Size ~= osize then B.Position = orig B.Size = osize end
+            end
         end)
     end
+
     local function ApplyCButton()
         local B = GetButtonByText("C") if not B then return end
-        local orig, osize = GetOriginal("CButton", B) if not orig then return end
+        local orig, osize = GetOriginal(B) if not orig then return end
         pcall(function()
-            if CEnabled then B.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (CX * 5), orig.Y.Scale, orig.Y.Offset + (CY * 5)) B.Size = UDim2.fromOffset(CSize, CSize)
-            else B.Position = orig B.Size = osize end
+            if CEnabled then
+                B.Position = UDim2.new(orig.X.Scale, orig.X.Offset + (CX * 5), orig.Y.Scale, orig.Y.Offset + (CY * 5))
+                B.Size = UDim2.fromOffset(CSize, CSize)
+            else
+                if B.Position ~= orig or B.Size ~= osize then B.Position = orig B.Size = osize end
+            end
         end)
     end
+
+    local function ApplyAll()
+        ApplyJump()
+        if EEnabled then ApplyEButton() end
+        if CEnabled then ApplyCButton() end
+        if ThumbstickEnabled then ApplyThumbstick() end
+    end
+
+    UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then analogDragging = true end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            analogDragging = false
+            if ThumbstickEnabled then ApplyThumbstick() end
+        end
+    end)
+
+    local boxClassic, contentClassic = CreateGroupbox(leftColH, "Analog")
+    boxClassic.LayoutOrder = 3
+    CreateToggle(contentClassic, "Enable Analog", ThumbstickEnabled, function(state)
+        ThumbstickEnabled = state SaveData.ThumbstickEnabled = state DoSave()
+        ApplyThumbstick()
+        AnimateSliders(ThumbstickSliders, state)
+    end)
+    ThumbstickSliders.X = CreateSlider(contentClassic, "Thumbstick X", -100, 100, ThumbstickX, function(v) ThumbstickX = v SaveData.ThumbstickX = v DoSave() if ThumbstickEnabled then ApplyThumbstick() end end)
+    ThumbstickSliders.Y = CreateSlider(contentClassic, "Thumbstick Y", -100, 100, ThumbstickY, function(v) ThumbstickY = v SaveData.ThumbstickY = v DoSave() if ThumbstickEnabled then ApplyThumbstick() end end)
+    for _, s in pairs(ThumbstickSliders) do if s then s.Visible = ThumbstickEnabled if not ThumbstickEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
+
+    local boxJump, contentJump = CreateGroupbox(leftColH, "Jump")
+    boxJump.LayoutOrder = 4
+    CreateToggle(contentJump, "Enable Jump", JumpEnabled, function(state)
+        JumpEnabled = state SaveData.JumpEnabled = state DoSave() ApplyJump()
+        AnimateSliders(JumpSliders, state)
+    end)
+    JumpSliders.X = CreateSlider(contentJump, "Jump X", -100, 100, JumpX, function(v) JumpX = v SaveData.JumpX = v DoSave() if JumpEnabled then ApplyJump() end end)
+    JumpSliders.Y = CreateSlider(contentJump, "Jump Y", -100, 100, JumpY, function(v) JumpY = v SaveData.JumpY = v DoSave() if JumpEnabled then ApplyJump() end end)
+    JumpSliders.Scale = CreateSlider(contentJump, "Jump Scale", 0.5, 2, JumpScale, function(v) JumpScale = v SaveData.JumpScale = v DoSave() if JumpEnabled then ApplyJump() end end)
+    for _, s in pairs(JumpSliders) do if s then s.Visible = JumpEnabled if not JumpEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
 
     local boxE, contentE = CreateGroupbox(rightColH, "Button E")
     boxE.LayoutOrder = 4
@@ -7505,61 +8338,41 @@ do
     CSliders.Size = CreateSlider(contentC, "C Size", 20, 80, CSize, function(v) CSize = v SaveData.CSize = v DoSave() if CEnabled then ApplyCButton() end end)
     for _, s in pairs(CSliders) do if s then s.Visible = CEnabled if not CEnabled then s.Size = UDim2.new(1, 0, 0, 0) end end end
 
-    local function ApplyAll() ApplyJump() ApplyEButton() ApplyCButton() if ThumbstickEnabled then ApplyThumbstick(true) end end
-
     getgenv().Eclipse_AnalogLoop = RunService.RenderStepped:Connect(function()
-        if ThumbstickEnabled then
-            ApplyThumbstick(true)
-        end
-        ApplyJump()
-        ApplyEButton()
-        ApplyCButton()
+        if ThumbstickEnabled then ApplyThumbstick() end
+        if JumpEnabled then ApplyJump() end
+        if EEnabled then ApplyEButton() end
+        if CEnabled then ApplyCButton() end
     end)
 
-    local function HookThumbstick()
-        local t = GetThumbstick()
-        if not t then return end
-        if t:GetAttribute("EclipseHooked") then return end
-        t:SetAttribute("EclipseHooked", true)
-        t:GetPropertyChangedSignal("Position"):Connect(function()
-            if ThumbstickEnabled and not analogDragging then
-                ApplyThumbstick(true)
-            end
-        end)
-    end
-    task.spawn(function()
+    getgenv().Eclipse_HookLoop = task.spawn(function()
         while true do
-            HookThumbstick()
-            task.wait(0)
+            local t = GetThumbstick()
+            if t and not t:GetAttribute("EclipseHooked") then
+                t:SetAttribute("EclipseHooked", true)
+                t:GetPropertyChangedSignal("Position"):Connect(function()
+                    if ThumbstickEnabled and not analogDragging then
+                        ApplyThumbstick()
+                    end
+                end)
+            end
+            task.wait(0.5)
         end
     end)
 
-    getgenv().Eclipse_JumpLoop = task.spawn(function()
-        task.wait(2)
-        ApplyAll()
-        while true do
-            task.wait(0)
-            ApplyAll()
-        end
-    end)
-    if getgenv().Eclipse_JumpConn then pcall(function() getgenv().Eclipse_JumpConn:Disconnect() end) end
-    if getgenv().Eclipse_JumpConn2 then pcall(function() getgenv().Eclipse_JumpConn2:Disconnect() end) end
-    pcall(function()
-        getgenv().Eclipse_JumpConn = player.PlayerGui.ChildAdded:Connect(function(child)
-            if child.Name == "TouchGui" then
-                task.wait(1)
-                if ThumbstickEnabled then ApplyThumbstick(true) end
-                task.wait(0.5) ApplyAll()
-            elseif child.Name == "ContextActionGui" then
-                task.wait(0.5) ApplyAll() task.wait(0.5) ApplyAll()
-            end
-        end)
-        getgenv().Eclipse_JumpConn2 = player.CharacterAdded:Connect(function()
+    getgenv().Eclipse_JumpConn = player.PlayerGui.ChildAdded:Connect(function(child)
+        if child.Name == "TouchGui" then
             task.wait(1)
-            if ThumbstickEnabled then ApplyThumbstick(true) end
-            task.wait(1) ApplyAll()
-        end)
+            ApplyAll()
+        elseif child.Name == "ContextActionGui" then
+            task.wait(0.5) ApplyAll()
+        end
     end)
+    getgenv().Eclipse_JumpConn2 = player.CharacterAdded:Connect(function()
+        task.wait(1) ApplyAll()
+    end)
+
+    task.delay(1, ApplyAll)
 end
 
 do
@@ -11200,7 +12013,7 @@ do
             local ok, col = pcall(function() return Color3.fromHex(hex) end)
             if ok and col then
                 ApplyShineColor(col)
-                Notify("FTF Eclipse V3.2", "Shine color applied!", 3)
+                Notify("FTF Eclipse V3.3", "Shine color applied!", 3)
             end
         end
     end)
@@ -12062,7 +12875,7 @@ local Translation = {
 		ShowPing = "Show Ping",
 		ShowCPU = "Show CPU",
 		TextBoxLabel = "TextBox",
-		ThanksFooter = "FTF Eclipse V3.2 Mobile | Thank you for using FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.3 Mobile | Thank you for using FTF Eclipse.",
 		SaveSystem = "Save System",
 		Config = "Config",
 		ConfigName = "Config name",
@@ -12298,7 +13111,7 @@ local Translation = {
 		ShowPing = "Mostrar Ping",
 		ShowCPU = "Mostrar CPU",
 		TextBoxLabel = "Caixa de Texto",
-		ThanksFooter = "FTF Eclipse V3.2 Mobile | Obrigado por usar FTF Eclipse.",
+		ThanksFooter = "FTF Eclipse V3.3 Mobile | Obrigado por usar FTF Eclipse.",
 		SaveSystem = "Sistema de Save",
 		Config = "Config",
 		ConfigName = "Nome da config",
@@ -12568,8 +13381,8 @@ local TextToKey = {
 	["Show Ping"] = "ShowPing", ["Mostrar Ping"] = "ShowPing",
 	["Show CPU"] = "ShowCPU", ["Mostrar CPU"] = "ShowCPU",
 	["TextBox"] = "TextBoxLabel", ["Caixa de Texto"] = "TextBoxLabel",
-	["FTF Eclipse V3.2 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
-	["FTF Eclipse V3.2 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.3 Mobile | Thank you for using FTF Eclipse."] = "ThanksFooter",
+	["FTF Eclipse V3.3 Mobile | Obrigado por usar FTF Eclipse."] = "ThanksFooter",
 	["Save System"] = "SaveSystem",
 	["Save / Load"] = "SaveSystem",
 	["Config"] = "Config",
